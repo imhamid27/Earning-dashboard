@@ -27,8 +27,8 @@ Thumbs.db
 # Ingestion logs (generated at runtime by scripts/cron.*)
 logs/
 
-# Claude / agent launch settings
-.claude/launch.json
+# Claude / agent launch settings (per-user, not team-shared)
+.claude/
 
 # Coverage / test output
 coverage/

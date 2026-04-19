@@ -1,0 +1,43 @@
+# Build context exclusions — keeps the Docker image lean.
+# (Separate from .gitignore because Docker builds from a fresh context.)
+
+# Node
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Next build artifacts
+.next
+out
+
+# VCS + CI
+.git
+.github
+.gitignore
+.gitattributes
+
+# IDE + OS
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Env (baked in via build args, not copied)
+.env
+.env.local
+.env.*.local
+
+# Python pipeline (not part of the runtime image — runs as a separate
+# scheduled task, not in the web container)
+scripts/
+__pycache__
+*.pyc
+.venv
+
+# Docs & local-only
+README.md
+DEPLOY.md
+brand guidelines/
+logs/
+.claude/

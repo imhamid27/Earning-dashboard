@@ -14,6 +14,11 @@ dashboard styled after [thecore.in](https://www.thecore.in).
 
 ---
 
+## Deploying
+
+- **Coolify** (production host): see [DEPLOY.md](DEPLOY.md) — Dockerfile + standalone build + scheduled tasks
+- **Local dev**: follow the next section
+
 ## Quick start (local)
 
 ```bash
