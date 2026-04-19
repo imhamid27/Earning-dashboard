@@ -140,7 +140,7 @@ table.data-table tbody tr:last-child td { border-bottom: 0; }
 
 .chip {
   @apply inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide
-         px-2 py-[3px] rounded-full;
+         px-2 py-[3px] rounded-full whitespace-nowrap;
 }
 .chip-pink { background: rgba(236,45,122,0.08); color: var(--core-pink-dk); }
 .chip-teal { background: rgba(23,171,140,0.10); color: var(--core-teal); }

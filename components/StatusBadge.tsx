@@ -11,11 +11,17 @@ const TONE: Record<string, string> = {
   awaiting:               "bg-core-surface text-core-muted border-core-line"
 };
 
-export default function StatusBadge({ row }: { row: LatestQuarterRow }) {
+export default function StatusBadge({
+  row,
+  variant = "compact"
+}: {
+  row: LatestQuarterRow;
+  variant?: "compact" | "full";
+}) {
   const s = row.status ?? "awaiting";
   return (
     <span className={`chip ${TONE[s]}`}>
-      {statusLabel(s, row.result_date, row.next_result_date, formatDate)}
+      {statusLabel(s, row.result_date, row.next_result_date, formatDate, variant)}
     </span>
   );
 }

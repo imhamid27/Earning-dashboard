@@ -57,21 +57,39 @@ export function deriveInsight(row: LatestQuarterRow): string | null {
 }
 
 // User-facing status text — the single place this mapping is defined.
+// `variant: "full"` = prose for cards and subheadings ("Results announced
+// on 19 Apr 2026"); `variant: "compact"` = pill-friendly short form that
+// stays single-line in narrow columns ("Announced 19 Apr").
 export function statusLabel(
   status: LatestQuarterRow["status"] | undefined,
   resultDate: string | null | undefined,
   nextResultDate: string | null | undefined,
-  fmtDate: (iso: string | null | undefined) => string
+  fmtDate: (iso: string | null | undefined) => string,
+  variant: "full" | "compact" = "full"
 ): string {
+  // Compact variant strips the year — a chip shows only the day + month
+  // since the year is obvious from the dashboard's current quarter context.
+  const compactDate = (iso: string | null | undefined) => {
+    if (!iso) return "";
+    const d = new Date(iso + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  };
+
   switch (status) {
     case "announced_with_numbers":
-      return resultDate ? `Results announced on ${fmtDate(resultDate)}` : "Results announced";
     case "announced":
+      if (variant === "compact") {
+        return resultDate ? `Announced ${compactDate(resultDate)}` : "Announced";
+      }
       return resultDate ? `Results announced on ${fmtDate(resultDate)}` : "Results announced";
     case "scheduled":
+      if (variant === "compact") {
+        return nextResultDate ? `Expected ${compactDate(nextResultDate)}` : "Expected";
+      }
       return nextResultDate ? `Results expected on ${fmtDate(nextResultDate)}` : "Awaiting announcement";
     case "awaiting":
     default:
-      return "Awaiting announcement";
+      return variant === "compact" ? "Awaiting" : "Awaiting announcement";
   }
 }
