@@ -35,7 +35,10 @@ export default function FeaturedCard({ row, quarter }: { row: LatestQuarterRow; 
             {row.company_name}
           </div>
           <div className="text-[11px] text-core-muted mt-1">
-            {quarter} · period end {formatDate(row.quarter_end_date)}
+            {quarter}
+            {row.result_date ? (
+              <> · Announced {formatDate(row.result_date)}</>
+            ) : null}
           </div>
         </div>
       </div>

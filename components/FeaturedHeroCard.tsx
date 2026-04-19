@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatINR, formatPct, formatDate } from "@/lib/format";
 import Sparkline from "./Sparkline";
+import { deriveInsight } from "@/lib/insight";
 import type { LatestQuarterRow } from "@/lib/types";
 
 // Larger "lead" card for the biggest Q4 reporter. Used once at the top of
@@ -31,7 +32,10 @@ export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterR
               {row.company_name}
             </h3>
             <div className="text-[11px] text-core-muted mt-1">
-              {quarter} · period end {formatDate(row.quarter_end_date)}
+              {quarter}
+              {row.result_date ? (
+                <> · Results announced on <span className="text-core-ink font-medium">{formatDate(row.result_date)}</span></>
+              ) : null}
             </div>
           </div>
 
@@ -80,6 +84,19 @@ export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterR
               </span>
             ) : null}
           </div>
+
+          {/* Insight line — a single factual observation from the numbers */}
+          {(() => {
+            const insight = deriveInsight(row);
+            return insight ? (
+              <div className="pt-3 border-t border-core-line">
+                <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted mb-1">
+                  The takeaway
+                </div>
+                <p className="text-[13px] text-core-ink leading-snug">{insight}</p>
+              </div>
+            ) : null;
+          })()}
         </div>
 
         {/* Right: sparkline panel */}

@@ -176,14 +176,18 @@ export default function DashboardPage() {
             <h1 className="font-sans font-bold tracking-tightest leading-[0.95] text-[clamp(2.5rem,6vw,4.75rem)]">
               India Inc. Reporting
             </h1>
-            <div className="mt-6 flex items-baseline gap-3">
+            <div className="mt-6 flex items-baseline gap-3 flex-wrap">
               <span className="text-2xl md:text-3xl font-bold tabular-nums tracking-tightest">
                 {reportedCount}
               </span>
-              <span className="text-core-muted-2 text-lg md:text-xl font-semibold tabular-nums">
-                of {trackedTotal}
+              <span className="text-[13px] md:text-sm text-core-muted">
+                companies reported
               </span>
-              <span className="text-[11px] uppercase tracking-[0.14em] text-core-muted">filed</span>
+              <span className="text-core-line-2">·</span>
+              <span className="text-2xl md:text-3xl font-bold tabular-nums tracking-tightest text-core-muted">
+                {Math.max(0, trackedTotal - reportedCount)}
+              </span>
+              <span className="text-[13px] md:text-sm text-core-muted">upcoming</span>
             </div>
             <div className="mt-3 max-w-md">
               <div
@@ -197,9 +201,8 @@ export default function DashboardPage() {
                   style={{ width: `${(progress * 100).toFixed(1)}%` }}
                 />
               </div>
-              <div className="mt-2 flex items-center justify-between text-[11px] text-core-muted tabular-nums">
-                <span>{(progress * 100).toFixed(0)}% of the NIFTY 500</span>
-                <span>{trackedTotal - reportedCount} to go</span>
+              <div className="mt-2 text-[11px] text-core-muted tabular-nums">
+                {(progress * 100).toFixed(0)}% of the NIFTY 500 · {quarter}
               </div>
             </div>
           </div>
@@ -349,7 +352,7 @@ export default function DashboardPage() {
         </div>
         <div className="card p-5">
           <header className="flex items-baseline justify-between mb-4">
-            <h3 className="text-lg font-semibold tracking-tightest">Coming up · 7 days</h3>
+            <h3 className="text-lg font-semibold tracking-tightest">Upcoming this week</h3>
             <Link href="/upcoming" className="text-xs link-pink">All →</Link>
           </header>
           <UpcomingList items={upcoming} days={7} />

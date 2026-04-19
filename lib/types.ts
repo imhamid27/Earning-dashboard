@@ -58,4 +58,9 @@ export interface LatestQuarterRow {
   // When the company is scheduled to announce the currently-selected quarter.
   // Only populated on rows that haven't reported yet.
   next_result_date?: string | null;
+  // The actual date the company filed these numbers (distinct from the
+  // quarter-end date). Primary trust signal on the UI.
+  result_date?: string | null;
+  // User-facing status. Maps to exactly four strings in the UI.
+  status?: "announced_with_numbers" | "announced" | "scheduled" | "awaiting";
 }

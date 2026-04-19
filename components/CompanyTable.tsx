@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { formatINR, formatPct, pctToneClass, formatDate } from "@/lib/format";
 import Sparkline from "./Sparkline";
+import StatusBadge from "./StatusBadge";
 import type { LatestQuarterRow } from "@/lib/types";
 
 type SortKey = "company_name" | "sector" | "revenue" | "revenue_yoy" | "net_profit" | "profit_yoy";
@@ -55,7 +56,7 @@ export default function CompanyTable({ rows }: { rows: LatestQuarterRow[] }) {
           <tr>
             <Th k="company_name" label="Company" {...{ sortKey, sortDir, onSort }} />
             <Th k="sector" label="Sector" {...{ sortKey, sortDir, onSort }} />
-            <th>Quarter</th>
+            <th>Status</th>
             <Th k="revenue"     label="Revenue"    align="right" {...{ sortKey, sortDir, onSort }} />
             <Th k="revenue_yoy" label="Rev YoY"    align="right" {...{ sortKey, sortDir, onSort }} />
             <Th k="net_profit"  label="Net profit" align="right" {...{ sortKey, sortDir, onSort }} />
@@ -66,6 +67,7 @@ export default function CompanyTable({ rows }: { rows: LatestQuarterRow[] }) {
         <tbody>
           {sorted.map((r) => {
             const notReported = !r.quarter_end_date;
+            const hasNumbers = r.status === "announced_with_numbers";
             return (
               <tr key={r.ticker} className={notReported ? "text-core-muted/70" : undefined}>
                 <td>
@@ -75,16 +77,14 @@ export default function CompanyTable({ rows }: { rows: LatestQuarterRow[] }) {
                   <div className="text-[11px] text-core-muted tabular-nums">{r.ticker}</div>
                 </td>
                 <td className="text-sm text-core-muted">{r.sector ?? "—"}</td>
-                <td className="text-sm tabular-nums">{r.quarter_label}</td>
-                {notReported ? (
-                  <td colSpan={5} className="text-sm text-core-muted">
-                    <span className="italic">Not reported yet</span>
-                    {r.next_result_date ? (
-                      <span className="not-italic ml-2 text-core-ink/70">
-                        · announces {formatDate(r.next_result_date)}
-                        {daysUntilLabel(r.next_result_date)}
-                      </span>
-                    ) : null}
+                <td><StatusBadge row={r} /></td>
+                {notReported || !hasNumbers ? (
+                  <td colSpan={5} className="text-sm text-core-muted italic">
+                    {r.status === "scheduled" && r.next_result_date
+                      ? `Results expected on ${formatDate(r.next_result_date)}${daysUntilLabel(r.next_result_date)}`
+                      : r.status === "announced"
+                      ? "Results announced — numbers to follow"
+                      : "Awaiting announcement"}
                   </td>
                 ) : (
                   <>

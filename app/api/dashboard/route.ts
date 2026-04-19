@@ -30,18 +30,21 @@ export async function GET(req: NextRequest) {
   const tickers = companies.map((c) => c.ticker);
   // Supabase caps a single select() at 1000 rows. With 500 companies × ~5
   // quarters each we blow past that — so we paginate via `.range()`.
+  // We pull raw_json server-side to derive the ACTUAL result announcement
+  // date (broadCastDate / filingDate from the filing), but don't return
+  // raw_json to the client.
   const PAGE = 1000;
   const allFin: Array<{
     ticker: string; quarter_label: string; quarter_end_date: string;
     fiscal_year: number; fiscal_quarter: number;
     revenue: number | null; net_profit: number | null;
     operating_profit: number | null; eps: number | null;
-    data_quality_status: any; fetched_at: string;
+    data_quality_status: any; fetched_at: string; raw_json: any;
   }> = [];
   for (let page = 0; page < 20; page++) {
     const { data, error: fErr } = await sb
       .from("quarterly_financials")
-      .select("ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps,data_quality_status,fetched_at")
+      .select("ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps,data_quality_status,fetched_at,raw_json")
       .in("ticker", tickers)
       .order("quarter_end_date", { ascending: true })
       .range(page * PAGE, (page + 1) * PAGE - 1);
@@ -49,6 +52,29 @@ export async function GET(req: NextRequest) {
     if (!data || data.length === 0) break;
     allFin.push(...data as any);
     if (data.length < PAGE) break;
+  }
+
+  // Extract the actual "announcement date" from each filing. NSE rows carry
+  // broadCastDate; Screener rows don't, so we fall back to fetched_at (the
+  // day we first recorded the numbers — a close proxy since Moneycontrol
+  // triggers the Screener fetch on the announcement day itself).
+  function resultDateOf(row: (typeof allFin)[number]): string | null {
+    const raw = row.raw_json || {};
+    const candidates = [raw.broadCastDate, raw.filingDate, raw.exchdisstime];
+    for (const c of candidates) {
+      if (!c) continue;
+      const s = String(c).trim();
+      // "17-Apr-2026 15:30" or "17-Apr-2026" — parseable by Date()
+      const t = Date.parse(s);
+      if (!Number.isNaN(t)) return new Date(t).toISOString().slice(0, 10);
+      const m = /^(\d{1,2})[-/ ]([A-Za-z]{3})[-/ ](\d{4})/.exec(s);
+      if (m) {
+        const months = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+        const mm = months.indexOf(m[2].toLowerCase());
+        if (mm >= 0) return `${m[3]}-${String(mm+1).padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+      }
+    }
+    return row.fetched_at ? row.fetched_at.slice(0, 10) : null;
   }
 
   type FinRow = (typeof allFin)[number];
@@ -76,14 +102,17 @@ export async function GET(req: NextRequest) {
 
   const rows: LatestQuarterRow[] = companies.map((c) => {
     const hist = byTicker.get(c.ticker) ?? [];
-    // When a quarter filter is set, only use that quarter's row — do NOT
-    // fall back to an older one. That way the table shows "not reported"
-    // for companies that haven't filed Q4 yet, instead of silently mixing
-    // quarters (which made the whole table misleading).
     const match = quarter ? hist.find((r) => r.quarter_label === quarter) : null;
     const latest = quarter ? match : hist[hist.length - 1];
-    // Prefer the scraped event date; fall back to the hand-curated column.
     const nextDate = nextDateByTicker.get(c.ticker) ?? c.next_result_date ?? null;
+
+    // Status is the single user-facing signal. We derive it from the data,
+    // never exposing internal fields like source/quality.
+    //   - announced_with_numbers : we have real revenue & profit
+    //   - announced              : a row exists but numbers are missing/partial
+    //   - scheduled              : no row yet, but we have a future date
+    //   - awaiting               : nothing on file
+
     if (!latest) {
       return {
         company_id: c.id,
@@ -101,12 +130,17 @@ export async function GET(req: NextRequest) {
         data_quality_status: "missing",
         fetched_at: "",
         revenue_trend: hist.slice(-8).map((r) => ({ q: r.quarter_label, v: r.revenue })),
-        next_result_date: nextDate
+        next_result_date: nextDate,
+        result_date: null,
+        status: nextDate ? "scheduled" : "awaiting"
       };
     }
+
     const idx = hist.findIndex((r) => r.quarter_end_date === latest.quarter_end_date);
     const prevQ = idx >= 1 ? hist[idx - 1] : null;
     const prevY = idx >= 4 ? hist[idx - 4] : null;
+    const hasNumbers = latest.revenue != null && latest.net_profit != null;
+    const resultDate = resultDateOf(latest);
 
     return {
       company_id: c.id,
@@ -128,7 +162,9 @@ export async function GET(req: NextRequest) {
       profit_qoq: pctChange(latest.net_profit, prevQ?.net_profit ?? null),
       profit_yoy: pctChange(latest.net_profit, prevY?.net_profit ?? null),
       revenue_trend: hist.slice(-8).map((r) => ({ q: r.quarter_label, v: r.revenue })),
-      next_result_date: nextDate
+      next_result_date: nextDate,
+      result_date: resultDate,
+      status: hasNumbers ? "announced_with_numbers" : "announced"
     };
   });
 

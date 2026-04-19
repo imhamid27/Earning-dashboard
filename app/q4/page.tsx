@@ -160,7 +160,7 @@ export default function Q4Page() {
               <section className="space-y-3">
                 <div className="flex items-baseline justify-between">
                   <h2 className="text-xl font-bold tracking-tightest">
-                    Announced on {formatDate(activeGroup.date)}
+                    Results announced on {formatDate(activeGroup.date)}
                     <span className="ml-3 text-sm text-core-muted font-normal">
                       {activeGroup.companies.length} {activeGroup.companies.length === 1 ? "company" : "companies"}
                     </span>
@@ -206,7 +206,7 @@ export default function Q4Page() {
               <section className="space-y-3">
                 <div className="flex items-baseline justify-between">
                   <h2 className="text-xl font-bold tracking-tightest">
-                    Scheduled for {formatDate(activeGroup.date)}
+                    Results expected on {formatDate(activeGroup.date)}
                     <span className="ml-3 text-sm text-core-muted font-normal">
                       {activeGroup.companies.length} {activeGroup.companies.length === 1 ? "company" : "companies"} expected
                     </span>
