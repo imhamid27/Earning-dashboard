@@ -23,7 +23,6 @@ interface Row {
   net_profit: number | null;
   operating_profit: number | null;
   eps: number | null;
-  source: string;
   fetched_at: string;
   data_quality_status: string;
   raw_json: any;
@@ -115,7 +114,7 @@ export async function GET(req: NextRequest) {
   const grouped = new Map<string, Company[]>();
   const undated: Company[] = [];
 
-  for (const r of (rows ?? []) as Row[]) {
+  for (const r of ((rows ?? []) as unknown) as Row[]) {
     // Resolve via raw_json, then events table keyed by ticker.
     const fromRaw =
       parseLooseDate(r.raw_json?.broadCastDate) ||
