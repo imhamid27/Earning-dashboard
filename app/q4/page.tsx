@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
 import TabScroller from "@/components/TabScroller";
+import FilingLoader from "@/components/FilingLoader";
 import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
 
 interface Company {
@@ -109,7 +110,7 @@ export default function Q4Page() {
       {err ? (
         <EmptyState title="Couldn't load" message={err} />
       ) : !data ? (
-        <div className="card p-10 text-sm text-core-muted text-center">Loading…</div>
+        <FilingLoader quarter={QUARTER} total={500} label="Reading filings" />
       ) : data.dates.length === 0 ? (
         <EmptyState
           title={`No ${quarter} results yet`}

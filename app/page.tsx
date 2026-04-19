@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import FeaturedHeroCard from "@/components/FeaturedHeroCard";
 import FeaturedCard from "@/components/FeaturedCard";
+import FilingLoader from "@/components/FilingLoader";
 import CompanyTable from "@/components/CompanyTable";
 import SectorComparison from "@/components/SectorComparison";
 import TrendChart from "@/components/TrendChart";
@@ -51,6 +52,10 @@ interface SectorResp {
 }
 interface UpcomingItem { ticker: string; company_name: string; sector: string | null; next_result_date: string }
 
+// Minimum time the brand loader stays on screen. Prevents the ~200 ms
+// Supabase round-trip from flashing past so the loader has a real presence.
+const MIN_LOADER_MS = 850;
+
 export default function DashboardPage() {
   const [quarter, setQuarter] = useState<string>(DEFAULT_QUARTER);
   const [availableQuarters, setAvailableQuarters] = useState<string[]>([DEFAULT_QUARTER]);
@@ -59,6 +64,12 @@ export default function DashboardPage() {
   const [sectors, setSectors] = useState<SectorResp | null>(null);
   const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setMinTimeElapsed(true), MIN_LOADER_MS);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     fetch("/api/quarters").then((r) => r.json())
@@ -119,6 +130,16 @@ export default function DashboardPage() {
     <div className="container-core py-10">
       <EmptyState title="Couldn't load the dashboard" message={error}
         cta={<button onClick={fetchAll} className="btn-ink">Retry</button>} />
+    </div>
+  );
+
+  // Show the brand loader on first paint. It stays up until BOTH the
+  // dashboard fetch has resolved AND the minimum display time has elapsed.
+  // That way fast Supabase responses don't flash the loader for 80 ms and
+  // slow responses are still covered gracefully.
+  if (!board || !minTimeElapsed) return (
+    <div className="container-core">
+      <FilingLoader quarter={quarter} total={500} label="Reading filings" />
     </div>
   );
 
