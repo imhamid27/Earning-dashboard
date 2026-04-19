@@ -1,0 +1,33 @@
+# India Earnings Tracker — crontab template (Linux/Mac)
+# Install with:  crontab scripts/cron.example.crontab
+# Or append these lines to your existing crontab.
+#
+# All times below are in UTC. The IST equivalents are noted in comments.
+# Change /path/to/Earning-Dashboard to the absolute path on your host.
+
+PATH=/usr/local/bin:/usr/bin:/bin
+SHELL=/bin/bash
+EARNINGS_APP=/path/to/Earning-Dashboard
+
+# ---------------------------------------------------------------------------
+# Daily 02:30 UTC (08:00 IST) — weekdays only.
+# Refreshes the NSE + BSE + Moneycontrol calendars. This is the SCHEDULE
+# update: "who's announcing when", plus auto-trigger Screener fetch for
+# companies that just announced overnight.
+# ---------------------------------------------------------------------------
+30 2 * * 1-5  $EARNINGS_APP/scripts/cron.example.sh daily
+
+# ---------------------------------------------------------------------------
+# Hourly through the trading / announcement window.
+# 04:00–16:00 UTC = 09:30–21:30 IST — this covers the typical window when
+# Indian companies file quarterly results (usually after market close, up
+# to ~9 PM IST). Runs on weekdays only.
+# ---------------------------------------------------------------------------
+*/30 4-16 * * 1-5  $EARNINGS_APP/scripts/cron.example.sh hourly
+
+# ---------------------------------------------------------------------------
+# Weekly Sunday 18:00 UTC (23:30 IST). Full refresh across the whole
+# NIFTY 500 — picks up restated filings and fills any gaps Screener missed
+# during the week.
+# ---------------------------------------------------------------------------
+0 18 * * 0  $EARNINGS_APP/scripts/cron.example.sh backfill

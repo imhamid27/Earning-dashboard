@@ -1,0 +1,222 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===========================================================================
+   The Core — India Earnings Tracker
+   Design system tokens
+   ===========================================================================
+   Pulled directly from `brand guidelines/72ppi/` + thecore.in's live CSS:
+
+   Fonts:
+     - Mona Sans  (body + UI + display)   — next/font/google -> --font-sans
+     - Arvo       (serif accent)          — next/font/google -> --font-serif
+
+   Palette:
+     - ink        #0a0a0a   (logo plate, primary text)
+     - bg         #ffffff
+     - muted      #6b6b6b
+     - surface    #fafafa
+     - line       #e8e8e8
+     - pink       #ec2d7a   (top-left dot — primary accent / links)
+     - teal       #17ab8c   (top-right dot — positive values)
+     - blue       #1d52f2   (bottom-right dot — secondary / charts)
+     - negative   #dc2626   (YoY decline — retains finance convention)
+=========================================================================== */
+
+:root {
+  --core-bg:       #ffffff;
+  --core-ink:      #0a0a0a;
+  --core-ink-2:    #1f1f1f;
+  --core-muted:    #6b6b6b;
+  --core-muted-2:  #9a9a9a;
+  --core-line:     #ececec;
+  --core-line-2:   #d8d8d8;
+  --core-surface:  #fafafa;
+  --core-surface-2:#f3f3f1;
+
+  --core-pink:     #ec2d7a;
+  --core-pink-dk:  #c21760;
+  --core-teal:     #17ab8c;
+  --core-blue:     #1d52f2;
+
+  --core-positive: #17ab8c;
+  --core-negative: #dc2626;
+  --core-accent:   #ec2d7a;
+}
+
+html, body {
+  background: var(--core-bg);
+  color: var(--core-ink);
+  font-family: "Mona Sans", Inter, system-ui, -apple-system, sans-serif;
+  font-feature-settings: "ss01", "ss02", "cv11";   /* Mona Sans stylistic sets */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Typographic scale — big, confident, editorial.
+   All measured against a 16px base; we lean on Mona Sans's excellent
+   display-weight performance so headings can be tightly tracked. */
+h1, h2, h3, .serif, .display {
+  font-family: "Mona Sans", Inter, sans-serif;
+  letter-spacing: -0.022em;
+  color: var(--core-ink);
+}
+h1 { font-weight: 700; }
+h2 { font-weight: 700; }
+h3 { font-weight: 600; }
+
+/* The old `.serif` class is used throughout the app for editorial display
+   text. Redefining it in terms of Mona Sans display weight keeps the feel
+   cohesive while inheriting the brand font. */
+.serif      { font-family: "Mona Sans", Inter, sans-serif; letter-spacing: -0.022em; font-weight: 700; }
+.serif-arvo { font-family: "Arvo", Georgia, serif; letter-spacing: -0.01em; }
+
+/* ---------------------------------------------------------------------
+   Layout primitives
+   --------------------------------------------------------------------- */
+.container-core { @apply max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8; }
+
+/* Featured-card grid needs to breathe on mobile — tables get horizontal
+   scroll, small cards get single-column. */
+@media (max-width: 640px) {
+  .card { border-radius: 10px; }
+  table.data-table th, table.data-table td { @apply py-2.5 px-3; }
+  .container-core { @apply px-4; }
+}
+
+/* Section that wants some presence — slight surface, full-bleed feel */
+.section-band {
+  background: var(--core-surface);
+  border-top: 1px solid var(--core-line);
+  border-bottom: 1px solid var(--core-line);
+}
+
+/* ---------------------------------------------------------------------
+   Surfaces (cards, pills, tables)
+   --------------------------------------------------------------------- */
+.card {
+  @apply bg-white border border-core-line rounded-md;
+  box-shadow: 0 1px 0 rgba(10,10,10,0.02);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.card-hover:hover {
+  border-color: #d0d0d0;
+  box-shadow: 0 4px 16px rgba(10,10,10,0.06);
+}
+
+.pill {
+  @apply inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide
+         px-2 py-[3px] rounded-full border;
+}
+
+.hairline { @apply border-t border-core-line; }
+
+/* ---------------------------------------------------------------------
+   Tables
+   --------------------------------------------------------------------- */
+table.data-table { @apply w-full border-collapse text-sm; }
+table.data-table th {
+  @apply text-left py-3 px-4 text-[11px] uppercase tracking-wide font-medium
+         text-core-muted bg-core-surface border-b border-core-line
+         sticky top-0 whitespace-nowrap;
+}
+table.data-table td {
+  @apply text-left py-3 px-4 border-b border-core-line align-middle;
+}
+table.data-table tbody tr { transition: background-color 120ms ease; }
+table.data-table tbody tr:hover { background: #fbfbfa; }
+table.data-table tbody tr:last-child td { border-bottom: 0; }
+
+/* Tabular numerals everywhere numbers show up */
+.tabular-nums { font-feature-settings: "tnum"; }
+
+/* ---------------------------------------------------------------------
+   Links + accents
+   --------------------------------------------------------------------- */
+.link-pink { @apply text-core-pink underline-offset-[3px] hover:underline decoration-2; }
+.link-red  { @apply text-core-pink underline-offset-[3px] hover:underline decoration-2; }
+.link-ink  { @apply text-core-ink  underline-offset-[3px] hover:underline decoration-2; }
+
+.chip {
+  @apply inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide
+         px-2 py-[3px] rounded-full;
+}
+.chip-pink { background: rgba(236,45,122,0.08); color: var(--core-pink-dk); }
+.chip-teal { background: rgba(23,171,140,0.10); color: var(--core-teal); }
+.chip-blue { background: rgba(29,82,242,0.08); color: var(--core-blue); }
+.chip-ink  { background: rgba(10,10,10,0.06);  color: var(--core-ink); }
+.chip-red  { background: rgba(220,38,38,0.08); color: var(--core-negative); }
+
+/* Growth delta — used on featured cards. Pairs a sign arrow + % */
+.delta { @apply inline-flex items-baseline gap-1 text-sm font-semibold tabular-nums; }
+.delta-up    { color: var(--core-teal); }
+.delta-down  { color: var(--core-negative); }
+.delta-flat  { color: var(--core-muted); }
+
+/* ---------------------------------------------------------------------
+   Utility (no-scrollbar, skeleton shimmer)
+   --------------------------------------------------------------------- */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.25; }
+}
+.skeleton { @apply bg-core-surface rounded-md; animation: pulse-soft 1.2s ease-in-out infinite; }
+
+/* ---------------------------------------------------------------------
+   Brand dot-and-dash dividers — sampled from the official brand kit
+   `Core_ Single Pattern_Full Color Filled.png`
+   --------------------------------------------------------------------- */
+.dotdash {
+  height: 14px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='14' viewBox='0 0 120 14'><g fill='none'><circle cx='5' cy='7' r='4' fill='%23EC2D7A'/><rect x='15' y='5' width='26' height='4' rx='2' fill='%230A0A0A'/><circle cx='47' cy='7' r='4' fill='%2317AB8C'/><rect x='57' y='5' width='26' height='4' rx='2' fill='%230A0A0A'/><circle cx='89' cy='7' r='4' fill='%231D52F2'/><rect x='99' y='5' width='18' height='4' rx='2' fill='%230A0A0A'/></g></svg>");
+  background-repeat: repeat-x;
+  background-size: 120px 14px;
+  background-position: left center;
+}
+.dotdash-mono {
+  height: 10px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='10' viewBox='0 0 60 10'><g fill='%230a0a0a'><circle cx='3' cy='5' r='2.5'/><rect x='10' y='3.5' width='16' height='3' rx='1.5'/><circle cx='32' cy='5' r='2.5'/><rect x='38' y='3.5' width='18' height='3' rx='1.5'/></g></svg>");
+  background-repeat: repeat-x;
+  background-size: 60px 10px;
+}
+
+/* Decorative corner dots, taken from the wordmark itself — used to frame
+   standout sections like the hero. */
+.brand-frame {
+  position: relative;
+}
+.brand-frame::before,
+.brand-frame::after {
+  content: "";
+  position: absolute;
+  width: 10px; height: 10px;
+  border-radius: 999px;
+}
+.brand-frame::before {
+  top: -5px; left: -5px;
+  background: var(--core-pink);
+}
+.brand-frame::after {
+  top: -5px; right: -5px;
+  background: var(--core-teal);
+}
+
+/* ---------------------------------------------------------------------
+   Buttons
+   --------------------------------------------------------------------- */
+.btn {
+  @apply inline-flex items-center gap-2 text-sm font-medium px-3.5 py-2 rounded-md
+         border transition-colors;
+}
+.btn-ink    { @apply btn bg-core-ink text-white border-core-ink hover:bg-[#262626]; }
+.btn-ghost  { @apply btn bg-white text-core-ink border-core-line hover:border-core-ink; }
+.btn-pink   { @apply btn bg-core-pink text-white border-core-pink hover:bg-[#c21760]; }
+
+/* ---------------------------------------------------------------------
+   Focus rings — use brand pink, feel editorial
+   --------------------------------------------------------------------- */
+:focus-visible { outline: 2px solid var(--core-pink); outline-offset: 2px; border-radius: 4px; }

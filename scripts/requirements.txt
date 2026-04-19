@@ -1,0 +1,7 @@
+yfinance>=0.2.40
+supabase>=2.5.0
+python-dotenv>=1.0.1
+pandas>=2.2.0
+# NSE scrapers need Chrome TLS fingerprint impersonation — plain `requests`
+# is blocked at the edge.
+curl_cffi>=0.7.0

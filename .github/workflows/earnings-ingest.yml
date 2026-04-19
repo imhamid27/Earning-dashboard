@@ -1,0 +1,109 @@
+name: earnings-ingest
+
+# ===========================================================================
+# Cloud-scheduled ingestion for India Earnings Tracker.
+# ---------------------------------------------------------------------------
+# Runs on GitHub's hosted runners. Three cadences, one workflow:
+#
+#   daily     (02:30 UTC = 08:00 IST, weekdays)
+#     Scrapes NSE + BSE + Moneycontrol calendars. Cheap.
+#
+#   hourly    (every 30 min, 04:00–16:00 UTC weekdays)
+#     Fetches just-announced quarterly filings.
+#
+#   backfill  (18:00 UTC Sunday)
+#     Full NIFTY 500 sweep + Screener gap-fill.
+#
+# Requires these repository Secrets:
+#   SUPABASE_URL                (usually the NEXT_PUBLIC_SUPABASE_URL value)
+#   SUPABASE_SERVICE_ROLE_KEY   (secret — enables writes past RLS)
+# ===========================================================================
+
+on:
+  schedule:
+    # daily @ 02:30 UTC
+    - cron:  '30 2 * * 1-5'
+    # hourly sweeps (every 30 min from 04:00 to 16:00 UTC weekdays)
+    - cron:  '*/30 4-16 * * 1-5'
+    # weekly backfill
+    - cron:  '0 18 * * 0'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Manual run mode'
+        required: true
+        default: 'hourly'
+        type: choice
+        options: [daily, hourly, backfill]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NSE_RPS: "2"
+      BSE_RPS: "2"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install Python deps
+        run: pip install -r scripts/requirements.txt
+
+      # Decide which mode to run based on the scheduled cron expression
+      # that triggered us. workflow_dispatch uses the manual input.
+      - name: Decide mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          case "${{ github.event.schedule }}" in
+            '30 2 * * 1-5')       echo "mode=daily"    >> "$GITHUB_OUTPUT" ;;
+            '*/30 4-16 * * 1-5')  echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
+            '0 18 * * 0')         echo "mode=backfill" >> "$GITHUB_OUTPUT" ;;
+            *)                    echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Run ingest (${{ steps.mode.outputs.mode }})
+        env:
+          MODE: ${{ steps.mode.outputs.mode }}
+        run: |
+          set -e
+          case "$MODE" in
+            daily)
+              python scripts/nse_calendar.py
+              python scripts/bse_calendar.py
+              python scripts/moneycontrol_calendar.py
+              ;;
+            hourly)
+              python scripts/nse_results.py
+              ;;
+            backfill)
+              python scripts/nse_results.py --all --quarters 2
+              python scripts/screener_results.py --missing
+              ;;
+            *)
+              echo "unknown mode: $MODE" >&2; exit 2 ;;
+          esac
+
+      # Optional: upload the ingest log as an artifact so you can debug failed
+      # runs without relying on Actions' transient console output.
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: earnings-${{ steps.mode.outputs.mode }}-${{ github.run_id }}
+          path: |
+            logs/
+            *.log
+          if-no-files-found: ignore
+          retention-days: 7
