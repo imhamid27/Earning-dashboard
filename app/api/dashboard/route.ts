@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
-import { jsonOk, jsonError, cleanQuarterLabel } from "@/lib/api";
+import { jsonOk, jsonError, cleanQuarterLabel, cleanSector, cleanBucket, cleanSearch } from "@/lib/api";
 import { pctChange, withGrowth } from "@/lib/growth";
 import type { LatestQuarterRow } from "@/lib/types";
 
@@ -12,9 +12,9 @@ import type { LatestQuarterRow } from "@/lib/types";
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const quarter = cleanQuarterLabel(sp.get("quarter"));
-  const sector = sp.get("sector");
-  const search = sp.get("q")?.trim();
-  const bucket = sp.get("bucket");
+  const sector = cleanSector(sp.get("sector"));
+  const search = cleanSearch(sp.get("q"));
+  const bucket = cleanBucket(sp.get("bucket"));
 
   const sb = supabaseServer();
 

@@ -376,6 +376,67 @@ Read these before trusting a number:
 10. **Write Playwright tests** for the dashboard's critical path (filter →
     sort → drill into a company).
 
+## Security posture
+
+Aligning with the pre-launch QC. Every choice here is deliberate; swap with
+care.
+
+**Secrets** — only two live: `NEXT_PUBLIC_SUPABASE_ANON_KEY` (browser-safe,
+read-only via RLS) and `SUPABASE_SERVICE_ROLE_KEY` (server-only, never
+exposed to the client). Supabase RLS policies in [supabase/schema.sql](supabase/schema.sql)
+restrict all writes to the service role.
+
+**Input validation** — every `/api/*` query param runs through a strict
+sanitiser in [lib/api.ts](lib/api.ts):
+
+| Helper | Pattern | Purpose |
+|---|---|---|
+| `cleanTicker` | `[A-Z0-9.&-]{1,20}` | Prevents path traversal + shell metacharacters |
+| `cleanQuarterLabel` | `Q[1-4]\s*FY\d{2,4}` | Caps to known quarter shape |
+| `cleanSearch` | `[A-Za-z0-9 .&'-]{1,60}` + ilike-escape | Blocks wildcard injection via `%` / `_` |
+| `cleanSector`, `cleanBucket` | Fixed enums | Closed vocabularies only |
+
+**Rate limiting** — `POST /api/refresh-company` is capped at **5 req/min
+per client IP** (forwarded-for aware via Traefik). Implementation in
+[lib/rate-limit.ts](lib/rate-limit.ts) — in-memory sliding window, suitable
+for single-instance Coolify. Swap for Upstash/Redis at multi-instance scale.
+
+**Subprocess safety** — `/api/refresh-company` spawns a Python scraper with
+`child_process.spawn(cmd, [...args])` (never a shell string). Ticker is
+validated, re-checked against the `companies` table before spawn, so an
+attacker can't probe arbitrary strings.
+
+**HTTP hardening** — configured in [next.config.js](next.config.js):
+
+- **CSP**: `default-src 'self'`; only allows Google Fonts CSS/WOFF,
+  thecore.in logo image, and Supabase PostgREST. No inline scripts beyond
+  Next's required hydration boot. No `'unsafe-eval'`.
+- **HSTS**: `max-age=63072000; includeSubDomains; preload`
+- **X-Frame-Options**: `DENY` (can't be embedded)
+- **X-Content-Type-Options**: `nosniff`
+- **Referrer-Policy**: `strict-origin-when-cross-origin`
+- **Permissions-Policy**: revokes camera, mic, geolocation, FLoC/Topics
+- **COOP / CORP**: `same-origin` — limits cross-window and cross-origin embeds
+- `X-Powered-By` header removed (no Next.js fingerprint)
+
+**XSS** — React auto-escapes everything rendered via JSX. There is no
+`dangerouslySetInnerHTML` anywhere in the codebase (grep confirms). All
+company names / tickers / sectors come from Supabase (already-sanitised
+writes) and render as text nodes.
+
+**SQL injection** — Supabase PostgREST parameterises every query; we build
+filter expressions via its builder API, never via string concatenation. The
+one `.or()` we use with user input is wildcard-escaped before reaching
+PostgREST (see `cleanSearch`).
+
+**Information leakage** — internal field names (`source`, `raw_json`) are
+stripped from all API responses. Error messages are generic ("Refresh
+failed. Try again in a moment.") to avoid leaking internals.
+
+**Auth** — the dashboard is read-only; there's no user auth to compromise.
+The one mutating endpoint (`/api/refresh-company`) is protected by rate
+limit + ticker existence check.
+
 ## Troubleshooting
 
 - **Dashboard shows "No data yet"** — the ingestion hasn't run. See step 4.

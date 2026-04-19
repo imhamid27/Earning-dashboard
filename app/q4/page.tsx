@@ -6,6 +6,7 @@ import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
 import TabScroller from "@/components/TabScroller";
 import FilingLoader from "@/components/FilingLoader";
+import { simplifyPurpose } from "@/lib/purpose";
 import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
 
 interface Company {
@@ -232,8 +233,8 @@ export default function Q4Page() {
                           </td>
                           <td className="text-sm text-core-muted tabular-nums">{c.ticker}</td>
                           <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
-                          <td className="text-sm text-core-muted truncate max-w-[480px]" title={c.purpose ?? undefined}>
-                            {c.purpose ?? "Financial Results"}
+                          <td className="text-sm text-core-ink max-w-[480px]" title={c.purpose ?? undefined}>
+                            {simplifyPurpose(c.purpose, activeGroup.date)}
                           </td>
                         </tr>
                       ))}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatDate } from "@/lib/format";
+import { simplifyPurpose } from "@/lib/purpose";
 
 interface Row {
   company_name: string;
@@ -91,8 +92,8 @@ export default function UpcomingPage() {
                         </td>
                         <td className="text-sm text-core-muted tabular-nums">{r.ticker}</td>
                         <td className="text-sm text-core-muted">{r.sector ?? "—"}</td>
-                        <td className="text-sm text-core-muted truncate max-w-[420px]" title={r.purpose ?? undefined}>
-                          {r.purpose ?? "Financial Results"}
+                        <td className="text-sm text-core-ink max-w-[420px]" title={r.purpose ?? undefined}>
+                          {simplifyPurpose(r.purpose, r.next_result_date)}
                         </td>
                       </tr>
                     ))}

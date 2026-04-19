@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { jsonOk, jsonError, cleanTicker } from "@/lib/api";
 import { supabaseServer } from "@/lib/supabase";
+import { rateLimit, clientKey } from "@/lib/rate-limit";
 
 // POST /api/refresh-company
 // Body: { ticker: "RELIANCE.NS" }
@@ -16,10 +17,33 @@ export const runtime = "nodejs";  // we spawn a Python subprocess
 export const maxDuration = 90;
 
 export async function POST(req: NextRequest) {
+  // Spawning a Python subprocess is expensive + hits external services —
+  // cap any single client at 5 refreshes per minute so a rogue user can't
+  // fire a loop. Keyed by forwarded-for so Traefik's view of the client.
+  const limit = rateLimit(`refresh:${clientKey(req)}`, { windowMs: 60_000, max: 5 });
+  if (!limit.ok) {
+    const retryIn = Math.ceil((limit.resetAt - Date.now()) / 1000);
+    return new Response(
+      JSON.stringify({ ok: false, error: `Too many requests. Try again in ${retryIn}s.` }),
+      { status: 429, headers: { "content-type": "application/json", "Retry-After": String(retryIn) } }
+    );
+  }
+
   let body: any = {};
   try { body = await req.json(); } catch { /* fallthrough */ }
   const ticker = cleanTicker(body?.ticker);
-  if (!ticker) return jsonError("missing or invalid ticker", 400);
+  if (!ticker) return jsonError("Missing or invalid ticker", 400);
+
+  // Verify the ticker actually exists in our universe. Prevents an attacker
+  // spawning scraper subprocesses for arbitrary strings that happen to
+  // match the regex (e.g. testing scraper paths from fuzzers).
+  const sb = supabaseServer();
+  const { data: company } = await sb
+    .from("companies")
+    .select("ticker")
+    .eq("ticker", ticker)
+    .maybeSingle();
+  if (!company) return jsonError("Unknown ticker", 404);
 
   const scriptPath = path.resolve(process.cwd(), "scripts", "screener_results.py");
 
@@ -47,7 +71,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const sb = supabaseServer();
   const { data: rows, error } = await sb
     .from("quarterly_financials")
     .select("ticker,quarter_label,quarter_end_date,revenue,net_profit,operating_profit,eps,data_quality_status,fetched_at")
