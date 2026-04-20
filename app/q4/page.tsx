@@ -158,33 +158,50 @@ export default function Q4Page() {
               filers (no financials, they haven't announced yet). */}
           {activeGroup ? (
             activeGroup.kind === "reported" ? (
+              (() => {
+                // Separate filed-with-numbers rows from "scheduled but filing
+                // still pending" rows. The calendar puts a company on
+                // DATE X because their board meeting was booked for that
+                // day, but the formal XBRL filing is usually submitted
+                // hours (sometimes a day or two) later. Showing both in
+                // the same table with em-dashes made it look like a data
+                // bug — instead, put filed rows on top and pending ones in
+                // a clearly-labelled sub-section.
+                const all = activeGroup.companies as Company[];
+                const filed = all
+                  .filter((c) => c.revenue != null || c.net_profit != null)
+                  .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0));
+                const pending = all
+                  .filter((c) => c.revenue == null && c.net_profit == null)
+                  .sort((a, b) => a.company_name.localeCompare(b.company_name));
+                return (
               <section className="space-y-3">
                 <div className="flex items-baseline justify-between">
                   <h2 className="text-xl font-bold tracking-tightest">
                     Results announced on {formatDate(activeGroup.date)}
                     <span className="ml-3 text-sm text-core-muted font-normal">
-                      {activeGroup.companies.length} {activeGroup.companies.length === 1 ? "company" : "companies"}
+                      {filed.length} filed
+                      {pending.length > 0 ? ` · ${pending.length} filing pending` : ""}
                     </span>
                   </h2>
                 </div>
-                <div className="card overflow-x-auto">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Company</th>
-                        <th>Sector</th>
-                        <th className="text-right">Revenue</th>
-                        <th className="text-right">Rev YoY</th>
-                        <th className="text-right">Net profit</th>
-                        <th className="text-right">Profit YoY</th>
-                        <th className="text-right">Op. profit</th>
-                        <th className="text-right">EPS</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(activeGroup.companies as Company[]).map((c) => {
-                        const noNumbers = c.revenue == null && c.net_profit == null;
-                        return (
+                {filed.length > 0 ? (
+                  <div className="card overflow-x-auto">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Company</th>
+                          <th>Sector</th>
+                          <th className="text-right">Revenue</th>
+                          <th className="text-right">Rev YoY</th>
+                          <th className="text-right">Net profit</th>
+                          <th className="text-right">Profit YoY</th>
+                          <th className="text-right">Op. profit</th>
+                          <th className="text-right">EPS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filed.map((c) => (
                           <tr key={c.ticker}>
                             <td>
                               <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
@@ -193,32 +210,38 @@ export default function Q4Page() {
                               <div className="text-[11px] text-core-muted">{c.ticker}</div>
                             </td>
                             <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
-                            {noNumbers ? (
-                              // Collapse the six financial columns into one
-                              // honest placeholder. We know a board meeting
-                              // was scheduled for today; we don't yet have
-                              // the numbers from any source — say exactly
-                              // that, nothing more.
-                              <td colSpan={6} className="text-left text-sm text-core-muted italic">
-                                Results not yet available
-                              </td>
-                            ) : (
-                              <>
-                                <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
-                                <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.revenue_yoy)}`}>{formatPct(c.revenue_yoy)}</td>
-                                <td className="text-right tabular-nums font-semibold">{formatINR(c.net_profit)}</td>
-                                <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.profit_yoy)}`}>{formatPct(c.profit_yoy)}</td>
-                                <td className="text-right tabular-nums">{formatINR(c.operating_profit)}</td>
-                                <td className="text-right tabular-nums">{c.eps != null ? c.eps.toFixed(2) : "—"}</td>
-                              </>
-                            )}
+                            <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
+                            <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.revenue_yoy)}`}>{formatPct(c.revenue_yoy)}</td>
+                            <td className="text-right tabular-nums font-semibold">{formatINR(c.net_profit)}</td>
+                            <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.profit_yoy)}`}>{formatPct(c.profit_yoy)}</td>
+                            <td className="text-right tabular-nums">{formatINR(c.operating_profit)}</td>
+                            <td className="text-right tabular-nums">{c.eps != null ? c.eps.toFixed(2) : "—"}</td>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+                {pending.length > 0 ? (
+                  <div className="card p-5">
+                    <div className="text-xs uppercase tracking-[0.14em] text-core-muted mb-3">
+                      Filing pending · board meeting held, numbers not yet submitted
+                    </div>
+                    <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                      {pending.map((c) => (
+                        <li key={c.ticker} className="whitespace-nowrap">
+                          <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-medium hover:text-core-pink">
+                            {c.company_name}
+                          </Link>
+                          <span className="text-[11px] text-core-muted ml-1.5">{c.ticker}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </section>
+                );
+              })()
             ) : (
               <section className="space-y-3">
                 <div className="flex items-baseline justify-between">
