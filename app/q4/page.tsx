@@ -195,11 +195,12 @@ export default function Q4Page() {
                             <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
                             {noNumbers ? (
                               // Collapse the six financial columns into one
-                              // "numbers pending" note so the row still
-                              // reads as a filed-but-not-yet-scraped company
-                              // — much clearer than six em-dashes.
+                              // honest placeholder. We know a board meeting
+                              // was scheduled for today; we don't yet have
+                              // the numbers from any source — say exactly
+                              // that, nothing more.
                               <td colSpan={6} className="text-left text-sm text-core-muted italic">
-                                Numbers coming soon — filing confirmed, figures still being fetched
+                                Results not yet available
                               </td>
                             ) : (
                               <>
