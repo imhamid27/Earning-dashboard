@@ -48,9 +48,14 @@ case "$MODE" in
     "$PY" scripts/moneycontrol_calendar.py              >> "$LOG_FILE" 2>&1
     ;;
   hourly)
-    # Look for "pending" events that are <= today + grace days and pull their
-    # filings (from NSE XBRL). Cheap — only hits ~10–30 tickers per run.
+    # Two-pass sweep:
+    # 1. NSE XBRL poll across the NIFTY-500 — catches new filings we didn't
+    #    have a calendar entry for.
+    # 2. Gap-filler: for every announced-but-un-numbered company, try
+    #    NSE XBRL → Screener until one yields numbers. Closes the gap
+    #    between calendar detection and numbers landing on the dashboard.
     "$PY" scripts/nse_results.py            >> "$LOG_FILE" 2>&1
+    "$PY" scripts/fetch_results.py          >> "$LOG_FILE" 2>&1
     ;;
   backfill)
     # Weekly sweep across the whole universe. Slower (~30 min) but picks up
