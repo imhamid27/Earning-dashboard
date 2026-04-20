@@ -287,35 +287,10 @@ export default function DashboardPage() {
             <h1 className="font-sans font-bold tracking-tightest leading-[0.95] text-[clamp(2.5rem,6vw,4.75rem)]">
               India Inc. Reporting
             </h1>
-            <div className="mt-6 flex items-baseline gap-3 flex-wrap">
-              <span className="text-2xl md:text-3xl font-bold tabular-nums tracking-tightest">
-                {reportedCount}
-              </span>
-              <span className="text-[13px] md:text-sm text-core-muted">
-                companies reported
-              </span>
-              <span className="text-core-line-2">·</span>
-              <span className="text-2xl md:text-3xl font-bold tabular-nums tracking-tightest text-core-muted">
-                {Math.max(0, trackedTotal - reportedCount)}
-              </span>
-              <span className="text-[13px] md:text-sm text-core-muted">upcoming</span>
-            </div>
-            <div className="mt-3 max-w-md">
-              <div
-                className="h-[5px] rounded-full bg-core-line overflow-hidden"
-                role="progressbar"
-                aria-valuenow={reportedCount}
-                aria-valuemax={trackedTotal}
-              >
-                <div
-                  className="h-full bg-core-ink transition-all duration-700"
-                  style={{ width: `${(progress * 100).toFixed(1)}%` }}
-                />
-              </div>
-              <div className="mt-2 text-[11px] text-core-muted tabular-nums">
-                {(progress * 100).toFixed(0)}% of tracked companies · {quarter}
-              </div>
-            </div>
+            <p className="mt-5 md:mt-6 text-core-muted text-[14px] md:text-[15px] max-w-lg leading-relaxed">
+              Quarterly results across India&apos;s listed companies, updated as each
+              filing lands.
+            </p>
           </div>
 
           <div className="md:col-span-4 flex flex-wrap items-center md:flex-col md:items-end gap-2 md:gap-3">
@@ -337,21 +312,44 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* Inline context row — "Today" and "This week" counters.
-          A small, at-a-glance anchor so the reader knows what's coming
-          before they scroll further. */}
-      <section className="mt-4 md:mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm border-y border-core-line py-3">
-        <span>
-          <span className="text-core-muted mr-2">Today</span>
-          <span className="font-semibold tabular-nums">{reportingToday}</span>
-          <span className="text-core-muted"> {reportingToday === 1 ? "company" : "companies"} reporting</span>
-        </span>
-        <span className="text-core-line-2 hidden sm:inline">·</span>
-        <span>
-          <span className="text-core-muted mr-2">This week</span>
-          <span className="font-semibold tabular-nums">{reportingThisWeek}</span>
-          <span className="text-core-muted"> reporting</span>
-        </span>
+      {/* Primary reporting-context row — replaces the busier hero
+          number block. One clean line with three counts (today, this
+          week, season-to-date) and a slim progress bar for the quarter. */}
+      <section className="mt-6 md:mt-8 border-y border-core-line py-4 md:py-5">
+        <div className="flex flex-wrap items-baseline gap-x-8 gap-y-3 text-sm">
+          <Stat
+            label="Today"
+            value={reportingToday}
+            suffix={reportingToday === 1 ? "company reporting" : "reporting"}
+            accent={reportingToday > 0}
+          />
+          <Stat
+            label="This week"
+            value={reportingThisWeek}
+            suffix="reporting"
+          />
+          <Stat
+            label={`${quarter} so far`}
+            value={reportedCount}
+            suffix={`filed · ${trackedTotal.toLocaleString()} tracked`}
+          />
+        </div>
+        <div className="mt-4 max-w-md">
+          <div
+            className="h-[3px] rounded-full bg-core-line overflow-hidden"
+            role="progressbar"
+            aria-valuenow={reportedCount}
+            aria-valuemax={trackedTotal}
+          >
+            <div
+              className="h-full bg-core-ink transition-all duration-700"
+              style={{ width: `${(progress * 100).toFixed(1)}%` }}
+            />
+          </div>
+          <div className="mt-1.5 text-[10px] uppercase tracking-[0.14em] text-core-muted tabular-nums">
+            {(progress * 100).toFixed(0)}% of the reporting season complete
+          </div>
+        </div>
       </section>
 
       {/* Prominent search — placed right after the hero so finding a
@@ -590,6 +588,26 @@ export default function DashboardPage() {
       <section className="mt-12"><GainersLaggards quarter={quarter} /></section>
 
       <div className="h-16" />
+    </div>
+  );
+}
+
+// Inline "Stat" used in the primary context row below the hero — big
+// tabular-num, small kicker label, descriptive suffix. A live "today"
+// count gets a pink accent so the reader's eye lands on the urgent
+// thing first.
+function Stat({ label, value, suffix, accent }: {
+  label: string; value: number; suffix: string; accent?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
+        {label}
+      </span>
+      <span className={`text-[22px] md:text-[26px] font-bold tabular-nums tracking-tightest leading-none ${accent ? "text-core-pink" : "text-core-ink"}`}>
+        {value.toLocaleString()}
+      </span>
+      <span className="text-[12px] md:text-[13px] text-core-muted">{suffix}</span>
     </div>
   );
 }
