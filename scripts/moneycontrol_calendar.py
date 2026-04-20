@@ -120,6 +120,8 @@ def main() -> int:
                     help="Days back to also scan (each date is its own page fetch)")
     ap.add_argument("--no-trigger-screener", action="store_true",
                     help="Skip the automatic Screener fetch for newly-discovered reporters")
+    ap.add_argument("--include-untracked", action="store_true",
+                    help="Auto-create shell company rows for Moneycontrol entries not already in the DB")
     args = ap.parse_args()
 
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -169,6 +171,7 @@ def main() -> int:
     # Map to our companies.
     matched: list[dict] = []
     unmatched: list[str] = []
+    created_shells = 0
     for e in deduped:
         name = e.get("stockName") or e.get("stockShortName") or ""
         norm = normalise_name(name)
@@ -179,12 +182,32 @@ def main() -> int:
                 if norm and (norm in k or k in norm) and len(norm) > 4:
                     company = v
                     break
+        if not company and args.include_untracked:
+            # Create a shell company so the event can be stored. MC's scId
+            # isn't a standard ticker (e.g., "HDF01"), so we synthesise one
+            # from the stockShortName in Yahoo .BO form (Moneycontrol is
+            # primarily a BSE-indexed service).
+            short = (e.get("stockShortName") or name).strip().upper()
+            safe = "".join(ch for ch in short if ch.isalnum() or ch == "&")
+            if safe:
+                shell_ticker = f"{safe}.BO"
+                shell = sb.table("companies").upsert({
+                    "ticker": shell_ticker,
+                    "company_name": name or short or shell_ticker,
+                    "exchange": "BSE",
+                    "is_active": False,   # don't fetch financials until opted in
+                }, on_conflict="ticker").execute()
+                if shell.data:
+                    company = shell.data[0]
+                    by_name[normalise_name(name)] = company
+                    created_shells += 1
         if company:
             matched.append({"company": company, "mc": e})
         else:
             unmatched.append(name)
 
-    print(f"Matched {len(matched)} companies; {len(unmatched)} unmatched (not in our NIFTY-500 universe).")
+    print(f"Matched {len(matched)} companies; {len(unmatched)} unmatched "
+          f"(not in our NIFTY-500 universe); {created_shells} shell rows created.")
 
     # Build announcement_events rows.
     today = date.today()

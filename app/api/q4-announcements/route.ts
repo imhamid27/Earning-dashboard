@@ -107,62 +107,94 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Group by announcement date.
   type Company = {
     ticker: string; company_name: string; sector: string | null; industry: string | null;
     revenue: number | null; net_profit: number | null; operating_profit: number | null;
     eps: number | null; data_quality_status: string;
     revenue_yoy: number | null; profit_yoy: number | null;
   };
-  const grouped = new Map<string, Company[]>();
   const undated: Company[] = [];
 
+  // ---------------------------------------------------------------------
+  // Past (announced) tabs.
+  //
+  // Previously we built these from `quarterly_financials` — meaning a
+  // company only appeared once we'd successfully scraped its numbers.
+  // That under-counted compared to Moneycontrol: e.g. 16 Apr showed 5 on
+  // our page but 14 on theirs.
+  //
+  // Source of truth is now `announcement_events` with status='fetched' —
+  // every company our calendar scrapers have confirmed as "announced".
+  // We enrich each row with its Q4 FY26 numbers when available; if the
+  // numbers haven't been fetched yet, the tab still shows the company
+  // (with blank figures — the StatusBadge then reads "Announced, numbers
+  // to follow" in the UI).
+  // ---------------------------------------------------------------------
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  // Key the quarterly rows by ticker so we can look up numbers in O(1).
+  const numbersByTicker = new Map<string, Row>();
   for (const r of ((rows ?? []) as unknown) as Row[]) {
-    // Prefer the fetched-event date from announcement_events — that's the
-    // real day the company filed. XBRL broadCastDate is authoritative when
-    // it exists (NSE filings), so check it next. Scrape timestamp is only
-    // a last resort.
-    const fromEvent = eventDateByKey.get(r.ticker);
-    const fromRaw =
-      parseLooseDate(r.raw_json?.broadCastDate) ||
-      parseLooseDate(r.raw_json?.filingDate) ||
-      parseLooseDate(r.raw_json?.exchdisstime);
-    const date = fromEvent ?? fromRaw ?? (r.fetched_at ? r.fetched_at.slice(0, 10) : null);
-    const prior = priorByTicker.get(r.ticker);
-    const comp: Company = {
-      ticker: r.ticker,
-      company_name: r.companies?.company_name ?? r.ticker,
-      sector: r.companies?.sector ?? null,
-      industry: r.companies?.industry ?? null,
-      revenue: r.revenue,
-      net_profit: r.net_profit,
-      operating_profit: r.operating_profit,
-      eps: r.eps,
-      data_quality_status: r.data_quality_status,
-      revenue_yoy: pctChange(r.revenue, prior?.revenue ?? null),
-      profit_yoy: pctChange(r.net_profit, prior?.net_profit ?? null),
-    };
-    if (!date) { undated.push(comp); continue; }
-    const arr = grouped.get(date) ?? [];
-    arr.push(comp);
-    grouped.set(date, arr);
+    numbersByTicker.set(r.ticker, r);
   }
 
-  // Past tabs: dates when companies actually reported, grouped by day.
-  // Sort ASCENDING so past + future form one chronological timeline.
-  const past = Array.from(grouped.entries())
+  // Pull all "fetched" events whose announcement_date looks like it could
+  // belong to the target quarter's reporting season. For Q4 FY26 (Mar-end)
+  // the filing window runs mid-April through June, so 90 days back from
+  // today is a safe upper bound.
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  const { data: pastEvents } = await sb
+    .from("announcement_events")
+    .select("ticker,announcement_date,companies!inner(company_name,sector,industry)")
+    .eq("status", "fetched")
+    .gte("announcement_date", ninetyDaysAgo)
+    .lte("announcement_date", todayIso)
+    .order("announcement_date", { ascending: true });
+
+  // Dedupe: one row per (ticker, date). Same meeting can appear under
+  // multiple sources (NSE + BSE + Moneycontrol); collapse them.
+  const pastByDate = new Map<string, Map<string, Company>>();
+  for (const e of pastEvents ?? []) {
+    const dateKey = e.announcement_date;
+    if (!pastByDate.has(dateKey)) pastByDate.set(dateKey, new Map());
+    const per = pastByDate.get(dateKey)!;
+    if (per.has(e.ticker)) continue;
+    const numbers = numbersByTicker.get(e.ticker);
+    const prior = priorByTicker.get(e.ticker);
+    const info: any = (e as any).companies || {};
+    per.set(e.ticker, {
+      ticker: e.ticker,
+      company_name: info.company_name ?? e.ticker,
+      sector: info.sector ?? null,
+      industry: info.industry ?? null,
+      revenue: numbers?.revenue ?? null,
+      net_profit: numbers?.net_profit ?? null,
+      operating_profit: numbers?.operating_profit ?? null,
+      eps: numbers?.eps ?? null,
+      data_quality_status: numbers?.data_quality_status ?? "partial",
+      revenue_yoy: numbers ? pctChange(numbers.revenue, prior?.revenue ?? null) : null,
+      profit_yoy:  numbers ? pctChange(numbers.net_profit, prior?.net_profit ?? null) : null,
+    });
+  }
+
+  // Past tabs: chronological ascending. Companies within a date sorted by
+  // revenue (big first), then by name for the numbers-less tail.
+  const past = Array.from(pastByDate.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, companies]) => ({
+    .map(([date, m]) => ({
       date,
       kind: "reported" as const,
-      companies: companies.sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))
+      companies: Array.from(m.values()).sort((a, b) => {
+        const ra = a.revenue ?? -1, rb = b.revenue ?? -1;
+        if (ra !== rb) return rb - ra;
+        return a.company_name.localeCompare(b.company_name);
+      })
     }));
 
   // Future tabs: companies SCHEDULED to report in the coming weeks. Pulled
   // from announcement_events where status='pending' and date >= today.
   // We don't filter by purpose string because during a given reporting
   // season, the only pending announcements are for the current quarter.
-  const todayIso = new Date().toISOString().slice(0, 10);
   const alreadyReported = new Set<string>();
   for (const d of past) for (const c of d.companies) alreadyReported.add(c.ticker);
 
