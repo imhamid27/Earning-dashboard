@@ -228,7 +228,15 @@ export async function GET(req: NextRequest) {
       });
     }
   }
+  // Drop any future date that also exists in past — otherwise "today"
+  // appears twice (once as a reported tab with the companies that have
+  // filed, once as a scheduled tab with the ones still pending). Rolling
+  // pending-today tickers into today's reported tab is the right UX but
+  // complicates the data shape; for now, suppress the duplicate tab and
+  // let those tickers resurface tomorrow if they slip.
+  const pastDates = new Set(past.map((d) => d.date));
   const future = Array.from(scheduledGroups.entries())
+    .filter(([date]) => !pastDates.has(date))
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([date, m]) => ({
       date,

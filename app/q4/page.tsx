@@ -182,23 +182,38 @@ export default function Q4Page() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(activeGroup.companies as Company[]).map((c) => (
-                        <tr key={c.ticker}>
-                          <td>
-                            <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
-                              {c.company_name}
-                            </Link>
-                            <div className="text-[11px] text-core-muted">{c.ticker}</div>
-                          </td>
-                          <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
-                          <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
-                          <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.revenue_yoy)}`}>{formatPct(c.revenue_yoy)}</td>
-                          <td className="text-right tabular-nums font-semibold">{formatINR(c.net_profit)}</td>
-                          <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.profit_yoy)}`}>{formatPct(c.profit_yoy)}</td>
-                          <td className="text-right tabular-nums">{formatINR(c.operating_profit)}</td>
-                          <td className="text-right tabular-nums">{c.eps != null ? c.eps.toFixed(2) : "—"}</td>
-                        </tr>
-                      ))}
+                      {(activeGroup.companies as Company[]).map((c) => {
+                        const noNumbers = c.revenue == null && c.net_profit == null;
+                        return (
+                          <tr key={c.ticker}>
+                            <td>
+                              <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
+                                {c.company_name}
+                              </Link>
+                              <div className="text-[11px] text-core-muted">{c.ticker}</div>
+                            </td>
+                            <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
+                            {noNumbers ? (
+                              // Collapse the six financial columns into one
+                              // "numbers pending" note so the row still
+                              // reads as a filed-but-not-yet-scraped company
+                              // — much clearer than six em-dashes.
+                              <td colSpan={6} className="text-left text-sm text-core-muted italic">
+                                Numbers coming soon — filing confirmed, figures still being fetched
+                              </td>
+                            ) : (
+                              <>
+                                <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
+                                <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.revenue_yoy)}`}>{formatPct(c.revenue_yoy)}</td>
+                                <td className="text-right tabular-nums font-semibold">{formatINR(c.net_profit)}</td>
+                                <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.profit_yoy)}`}>{formatPct(c.profit_yoy)}</td>
+                                <td className="text-right tabular-nums">{formatINR(c.operating_profit)}</td>
+                                <td className="text-right tabular-nums">{c.eps != null ? c.eps.toFixed(2) : "—"}</td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
