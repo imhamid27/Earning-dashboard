@@ -527,7 +527,7 @@ export default function DashboardPage() {
                 </Link>
               </div>
             </header>
-            <CompanyTable rows={pageRows} />
+            <CompanyTable rows={pageRows} preserveOrder />
             {totalPages > 1 ? (
               <div className="mt-3 flex items-center justify-between text-xs text-core-muted">
                 <span>

@@ -10,7 +10,19 @@ import type { LatestQuarterRow } from "@/lib/types";
 type SortKey = "company_name" | "sector" | "revenue" | "revenue_yoy" | "net_profit" | "profit_yoy";
 type SortDir = "asc" | "desc";
 
-export default function CompanyTable({ rows }: { rows: LatestQuarterRow[] }) {
+export default function CompanyTable({
+  rows,
+  preserveOrder = false
+}: {
+  rows: LatestQuarterRow[];
+  /**
+   * If true, render rows in the order the parent passed them in. Used
+   * when the parent controls sorting externally (e.g. the homepage
+   * All-reporters dropdown). Column-header clicks are still visual
+   * cues in that mode — they don't re-sort.
+   */
+  preserveOrder?: boolean;
+}) {
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -23,6 +35,7 @@ export default function CompanyTable({ rows }: { rows: LatestQuarterRow[] }) {
   }, [rows]);
 
   const sorted = useMemo(() => {
+    if (preserveOrder) return rows;
     const arr = [...rows];
     arr.sort((a, b) => {
       const av = (a as any)[sortKey];
@@ -34,9 +47,10 @@ export default function CompanyTable({ rows }: { rows: LatestQuarterRow[] }) {
       return sortDir === "asc" ? av - bv : bv - av;
     });
     return arr;
-  }, [rows, sortKey, sortDir]);
+  }, [rows, sortKey, sortDir, preserveOrder]);
 
   const onSort = (k: SortKey) => {
+    if (preserveOrder) return;
     if (k === sortKey) setSortDir(sortDir === "asc" ? "desc" : "asc");
     else { setSortKey(k); setSortDir(k === "company_name" || k === "sector" ? "asc" : "desc"); }
   };
