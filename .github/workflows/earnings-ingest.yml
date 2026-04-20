@@ -3,16 +3,20 @@ name: earnings-ingest
 # ===========================================================================
 # Cloud-scheduled ingestion for India Earnings Tracker.
 # ---------------------------------------------------------------------------
-# Runs on GitHub's hosted runners. Three cadences, one workflow:
+# Runs on GitHub's hosted runners. Cadences:
 #
-#   daily     (02:30 UTC = 08:00 IST, weekdays)
-#     Scrapes NSE + BSE + Moneycontrol calendars. Cheap.
+#   daily     — 3× weekdays at 08:00 / 15:00 / 21:00 IST
+#               (02:30 / 09:30 / 15:30 UTC)
+#               Scrapes NSE + BSE + Moneycontrol calendars and triggers
+#               Screener for freshly-announced companies. Indian filings
+#               come in waves (pre-market + post-close + late evening) so
+#               3× coverage catches every window.
 #
-#   hourly    (every 30 min, 04:00–16:00 UTC weekdays)
-#     Fetches just-announced quarterly filings.
+#   hourly    — every 30 min, 04:00–16:00 UTC (09:30–21:30 IST) weekdays
+#               Pulls XBRL filings for events due today.
 #
-#   backfill  (18:00 UTC Sunday)
-#     Full NIFTY 500 sweep + Screener gap-fill.
+#   backfill  — Sunday 18:00 UTC (23:30 IST)
+#               Light weekly sweep + gap fill.
 #
 # Requires these repository Secrets:
 #   SUPABASE_URL                (usually the NEXT_PUBLIC_SUPABASE_URL value)
@@ -21,8 +25,8 @@ name: earnings-ingest
 
 on:
   schedule:
-    # daily @ 02:30 UTC
-    - cron:  '30 2 * * 1-5'
+    # daily calendar refresh × 3 (IST 08:00, 15:00, 21:00)
+    - cron:  '30 2,9,15 * * 1-5'
     # hourly sweeps (every 30 min from 04:00 to 16:00 UTC weekdays)
     - cron:  '*/30 4-16 * * 1-5'
     # weekly backfill
@@ -70,7 +74,7 @@ jobs:
             exit 0
           fi
           case "${{ github.event.schedule }}" in
-            '30 2 * * 1-5')       echo "mode=daily"    >> "$GITHUB_OUTPUT" ;;
+            '30 2,9,15 * * 1-5')  echo "mode=daily"    >> "$GITHUB_OUTPUT" ;;
             '*/30 4-16 * * 1-5')  echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
             '0 18 * * 0')         echo "mode=backfill" >> "$GITHUB_OUTPUT" ;;
             *)                    echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;

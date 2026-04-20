@@ -251,7 +251,7 @@ Three cadences, same three commands — just pick where to run them:
 
 | When | Mode | What it does |
 |---|---|---|
-| Every weekday 08:00 IST | `daily` | Scrape NSE + BSE + Moneycontrol calendars → refresh `announcement_events` and auto-trigger Screener for fresh reporters |
+| Weekdays **08:00 / 15:00 / 21:00 IST** (3× a day) | `daily` | Scrape NSE + BSE + Moneycontrol calendars → refresh `announcement_events` and auto-trigger Screener for fresh reporters. Three passes catches pre-market, post-close, and late-evening filing waves |
 | Every 30 min, 09:30–21:30 IST weekdays | `hourly` | Look for filings whose announcement date is today (or within the grace window) and pull their XBRL numbers |
 | Sunday 23:30 IST | `backfill` | Full NIFTY 500 sweep + Screener gap-fill. Picks up restated filings |
 

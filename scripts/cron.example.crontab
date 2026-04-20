@@ -10,12 +10,12 @@ SHELL=/bin/bash
 EARNINGS_APP=/path/to/Earning-Dashboard
 
 # ---------------------------------------------------------------------------
-# Daily 02:30 UTC (08:00 IST) — weekdays only.
-# Refreshes the NSE + BSE + Moneycontrol calendars. This is the SCHEDULE
-# update: "who's announcing when", plus auto-trigger Screener fetch for
-# companies that just announced overnight.
+# Calendar refresh × 3 weekdays: 02:30 / 09:30 / 15:30 UTC
+# = 08:00 / 15:00 / 21:00 IST. Indian companies file in waves (pre-market,
+# post-close, late evening); three passes per day make sure we pick up
+# every announcement window.
 # ---------------------------------------------------------------------------
-30 2 * * 1-5  $EARNINGS_APP/scripts/cron.example.sh daily
+30 2,9,15 * * 1-5  $EARNINGS_APP/scripts/cron.example.sh daily
 
 # ---------------------------------------------------------------------------
 # Hourly through the trading / announcement window.

@@ -45,11 +45,16 @@ function New-IET-Task {
 
 Write-Host "Registering India Earnings Tracker tasks..." -ForegroundColor Cyan
 
-# Task 1: Daily — refreshes calendars at 08:00 IST Mon-Fri.
-$dailyTrigger = New-ScheduledTaskTrigger -Daily -At "08:00" -DaysInterval 1
-# Restrict to weekdays via a second trigger filter:
-$dailyTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At "08:00"
-New-IET-Task -Name "daily-calendars" -Mode "daily" -Triggers @($dailyTrigger)
+# Task 1: Calendar refresh × 3 weekdays at 08:00, 15:00, 21:00 IST. Indian
+# companies file in waves (pre-market / post-close / late evening), so a
+# single 08:00 run would leave afternoon announcements sitting for up to
+# 24 hours before we see them.
+$dailyTriggers = @(
+  (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At "08:00"),
+  (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At "15:00"),
+  (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At "21:00")
+)
+New-IET-Task -Name "daily-calendars" -Mode "daily" -Triggers $dailyTriggers
 
 # Task 2: Hourly sweep every 30 min during the announcement window.
 $hourlyTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At "09:30"
