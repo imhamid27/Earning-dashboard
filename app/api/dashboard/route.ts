@@ -85,9 +85,10 @@ export async function GET(req: NextRequest) {
     byTicker.set(row.ticker, arr);
   }
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+
   // Per-ticker upcoming announcement date (nearest pending event). Used on
   // "Not reported yet" rows so the reader knows when to check back.
-  const todayIso = new Date().toISOString().slice(0, 10);
   const { data: upcomingEvents } = await sb
     .from("announcement_events")
     .select("ticker,announcement_date")
@@ -98,6 +99,30 @@ export async function GET(req: NextRequest) {
   const nextDateByTicker = new Map<string, string>();
   for (const e of upcomingEvents ?? []) {
     if (!nextDateByTicker.has(e.ticker)) nextDateByTicker.set(e.ticker, e.announcement_date);
+  }
+
+  // Per-ticker actual announcement date (the truth we display next to the
+  // numbers). Priority:
+  //   1. An `announcement_events` row with status='fetched' — this is the
+  //      real filing date tracked from NSE/BSE/Moneycontrol calendars.
+  //   2. raw_json.broadCastDate on the quarterly row (NSE XBRL filings).
+  //   3. The raw fetched_at timestamp (least precise, last resort).
+  // Previously we only used #2 + #3, which meant Screener-sourced rows
+  // (most of them) all fell back to the scrape timestamp and appeared to
+  // have "announced on" the same day.
+  const { data: fetchedEvents } = await sb
+    .from("announcement_events")
+    .select("ticker,announcement_date")
+    .in("ticker", tickers)
+    .eq("status", "fetched")
+    .lte("announcement_date", todayIso)
+    .order("announcement_date", { ascending: false });
+  const lastAnnouncedByTicker = new Map<string, string>();
+  for (const e of fetchedEvents ?? []) {
+    // First row per ticker wins = most recent fetched announcement.
+    if (!lastAnnouncedByTicker.has(e.ticker)) {
+      lastAnnouncedByTicker.set(e.ticker, e.announcement_date);
+    }
   }
 
   const rows: LatestQuarterRow[] = companies.map((c) => {
@@ -140,7 +165,10 @@ export async function GET(req: NextRequest) {
     const prevQ = idx >= 1 ? hist[idx - 1] : null;
     const prevY = idx >= 4 ? hist[idx - 4] : null;
     const hasNumbers = latest.revenue != null && latest.net_profit != null;
-    const resultDate = resultDateOf(latest);
+    // Prefer the fetched-event date — it's the real filing day tracked from
+    // exchange calendars. Fall back to raw_json/fetched_at only if no event
+    // exists for this ticker.
+    const resultDate = lastAnnouncedByTicker.get(c.ticker) ?? resultDateOf(latest);
 
     return {
       company_id: c.id,

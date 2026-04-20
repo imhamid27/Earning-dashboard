@@ -88,19 +88,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Also pull announcement_events for backup date resolution.
+  // Pull announcement_events to recover the REAL filing date per ticker.
+  // We pick the most-recent fetched event (most Screener-sourced rows have
+  // no broadCastDate, so without this every row falsely gets the scrape
+  // timestamp as its "announcement" date).
   const tickers = Array.from(new Set((rows ?? []).map((r: any) => r.ticker)));
   const eventDateByKey = new Map<string, string>();
   if (tickers.length > 0) {
     const { data: events } = await sb
       .from("announcement_events")
-      .select("ticker,announcement_date,processed_at")
+      .select("ticker,announcement_date")
       .in("ticker", tickers)
-      .eq("status", "fetched");
+      .eq("status", "fetched")
+      .order("announcement_date", { ascending: false });
     for (const e of events ?? []) {
-      // Key matches regardless of fiscal quarter — `status=fetched` with the
-      // nearest date is accurate enough for Q4 storylines.
-      eventDateByKey.set(`${e.ticker}`, e.announcement_date);
+      // First one wins = most recent. Keeps one map entry per ticker.
+      if (!eventDateByKey.has(e.ticker)) eventDateByKey.set(e.ticker, e.announcement_date);
     }
   }
 
@@ -115,13 +118,16 @@ export async function GET(req: NextRequest) {
   const undated: Company[] = [];
 
   for (const r of ((rows ?? []) as unknown) as Row[]) {
-    // Resolve via raw_json, then events table keyed by ticker.
+    // Prefer the fetched-event date from announcement_events — that's the
+    // real day the company filed. XBRL broadCastDate is authoritative when
+    // it exists (NSE filings), so check it next. Scrape timestamp is only
+    // a last resort.
+    const fromEvent = eventDateByKey.get(r.ticker);
     const fromRaw =
       parseLooseDate(r.raw_json?.broadCastDate) ||
       parseLooseDate(r.raw_json?.filingDate) ||
       parseLooseDate(r.raw_json?.exchdisstime);
-    const fromEvent = eventDateByKey.get(r.ticker);
-    const date = fromRaw ?? fromEvent ?? (r.fetched_at ? r.fetched_at.slice(0, 10) : null);
+    const date = fromEvent ?? fromRaw ?? (r.fetched_at ? r.fetched_at.slice(0, 10) : null);
     const prior = priorByTicker.get(r.ticker);
     const comp: Company = {
       ticker: r.ticker,
