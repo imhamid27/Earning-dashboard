@@ -31,11 +31,28 @@ export async function GET(req: NextRequest) {
     sb.from("quarterly_financials").select("fetched_at").order("fetched_at", { ascending: false }).limit(1).maybeSingle()
   ]);
 
+  // "Reported" = distinct companies whose Q4 announcement has been picked
+  // up by any of our calendar scrapers (status='fetched'). Matches the /q4
+  // tab counts, which also source from announcement_events. Previously we
+  // used rows.length from quarterly_financials — that only counts companies
+  // whose NUMBERS have landed, undercounting by a factor of 3–4× during the
+  // first wave of a reporting season.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  const { data: announcedEvents } = await sb
+    .from("announcement_events")
+    .select("ticker")
+    .eq("status", "fetched")
+    .gte("announcement_date", ninetyDaysAgo)
+    .lte("announcement_date", todayIso);
+  const announcedTickers = new Set<string>();
+  for (const e of announcedEvents ?? []) announcedTickers.add(e.ticker);
+
   if (!targetQuarter) {
     return jsonOk({
       quarter: null,
       companies_tracked: universeCount ?? 0,
-      companies_reported: 0,
+      companies_reported: announcedTickers.size,
       avg_revenue_yoy: null,
       avg_profit_yoy: null,
       top_sectors_by_rev_growth: [],
@@ -53,7 +70,7 @@ export async function GET(req: NextRequest) {
     return jsonOk({
       quarter: targetQuarter,
       companies_tracked: universeCount ?? 0,
-      companies_reported: 0,
+      companies_reported: announcedTickers.size,
       avg_revenue_yoy: null,
       avg_profit_yoy: null,
       top_sectors_by_rev_growth: [],
@@ -111,7 +128,7 @@ export async function GET(req: NextRequest) {
   return jsonOk({
     quarter: targetQuarter,
     companies_tracked: universeCount ?? 0,
-    companies_reported: cur.length,
+    companies_reported: announcedTickers.size,
     avg_revenue_yoy: mean(revGrowths),
     avg_profit_yoy: mean(profGrowths),
     top_sectors_by_rev_growth: topSectors,
