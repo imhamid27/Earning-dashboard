@@ -202,7 +202,7 @@ export default function DashboardPage() {
                 />
               </div>
               <div className="mt-2 text-[11px] text-core-muted tabular-nums">
-                {(progress * 100).toFixed(0)}% of the NIFTY 500 · {quarter}
+                {(progress * 100).toFixed(0)}% of tracked companies · {quarter}
               </div>
             </div>
           </div>
@@ -228,7 +228,7 @@ export default function DashboardPage() {
 
       {/* Prominent search — placed right after the hero so finding a
           specific company is the most obvious action. Auto-completes from
-          the NIFTY 500 and can pull fresh results on demand. */}
+          the tracked universe and can pull fresh results on demand. */}
       <section className="mt-6 md:mt-8">
         <CompanySearch />
       </section>

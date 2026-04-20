@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 //   1. A 40-unit dot-dash rail (circle + dash alternating, pink/teal/blue/ink
 //      from the brand kit). A light sweeps left-to-right, lighting each unit
 //      in order and then fading it. Honours prefers-reduced-motion.
-//   2. A ticker label above that cycles through real NIFTY-500 symbols as
+//   2. A ticker label above that cycles through real large-cap symbols as
 //      the sweep advances — reads like a newsroom parser stepping through
 //      filings.
 //   3. A counter below: "Reading 47 of 500 · Q4 FY26".

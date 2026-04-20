@@ -17,7 +17,7 @@ interface Company {
 // quarterly data from its origin.
 export default function CompanySearch({
   compact = false,
-  placeholder = "Search any NIFTY 500 company — Reliance, TCS, HDFC Bank…"
+  placeholder = "Search any listed company — Reliance, TCS, HDFC Bank…"
 }: {
   compact?: boolean;
   placeholder?: string;

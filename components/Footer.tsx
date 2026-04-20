@@ -12,7 +12,7 @@ export default function Footer() {
               India Earnings Tracker
             </div>
             <p className="leading-relaxed max-w-sm">
-              Quarterly results from the NIFTY 500, updated daily as companies report.
+              Quarterly results from India's listed companies, updated daily as they report.
             </p>
           </div>
           <div className="md:text-right">
