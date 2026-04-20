@@ -87,11 +87,13 @@ jobs:
           set -e
           case "$MODE" in
             daily)
-              # --include-untracked populates the calendar with every
-              # listed company (not just NIFTY-500). Keeps /upcoming in
-              # parity with BSE's raw forthcoming page.
-              python scripts/nse_calendar.py --include-untracked
-              python scripts/bse_calendar.py --include-untracked
+              # Scope: NIFTY 500 only. --include-untracked was removed
+              # on 2026-04-20 after confirming that BSE small-cap shells
+              # had no usable data source (no NSE XBRL, not on Screener)
+              # and were tripping the hourly cron with empty-result
+              # failures. Calendars silently skip untracked scrips.
+              python scripts/nse_calendar.py
+              python scripts/bse_calendar.py
               python scripts/moneycontrol_calendar.py
               ;;
             hourly)

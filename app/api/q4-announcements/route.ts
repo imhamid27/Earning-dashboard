@@ -68,8 +68,9 @@ export async function GET(req: NextRequest) {
 
   const { data: rows, error } = await sb
     .from("quarterly_financials")
-    .select("ticker,quarter_label,quarter_end_date,revenue,net_profit,operating_profit,eps,fetched_at,data_quality_status,raw_json,companies!inner(company_name,sector,industry)")
-    .eq("quarter_label", quarter);
+    .select("ticker,quarter_label,quarter_end_date,revenue,net_profit,operating_profit,eps,fetched_at,data_quality_status,raw_json,companies!inner(company_name,sector,industry,is_active)")
+    .eq("quarter_label", quarter)
+    .eq("companies.is_active", true);
   if (error) return jsonError(error.message, 500);
 
   // Load the YoY counterpart (Q4 FY25 if quarter=Q4 FY26) for growth calc.
@@ -145,8 +146,9 @@ export async function GET(req: NextRequest) {
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
   const { data: pastEvents } = await sb
     .from("announcement_events")
-    .select("ticker,announcement_date,companies!inner(company_name,sector,industry)")
+    .select("ticker,announcement_date,companies!inner(company_name,sector,industry,is_active)")
     .eq("status", "fetched")
+    .eq("companies.is_active", true)
     .gte("announcement_date", ninetyDaysAgo)
     .lte("announcement_date", todayIso)
     .order("announcement_date", { ascending: true });
@@ -200,9 +202,10 @@ export async function GET(req: NextRequest) {
 
   const { data: scheduledEvents } = await sb
     .from("announcement_events")
-    .select("ticker,announcement_date,purpose,companies!inner(company_name,sector)")
+    .select("ticker,announcement_date,purpose,companies!inner(company_name,sector,is_active)")
     .gte("announcement_date", todayIso)
     .eq("status", "pending")
+    .eq("companies.is_active", true)
     .order("announcement_date", { ascending: true });
 
   // Dedupe by (ticker, date) — a company often has rows from both BSE + NSE

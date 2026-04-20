@@ -47,9 +47,10 @@ Append-Log "=== mode=$Mode start ==="
 try {
     switch ($Mode) {
         "daily" {
-            & $py scripts\nse_calendar.py --include-untracked 2>&1 | Tee-Object -FilePath $logFile -Append
-            & $py scripts\bse_calendar.py --include-untracked 2>&1 | Tee-Object -FilePath $logFile -Append
-            & $py scripts\moneycontrol_calendar.py            2>&1 | Tee-Object -FilePath $logFile -Append
+            # Scope: NIFTY 500 only. Calendars silently skip untracked scrips.
+            & $py scripts\nse_calendar.py           2>&1 | Tee-Object -FilePath $logFile -Append
+            & $py scripts\bse_calendar.py           2>&1 | Tee-Object -FilePath $logFile -Append
+            & $py scripts\moneycontrol_calendar.py  2>&1 | Tee-Object -FilePath $logFile -Append
         }
         "hourly" {
             & $py scripts\nse_results.py           2>&1 | Tee-Object -FilePath $logFile -Append

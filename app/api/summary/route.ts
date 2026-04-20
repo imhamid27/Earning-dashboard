@@ -41,8 +41,9 @@ export async function GET(req: NextRequest) {
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
   const { data: announcedEvents } = await sb
     .from("announcement_events")
-    .select("ticker")
+    .select("ticker,companies!inner(is_active)")
     .eq("status", "fetched")
+    .eq("companies.is_active", true)
     .gte("announcement_date", ninetyDaysAgo)
     .lte("announcement_date", todayIso);
   const announcedTickers = new Set<string>();

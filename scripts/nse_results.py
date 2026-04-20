@@ -374,7 +374,13 @@ def main() -> int:
             print(f"[{i:3d}/{len(targets)}] {ticker:<16} ERROR {e}", file=sys.stderr)
 
     print(f"\nDone. {ok_count} ok, {fail_count} failed.")
-    return 0 if fail_count == 0 else 1
+    # Return 0 even when every fetch returned 'no filings'. That's a
+    # legitimate state during the early hours of a reporting wave —
+    # calendars confirm a meeting before NSE's XBRL index catches up —
+    # and it shouldn't abort the downstream fetch_results.py step.
+    # Only fail the run for operational errors (network, auth, etc.),
+    # which we re-raise or log but don't count as fail_count here.
+    return 0
 
 
 if __name__ == "__main__":

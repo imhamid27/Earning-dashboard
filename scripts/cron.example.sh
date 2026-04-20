@@ -41,11 +41,10 @@ echo "=== $(date -Iseconds) · mode=$MODE ===" >> "$LOG_FILE"
 case "$MODE" in
   daily)
     # Three calendar sources (NSE, BSE, Moneycontrol) — dedup on (ticker, date).
-    # --include-untracked surfaces every listed company on /upcoming (not
-    # just NIFTY-500), matching BSE's raw forthcoming page.
-    "$PY" scripts/nse_calendar.py --include-untracked   >> "$LOG_FILE" 2>&1
-    "$PY" scripts/bse_calendar.py --include-untracked   >> "$LOG_FILE" 2>&1
-    "$PY" scripts/moneycontrol_calendar.py              >> "$LOG_FILE" 2>&1
+    # Scope is NIFTY 500 only. Calendars silently skip untracked scrips.
+    "$PY" scripts/nse_calendar.py             >> "$LOG_FILE" 2>&1
+    "$PY" scripts/bse_calendar.py             >> "$LOG_FILE" 2>&1
+    "$PY" scripts/moneycontrol_calendar.py    >> "$LOG_FILE" 2>&1
     ;;
   hourly)
     # Two-pass sweep:

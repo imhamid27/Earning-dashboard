@@ -15,9 +15,10 @@ export async function GET(_req: NextRequest) {
   // response).
   const { data: events, error: eErr } = await sb
     .from("announcement_events")
-    .select("ticker,announcement_date,purpose,status,companies!inner(company_name,sector)")
+    .select("ticker,announcement_date,purpose,status,companies!inner(company_name,sector,is_active)")
     .gte("announcement_date", today)
     .eq("status", "pending")
+    .eq("companies.is_active", true)
     .order("announcement_date", { ascending: true })
     .limit(500);
   if (eErr) return jsonError(eErr.message, 500);
