@@ -17,10 +17,18 @@ interface Company {
 // quarterly data from its origin.
 export default function CompanySearch({
   compact = false,
-  placeholder = "Search any listed company — Reliance, TCS, HDFC Bank…"
+  placeholder = "Search any listed company — Reliance, TCS, HDFC Bank…",
+  onSelect
 }: {
   compact?: boolean;
   placeholder?: string;
+  /**
+   * Fires when the user picks a company from the autocomplete dropdown.
+   * Used by the dashboard to scroll the All-reporters table to the
+   * matching row. The panel below the input still renders — this
+   * callback is additive, not a replacement.
+   */
+  onSelect?: (ticker: string) => void;
 }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Company[]>([]);
@@ -97,7 +105,10 @@ export default function CompanySearch({
           {results.map((c) => (
             <li key={c.ticker}>
               <button
-                onClick={() => { setSelected(c); setResults([]); setQ(c.company_name); }}
+                onClick={() => {
+                  setSelected(c); setResults([]); setQ(c.company_name);
+                  onSelect?.(c.ticker);
+                }}
                 className="w-full text-left px-4 py-2.5 hover:bg-core-surface border-b border-core-line last:border-none"
               >
                 <div className="text-[14px] font-semibold tracking-tightest">{c.company_name}</div>

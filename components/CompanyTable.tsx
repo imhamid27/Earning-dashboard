@@ -69,7 +69,11 @@ export default function CompanyTable({ rows }: { rows: LatestQuarterRow[] }) {
             const notReported = !r.quarter_end_date;
             const hasNumbers = r.status === "announced_with_numbers";
             return (
-              <tr key={r.ticker} className={notReported ? "text-core-muted/70" : undefined}>
+              <tr
+                key={r.ticker}
+                data-ticker={r.ticker}
+                className={notReported ? "text-core-muted/70" : undefined}
+              >
                 <td>
                   <Link href={`/company/${encodeURIComponent(r.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink tracking-tight">
                     {r.company_name}

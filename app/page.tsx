@@ -16,6 +16,16 @@ import type { LatestQuarterRow } from "@/lib/types";
 
 const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
 
+// Curated "major" names used in the "Major companies yet to report"
+// strip. These are the big-cap bellwethers readers expect to see in
+// every quarter's headline coverage. Keep the list short — 6 show in
+// the UI, the rest are fall-throughs if some are already reported.
+const MAJOR_TICKERS = [
+  "RELIANCE.NS", "HDFCBANK.NS", "TCS.NS", "INFY.NS", "ICICIBANK.NS",
+  "ITC.NS", "HINDUNILVR.NS", "SBIN.NS", "BHARTIARTL.NS", "LT.NS",
+  "BAJFINANCE.NS", "HCLTECH.NS", "KOTAKBANK.NS", "MARUTI.NS", "ASIANPAINT.NS"
+];
+
 function yoyQuarter(q: string): string {
   const m = /^Q([1-4])\s*FY(\d{2})$/.exec(q.trim());
   if (!m) return q;
@@ -101,6 +111,107 @@ export default function DashboardPage() {
       .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0)),
     [board]
   );
+
+  // Today / this week counters for the context row below the hero.
+  // Today = reporting today (already announced or still pending).
+  // Week = anything scheduled within the next 7 days (today inclusive).
+  const { reportingToday, reportingThisWeek } = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const todayIso = today.toISOString().slice(0, 10);
+    const week = new Date(today.getTime() + 6 * 86_400_000).toISOString().slice(0, 10);
+    const todayTickers = new Set<string>();
+    const weekTickers  = new Set<string>();
+    for (const u of upcoming) {
+      if (u.next_result_date >= todayIso && u.next_result_date <= week) weekTickers.add(u.ticker);
+      if (u.next_result_date === todayIso) todayTickers.add(u.ticker);
+    }
+    // Also add already-reported-today so the count reflects "filing today"
+    // not just "not yet reported today".
+    for (const r of board?.rows ?? []) {
+      if (r.result_date === todayIso && r.status === "announced_with_numbers") {
+        todayTickers.add(r.ticker);
+        weekTickers.add(r.ticker);
+      }
+    }
+    return { reportingToday: todayTickers.size, reportingThisWeek: weekTickers.size };
+  }, [upcoming, board]);
+
+  // Editorial one-liner: which sector is leading revenue vs profit growth
+  // this quarter. Derived client-side from board rows so it always tracks
+  // the currently-selected quarter.
+  const insight = useMemo<string | null>(() => {
+    const rows = (board?.rows ?? []).filter((r) => r.status === "announced_with_numbers" && r.sector);
+    if (rows.length < 3) return null;
+    const bySector = new Map<string, { rev: number[]; prof: number[] }>();
+    for (const r of rows) {
+      const s = r.sector!;
+      if (!bySector.has(s)) bySector.set(s, { rev: [], prof: [] });
+      if (r.revenue_yoy != null) bySector.get(s)!.rev.push(r.revenue_yoy);
+      if (r.profit_yoy  != null) bySector.get(s)!.prof.push(r.profit_yoy);
+    }
+    const avg = (xs: number[]) => xs.length >= 2
+      ? xs.reduce((a, b) => a + b, 0) / xs.length
+      : null;
+    let revLead: [string, number] | null = null;
+    let profLead: [string, number] | null = null;
+    for (const [s, x] of bySector) {
+      const ra = avg(x.rev); if (ra != null && (!revLead || ra > revLead[1])) revLead = [s, ra];
+      const pa = avg(x.prof); if (pa != null && (!profLead || pa > profLead[1])) profLead = [s, pa];
+    }
+    if (!revLead && !profLead) return null;
+    if (revLead && profLead && revLead[0] !== profLead[0]) {
+      return `${revLead[0]} is leading revenue growth; ${profLead[0]} is leading profit growth so far this quarter.`;
+    }
+    const lead = revLead ?? profLead!;
+    return `${lead[0]} is leading both revenue and profit growth so far this quarter.`;
+  }, [board]);
+
+  // "Major companies yet to report" — curated big-cap bellwethers that
+  // haven't filed Q4 FY26 numbers yet. Shows up to 6.
+  const majorsYetToReport = useMemo(() => {
+    const rowsByTicker = new Map(((board?.rows ?? []).map((r) => [r.ticker, r])));
+    const out: LatestQuarterRow[] = [];
+    for (const t of MAJOR_TICKERS) {
+      const r = rowsByTicker.get(t);
+      if (!r) continue;
+      if (r.status !== "announced_with_numbers") out.push(r);
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, [board]);
+
+  // "All reporters" sort + pagination. Sort is chosen via a dropdown;
+  // 20 rows per page.
+  const [allSort, setAllSort] = useState<"revenue" | "profit_yoy" | "result_date">("revenue");
+  const [allPage, setAllPage] = useState(0);
+  useEffect(() => { setAllPage(0); }, [allSort, quarter]);
+
+  // When a search result is picked, flip "All reporters" to the page
+  // containing that company (if any), then scroll the matching row
+  // into view and briefly highlight it.
+  const scrollToTicker = useCallback((ticker: string) => {
+    const rest = (board?.rows ?? [])
+      .filter((r) => r.quarter_end_date)
+      .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))
+      .slice(5);
+    const sortedRest = [...rest].sort((a, b) => {
+      if (allSort === "profit_yoy") return (b.profit_yoy ?? -Infinity) - (a.profit_yoy ?? -Infinity);
+      if (allSort === "result_date") return (b.result_date ?? "").localeCompare(a.result_date ?? "");
+      return (b.revenue ?? 0) - (a.revenue ?? 0);
+    });
+    const restIdx = sortedRest.findIndex((r) => r.ticker === ticker);
+    if (restIdx >= 0) setAllPage(Math.floor(restIdx / 20));
+    window.setTimeout(() => {
+      const el = document.querySelector(
+        `[data-ticker="${CSS.escape(ticker)}"]`
+      ) as HTMLElement | null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-2", "ring-core-pink", "transition-shadow");
+        window.setTimeout(() => el.classList.remove("ring-2", "ring-core-pink"), 1800);
+      }
+    }, 80);
+  }, [board, allSort]);
 
   const overallTrend = useMemo(() => {
     const agg = new Map<string, { quarter_label: string; revenue: number | null; net_profit: number | null }>();
@@ -226,11 +337,28 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      {/* Inline context row — "Today" and "This week" counters.
+          A small, at-a-glance anchor so the reader knows what's coming
+          before they scroll further. */}
+      <section className="mt-4 md:mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm border-y border-core-line py-3">
+        <span>
+          <span className="text-core-muted mr-2">Today</span>
+          <span className="font-semibold tabular-nums">{reportingToday}</span>
+          <span className="text-core-muted"> {reportingToday === 1 ? "company" : "companies"} reporting</span>
+        </span>
+        <span className="text-core-line-2 hidden sm:inline">·</span>
+        <span>
+          <span className="text-core-muted mr-2">This week</span>
+          <span className="font-semibold tabular-nums">{reportingThisWeek}</span>
+          <span className="text-core-muted"> reporting</span>
+        </span>
+      </section>
+
       {/* Prominent search — placed right after the hero so finding a
           specific company is the most obvious action. Auto-completes from
           the tracked universe and can pull fresh results on demand. */}
       <section className="mt-6 md:mt-8">
-        <CompanySearch />
+        <CompanySearch onSelect={scrollToTicker} />
       </section>
 
       <div className="h-8 md:h-10" />
@@ -262,6 +390,59 @@ export default function DashboardPage() {
           hint={nextUpcoming?.company_name ?? "none scheduled"}
           accent
         />
+      </section>
+
+      {/* Editorial insight — one factual sentence derived from the data.
+          Stays silent until we have enough reporters to say something
+          confident (rev/profit growth leaders by sector). */}
+      {insight ? (
+        <section className="mt-6 md:mt-8">
+          <p className="text-[15px] md:text-[17px] tracking-tight text-core-ink leading-snug max-w-3xl">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-pink mr-2.5 align-middle" />
+            {insight}
+          </p>
+        </section>
+      ) : null}
+
+      <div className="h-10 md:h-12" />
+
+      {/* =================================================================
+          UPCOMING + MAJORS — lifted up from the analytical grid.
+          Upcoming announcements and the big-cap "yet to report" list
+          are core to the product; readers shouldn't have to scroll past
+          charts to find them.
+          ================================================================= */}
+      <section className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="card p-5 lg:col-span-3">
+          <header className="flex items-baseline justify-between mb-4">
+            <h3 className="text-lg font-semibold tracking-tightest">Upcoming this week</h3>
+            <Link href="/upcoming" className="text-xs link-pink">All →</Link>
+          </header>
+          <UpcomingList items={upcoming} days={7} />
+        </div>
+        <div className="card p-5 lg:col-span-2">
+          <header className="flex items-baseline justify-between mb-4">
+            <h3 className="text-lg font-semibold tracking-tightest">Major companies yet to report</h3>
+            <span className="text-[11px] uppercase tracking-wide text-core-muted">bellwethers</span>
+          </header>
+          {majorsYetToReport.length === 0 ? (
+            <div className="text-sm text-core-muted">All bellwethers have reported — check the table below for numbers.</div>
+          ) : (
+            <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+              {majorsYetToReport.map((r, i) => (
+                <li key={r.ticker} className="whitespace-nowrap">
+                  <Link href={`/company/${encodeURIComponent(r.ticker)}`} className="font-medium hover:text-core-pink">
+                    {r.company_name}
+                  </Link>
+                  {r.next_result_date ? (
+                    <span className="text-[11px] text-core-muted ml-1.5">· {formatDate(r.next_result_date)}</span>
+                  ) : null}
+                  {i < majorsYetToReport.length - 1 ? <span className="text-core-line-2 ml-4">·</span> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
       <div className="h-12" />
@@ -307,29 +488,83 @@ export default function DashboardPage() {
       </section>
 
       {/* =================================================================
-          ALL REPORTERS TABLE
+          ALL REPORTERS TABLE — sortable + paginated
           ================================================================= */}
-      {rest.length > 0 ? (
-        <section className="mt-12">
-          <header className="flex items-baseline justify-between mb-3">
-            <h2 className="text-xl font-bold tracking-tightest">All reporters</h2>
-            <Link href={`/q4?quarter=${encodeURIComponent(quarter)}`} className="text-xs link-pink">
-              Grouped by date →
-            </Link>
-          </header>
-          <CompanyTable rows={rest.slice(0, 50)} />
-          {rest.length > 50 ? (
-            <div className="text-xs text-core-muted mt-2 text-right">
-              Showing top 50 by revenue.
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+      {rest.length > 0 ? (() => {
+        const PAGE_SIZE = 20;
+        const sortedRest = [...rest].sort((a, b) => {
+          if (allSort === "profit_yoy") return (b.profit_yoy ?? -Infinity) - (a.profit_yoy ?? -Infinity);
+          if (allSort === "result_date") return (b.result_date ?? "").localeCompare(a.result_date ?? "");
+          return (b.revenue ?? 0) - (a.revenue ?? 0);
+        });
+        const totalPages = Math.max(1, Math.ceil(sortedRest.length / PAGE_SIZE));
+        const page = Math.min(allPage, totalPages - 1);
+        const pageRows = sortedRest.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+        return (
+          <section className="mt-12">
+            <header className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+              <div className="flex items-baseline gap-4">
+                <h2 className="text-xl font-bold tracking-tightest">All reporters</h2>
+                <span className="text-[11px] uppercase tracking-[0.14em] text-core-muted">
+                  {sortedRest.length} total
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="text-[10px] uppercase tracking-[0.14em] text-core-muted flex items-center gap-2">
+                  Sort by
+                  <select
+                    value={allSort}
+                    onChange={(e) => setAllSort(e.target.value as typeof allSort)}
+                    className="border border-core-line bg-white text-xs px-2.5 py-1.5 rounded-md normal-case text-core-ink font-semibold focus:outline-none focus:border-core-pink"
+                  >
+                    <option value="revenue">Revenue (high → low)</option>
+                    <option value="profit_yoy">Profit YoY (high → low)</option>
+                    <option value="result_date">Announcement date (recent first)</option>
+                  </select>
+                </label>
+                <Link href={`/q4?quarter=${encodeURIComponent(quarter)}`} className="text-xs link-pink">
+                  Grouped by date →
+                </Link>
+              </div>
+            </header>
+            <CompanyTable rows={pageRows} />
+            {totalPages > 1 ? (
+              <div className="mt-3 flex items-center justify-between text-xs text-core-muted">
+                <span>
+                  Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sortedRest.length)}
+                  {" "}of {sortedRest.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setAllPage(Math.max(0, page - 1))}
+                    disabled={page === 0}
+                    className="px-2.5 py-1 border border-core-line rounded-md disabled:opacity-40 hover:border-core-ink"
+                  >
+                    ← Prev
+                  </button>
+                  <span className="px-2 tabular-nums">
+                    {page + 1} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setAllPage(Math.min(totalPages - 1, page + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="px-2.5 py-1 border border-core-line rounded-md disabled:opacity-40 hover:border-core-ink"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </section>
+        );
+      })() : null}
 
       {/* =================================================================
-          ANALYTICAL — charts in a 3-column layout with Coming Up on the side
+          ANALYTICAL — charts in a 2-column layout. "Upcoming this week"
+          used to live on the right of this grid; it was lifted up above
+          the fold because upcoming filings are core to the product.
           ================================================================= */}
-      <section className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <section className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-5">
           <header className="flex items-baseline justify-between mb-3">
             <h3 className="text-lg font-semibold tracking-tightest">Aggregate revenue · last 8 quarters</h3>
@@ -349,13 +584,6 @@ export default function DashboardPage() {
             <span className="text-[11px] uppercase tracking-wide text-core-muted">vs {yoyQuarter(quarter)}</span>
           </header>
           <SectorComparison rows={sectors?.sectors ?? []} metric="revenue_yoy" height={260} />
-        </div>
-        <div className="card p-5">
-          <header className="flex items-baseline justify-between mb-4">
-            <h3 className="text-lg font-semibold tracking-tightest">Upcoming this week</h3>
-            <Link href="/upcoming" className="text-xs link-pink">All →</Link>
-          </header>
-          <UpcomingList items={upcoming} days={7} />
         </div>
       </section>
 
