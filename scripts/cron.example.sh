@@ -41,11 +41,11 @@ echo "=== $(date -Iseconds) · mode=$MODE ===" >> "$LOG_FILE"
 case "$MODE" in
   daily)
     # Three calendar sources (NSE, BSE, Moneycontrol) — dedup on (ticker, date).
-    # Moneycontrol's scraper also auto-triggers Screener for tickers that just
-    # announced but we haven't fetched yet.
-    "$PY" scripts/nse_calendar.py           >> "$LOG_FILE" 2>&1
-    "$PY" scripts/bse_calendar.py           >> "$LOG_FILE" 2>&1
-    "$PY" scripts/moneycontrol_calendar.py  >> "$LOG_FILE" 2>&1
+    # --include-untracked surfaces every listed company on /upcoming (not
+    # just NIFTY-500), matching BSE's raw forthcoming page.
+    "$PY" scripts/nse_calendar.py --include-untracked   >> "$LOG_FILE" 2>&1
+    "$PY" scripts/bse_calendar.py --include-untracked   >> "$LOG_FILE" 2>&1
+    "$PY" scripts/moneycontrol_calendar.py              >> "$LOG_FILE" 2>&1
     ;;
   hourly)
     # Look for "pending" events that are <= today + grace days and pull their

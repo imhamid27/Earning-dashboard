@@ -83,8 +83,11 @@ jobs:
           set -e
           case "$MODE" in
             daily)
-              python scripts/nse_calendar.py
-              python scripts/bse_calendar.py
+              # --include-untracked populates the calendar with every
+              # listed company (not just NIFTY-500). Keeps /upcoming in
+              # parity with BSE's raw forthcoming page.
+              python scripts/nse_calendar.py --include-untracked
+              python scripts/bse_calendar.py --include-untracked
               python scripts/moneycontrol_calendar.py
               ;;
             hourly)

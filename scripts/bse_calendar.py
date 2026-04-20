@@ -139,11 +139,15 @@ def main() -> int:
             if not args.include_untracked:
                 skipped_untracked += 1
                 continue
-            # Auto-create a shell company. We use BSE.<scrip> as a synthetic
-            # ticker — if the user later decides to actively track it, they
-            # can flip is_active=true and update the ticker to .NS form.
-            shell_ticker = f"BSE.{scrip}"
+            # Auto-create a shell company for display in the "Upcoming"
+            # list. Ticker follows the Yahoo convention `<SYMBOL>.BO` for
+            # BSE-only listings (looks cleaner than `BSE.514215`). If the
+            # user later wants to actively track this name, flip
+            # is_active=true and optionally switch to the `.NS` form.
             short_name = (raw.get("short_name") or "").strip().upper()
+            # Sanitise: allow only letters/digits/& so the URL stays clean.
+            safe_sym = "".join(ch for ch in short_name if ch.isalnum() or ch == "&")
+            shell_ticker = (safe_sym + ".BO") if safe_sym else f"BSE.{scrip}"
             shell = sb.table("companies").upsert({
                 "ticker": shell_ticker,
                 "company_name": raw.get("Long_Name") or short_name or shell_ticker,
