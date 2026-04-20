@@ -14,6 +14,7 @@ interface Company {
   revenue: number | null; net_profit: number | null; operating_profit: number | null;
   eps: number | null; data_quality_status: any;
   revenue_yoy: number | null; profit_yoy: number | null;
+  filing_url: string | null;
 }
 interface ScheduledCompany {
   ticker: string; company_name: string; sector: string | null; purpose: string | null;
@@ -207,7 +208,20 @@ export default function Q4Page() {
                               <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
                                 {c.company_name}
                               </Link>
-                              <div className="text-[11px] text-core-muted">{c.ticker}</div>
+                              <div className="text-[11px] text-core-muted flex items-center gap-2">
+                                <span>{c.ticker}</span>
+                                {c.filing_url ? (
+                                  <a
+                                    href={c.filing_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-core-pink hover:underline"
+                                    title="Open the filing submitted to BSE"
+                                  >
+                                    View filing ↗
+                                  </a>
+                                ) : null}
+                              </div>
                             </td>
                             <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
                             <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
@@ -234,6 +248,20 @@ export default function Q4Page() {
                             {c.company_name}
                           </Link>
                           <span className="text-[11px] text-core-muted ml-1.5">{c.ticker}</span>
+                          {c.filing_url ? (
+                            <>
+                              <span className="text-core-line mx-1.5">·</span>
+                              <a
+                                href={c.filing_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] text-core-pink hover:underline"
+                                title="Open the filing submitted to BSE"
+                              >
+                                View filing ↗
+                              </a>
+                            </>
+                          ) : null}
                         </li>
                       ))}
                     </ul>

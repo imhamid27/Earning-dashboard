@@ -54,6 +54,7 @@ try {
         }
         "hourly" {
             & $py scripts\nse_results.py           2>&1 | Tee-Object -FilePath $logFile -Append
+            & $py scripts\bse_results.py           2>&1 | Tee-Object -FilePath $logFile -Append
             & $py scripts\fetch_results.py         2>&1 | Tee-Object -FilePath $logFile -Append
         }
         "backfill" {

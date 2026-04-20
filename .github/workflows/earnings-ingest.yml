@@ -97,14 +97,18 @@ jobs:
               python scripts/moneycontrol_calendar.py
               ;;
             hourly)
-              # Sweep 1 (reactive): poll every NIFTY-500 company for fresh
-              # NSE XBRL filings — catches companies we didn't know had
-              # announced.
+              # Sweep 1: poll every NIFTY-500 company for fresh NSE XBRL
+              # filings — catches companies we didn't know had announced.
               python scripts/nse_results.py
-              # Sweep 2 (triggered): for every company whose announcement
-              # has been confirmed but whose numbers are still missing,
-              # try NSE XBRL → Screener in priority order. Closes the
-              # gap between calendar detection and numbers landing on the
+              # Sweep 2: BSE filing-link poll. For every NIFTY-500 scrip,
+              # record the PDF URL on the matching announcement_events
+              # row so /q4 can surface 'View filing ↗' even before our
+              # numbers pipeline catches up from Screener.
+              python scripts/bse_results.py
+              # Sweep 3: for every company whose announcement has been
+              # confirmed but whose numbers are still missing, try NSE
+              # XBRL → Screener in priority order. Closes the gap
+              # between calendar detection and numbers landing on the
               # dashboard.
               python scripts/fetch_results.py
               ;;

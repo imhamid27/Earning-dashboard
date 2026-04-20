@@ -54,6 +54,7 @@ case "$MODE" in
     #    NSE XBRL → Screener until one yields numbers. Closes the gap
     #    between calendar detection and numbers landing on the dashboard.
     "$PY" scripts/nse_results.py            >> "$LOG_FILE" 2>&1
+    "$PY" scripts/bse_results.py            >> "$LOG_FILE" 2>&1
     "$PY" scripts/fetch_results.py          >> "$LOG_FILE" 2>&1
     ;;
   backfill)

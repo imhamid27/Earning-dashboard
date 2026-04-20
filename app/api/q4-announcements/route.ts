@@ -113,6 +113,7 @@ export async function GET(req: NextRequest) {
     revenue: number | null; net_profit: number | null; operating_profit: number | null;
     eps: number | null; data_quality_status: string;
     revenue_yoy: number | null; profit_yoy: number | null;
+    filing_url: string | null;
   };
   const undated: Company[] = [];
 
@@ -146,7 +147,7 @@ export async function GET(req: NextRequest) {
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
   const { data: pastEvents } = await sb
     .from("announcement_events")
-    .select("ticker,announcement_date,companies!inner(company_name,sector,industry,is_active)")
+    .select("ticker,announcement_date,raw_json,companies!inner(company_name,sector,industry,is_active)")
     .eq("status", "fetched")
     .eq("companies.is_active", true)
     .gte("announcement_date", ninetyDaysAgo)
@@ -164,6 +165,7 @@ export async function GET(req: NextRequest) {
     const numbers = numbersByTicker.get(e.ticker);
     const prior = priorByTicker.get(e.ticker);
     const info: any = (e as any).companies || {};
+    const raw: any = (e as any).raw_json || {};
     per.set(e.ticker, {
       ticker: e.ticker,
       company_name: info.company_name ?? e.ticker,
@@ -176,6 +178,7 @@ export async function GET(req: NextRequest) {
       data_quality_status: numbers?.data_quality_status ?? "partial",
       revenue_yoy: numbers ? pctChange(numbers.revenue, prior?.revenue ?? null) : null,
       profit_yoy:  numbers ? pctChange(numbers.net_profit, prior?.net_profit ?? null) : null,
+      filing_url:  typeof raw.filing_url === "string" ? raw.filing_url : null,
     });
   }
 
