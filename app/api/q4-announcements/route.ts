@@ -237,10 +237,16 @@ export async function GET(req: NextRequest) {
     }));
 
   const total_scheduled = future.reduce((n, d) => n + d.companies.length, 0);
+  // total_reported = distinct companies across past tabs (matches tab
+  // counts). Previously used rows.length from quarterly_financials, which
+  // undercounted because many announced companies don't have numbers
+  // fetched yet.
+  const reportedTickers = new Set<string>();
+  for (const d of past) for (const c of d.companies) reportedTickers.add(c.ticker);
 
   return jsonOk({
     quarter,
-    total_reported: (rows ?? []).length,
+    total_reported: reportedTickers.size,
     total_scheduled,
     dates: [...past, ...future],
     undated
