@@ -86,6 +86,24 @@ export default function DashboardPage() {
   }, [quarter]);
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  // Auto-refresh so the LIVE band picks up freshly-landed filings
+  // without the reader having to reload. Polls every 2 min while the
+  // tab is visible; also fires once immediately when the tab regains
+  // focus (user switching back after looking at a source PDF, etc.).
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") fetchAll();
+    }, 120_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") fetchAll();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [fetchAll]);
+
   // Date anchors used throughout — anchored to Asia/Kolkata so "today"
   // is India's "today", not the browser's local today (matters for
   // readers viewing from outside India or when a container's clock is
@@ -418,67 +436,11 @@ function TodayBand({
       {/* Scrollable tab content */}
       <div className="px-5 md:px-6 pb-5 md:pb-6 pt-4 md:pt-5 overflow-y-auto flex-1">
         {tab === "today" ? (
-          <>
-            {lead ? (
-              <Link
-                href={`/company/${encodeURIComponent(lead.ticker)}`}
-                className="block group"
-              >
-                <div className="flex items-baseline gap-2 flex-wrap mb-1.5">
-                  <span className="text-[9px] uppercase tracking-[0.22em] text-core-pink font-semibold">Lead</span>
-                  {lead.sector ? (
-                    <span className="text-[9px] uppercase tracking-[0.14em] text-white/60">{lead.sector}</span>
-                  ) : null}
-                  <span className="text-[10px] text-white/40 tabular-nums">· {lead.ticker}</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-6 items-baseline">
-                  <div className="md:col-span-5">
-                    <div className="font-sans font-bold tracking-tightest leading-[1.1] text-[20px] md:text-[24px] group-hover:text-core-pink transition-colors">
-                      {lead.company_name}
-                    </div>
-                  </div>
-                  <div className="md:col-span-3">
-                    <BigNumber label="Revenue" value={formatINR(lead.revenue)} delta={lead.revenue_yoy} dark />
-                  </div>
-                  <div className="md:col-span-3">
-                    <BigNumber label="Net profit" value={formatINR(lead.net_profit)} delta={lead.profit_yoy} dark />
-                  </div>
-                  <div className="hidden md:flex md:col-span-1 justify-end text-white/40 text-sm group-hover:text-core-pink transition-colors">→</div>
-                </div>
-              </Link>
-            ) : null}
-
-            {others.length > 0 ? (
-              <div className={`${lead ? "mt-4" : ""} divide-y divide-white/10 ${lead ? "border-t" : ""} border-white/10`}>
-                {others.map((r) => (
-                  <ReportedRowDark key={r.ticker} row={r} />
-                ))}
-              </div>
-            ) : null}
-
-            {pending.length > 0 ? (
-              <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1.5 text-[13px]">
-                <span className="text-[9px] uppercase tracking-[0.22em] text-white/60 mr-1">Filing pending</span>
-                {pending.map((p, i) => (
-                  <span key={p.ticker} className="whitespace-nowrap">
-                    <Link href={`/company/${encodeURIComponent(p.ticker)}`} className="text-white hover:text-core-pink">
-                      {p.company_name}
-                    </Link>
-                    {i < pending.length - 1 ? <span className="text-white/30 ml-3">·</span> : null}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-
-            {!hasActivity ? (
-              <div className="text-white/70 text-[13px]">
-                No Indian companies reported today.
-                {nextUp ? (
-                  <> Next up: <span className="text-white font-medium">{nextUp.company_name}</span> tomorrow.</>
-                ) : null}
-              </div>
-            ) : null}
-          </>
+          <TodayTableDark
+            reported={lead ? [lead, ...others] : others}
+            pending={pending}
+            nextUp={nextUp}
+          />
         ) : tab === "tomorrow" ? (
           <UpcomingTableDark items={tomorrow} emptyText="No filings scheduled tomorrow." />
         ) : tab === "week" ? (
@@ -512,30 +474,97 @@ function TabButton({ active, onClick, label, count }: {
   );
 }
 
-// Dense table row for a reported company (used on "Today" tab for
-// non-lead reporters). Columns: company · revenue+delta · profit+delta.
-function ReportedRowDark({ row }: { row: LatestQuarterRow }) {
+// Today tab — unified table. Reported companies get live numbers;
+// pending companies share the same row shape but with a muted
+// "Filing pending" placeholder in the numeric columns. Table fills
+// in as new filings land during the day (no reload required — the
+// parent re-fetches on interval or user interaction).
+function TodayTableDark({ reported, pending, nextUp }: {
+  reported: LatestQuarterRow[];
+  pending: UpcomingItem[];
+  nextUp: UpcomingItem | undefined;
+}) {
+  if (reported.length === 0 && pending.length === 0) {
+    return (
+      <div className="text-white/70 text-[13px]">
+        No Indian companies have reported today.
+        {nextUp ? (
+          <> Next up: <span className="text-white font-medium">{nextUp.company_name}</span> tomorrow.</>
+        ) : null}
+      </div>
+    );
+  }
   return (
-    <Link
-      href={`/company/${encodeURIComponent(row.ticker)}`}
-      className="grid grid-cols-12 gap-3 py-2 hover:bg-white/5 transition-colors text-[13px]"
-    >
-      <div className="col-span-12 md:col-span-5 min-w-0 flex items-baseline gap-2">
-        <span className="font-semibold truncate tracking-tightest">{row.company_name}</span>
-        <span className="text-[10px] text-white/40 tabular-nums hidden md:inline">{row.ticker}</span>
+    <div className="divide-y divide-white/10 border-t border-white/10">
+      <div className="grid grid-cols-12 gap-3 py-2 text-[9px] uppercase tracking-[0.14em] text-white/40 font-semibold">
+        <div className="col-span-12 md:col-span-5">Company</div>
+        <div className="hidden md:block md:col-span-3">Revenue · YoY</div>
+        <div className="hidden md:block md:col-span-3">Net profit · YoY</div>
+        <div className="hidden md:block md:col-span-1 text-right">Status</div>
       </div>
-      <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
-        <span className="text-[9px] uppercase tracking-[0.14em] text-white/40">Rev</span>
-        <span className="font-semibold tabular-nums truncate">{formatINR(row.revenue)}</span>
-        <DeltaChipDark value={row.revenue_yoy} />
-      </div>
-      <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
-        <span className="text-[9px] uppercase tracking-[0.14em] text-white/40">Prof</span>
-        <span className="font-semibold tabular-nums truncate">{formatINR(row.net_profit)}</span>
-        <DeltaChipDark value={row.profit_yoy} />
-      </div>
-      <div className="hidden md:flex col-span-1 items-center justify-end text-white/40">→</div>
-    </Link>
+
+      {/* Reported — sorted revenue-desc upstream */}
+      {reported.map((r) => (
+        <Link
+          key={r.ticker}
+          href={`/company/${encodeURIComponent(r.ticker)}`}
+          className="grid grid-cols-12 gap-3 py-2 hover:bg-white/5 transition-colors text-[13px]"
+        >
+          <div className="col-span-12 md:col-span-5 min-w-0">
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span className="font-semibold truncate tracking-tightest">{r.company_name}</span>
+              <span className="text-[10px] text-white/40 tabular-nums hidden lg:inline">{r.ticker}</span>
+            </div>
+            {r.sector ? (
+              <div className="text-[10px] text-white/40 uppercase tracking-[0.14em] mt-0.5 md:hidden">
+                {r.sector}
+              </div>
+            ) : null}
+          </div>
+          <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
+            <span className="font-semibold tabular-nums truncate">{formatINR(r.revenue)}</span>
+            <DeltaChipDark value={r.revenue_yoy} />
+          </div>
+          <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
+            <span className="font-semibold tabular-nums truncate">{formatINR(r.net_profit)}</span>
+            <DeltaChipDark value={r.profit_yoy} />
+          </div>
+          <div className="hidden md:flex md:col-span-1 items-center justify-end">
+            <span className="text-[9px] uppercase tracking-[0.14em] text-core-teal font-semibold">Filed</span>
+          </div>
+        </Link>
+      ))}
+
+      {/* Pending — same shape, muted metrics */}
+      {pending.map((p) => (
+        <Link
+          key={p.ticker + "_pending"}
+          href={`/company/${encodeURIComponent(p.ticker)}`}
+          className="grid grid-cols-12 gap-3 py-2 hover:bg-white/5 transition-colors text-[13px]"
+        >
+          <div className="col-span-12 md:col-span-5 min-w-0">
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span className="font-semibold truncate tracking-tightest text-white/70">{p.company_name}</span>
+              <span className="text-[10px] text-white/40 tabular-nums hidden lg:inline">{p.ticker}</span>
+            </div>
+            {p.sector ? (
+              <div className="text-[10px] text-white/40 uppercase tracking-[0.14em] mt-0.5 md:hidden">
+                {p.sector}
+              </div>
+            ) : null}
+          </div>
+          <div className="col-span-6 md:col-span-3 text-white/40 text-[12px] italic">
+            Awaiting filing
+          </div>
+          <div className="col-span-6 md:col-span-3 text-white/40 text-[12px] italic">
+            Awaiting filing
+          </div>
+          <div className="hidden md:flex md:col-span-1 items-center justify-end">
+            <span className="text-[9px] uppercase tracking-[0.14em] text-core-pink font-semibold">Pending</span>
+          </div>
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -607,42 +636,6 @@ function BellwetherTableDark({ items }: { items: LatestQuarterRow[] }) {
           </div>
         </Link>
       ))}
-    </div>
-  );
-}
-
-// Inline metric block — small kicker label + tight number + delta.
-// Used in the inverted TODAY band (dark=true). Tuned for density,
-// not display.
-function BigNumber({ label, value, delta, dark }: {
-  label: string; value: string; delta: number | null | undefined; dark?: boolean;
-}) {
-  const labelCls = dark ? "text-white/50" : "text-core-muted";
-  const valCls   = dark ? "text-white" : "text-core-ink";
-  const tone =
-    delta == null ? (dark ? "text-white/50" : "text-core-muted") :
-    delta > 0     ? "text-core-teal" :
-    delta < 0     ? "text-core-negative" : (dark ? "text-white/50" : "text-core-muted");
-  const sign = delta == null ? "" : delta > 0 ? "▲" : delta < 0 ? "▼" : "";
-  return (
-    <div>
-      <div className={`text-[9px] uppercase tracking-[0.22em] ${labelCls} font-semibold`}>
-        {label}
-      </div>
-      <div className={`mt-1 font-sans font-bold tabular-nums tracking-tightest leading-none text-[18px] md:text-[22px] ${valCls}`}>
-        {value}
-      </div>
-      <div className={`mt-1 text-[12px] font-semibold tabular-nums ${tone}`}>
-        {delta != null ? (
-          <>
-            <span className="text-[9px] mr-0.5">{sign}</span>
-            {formatPct(Math.abs(delta))}
-            <span className={`text-[9px] font-normal ml-1 uppercase tracking-wide ${dark ? "text-white/40" : "text-core-muted"}`}>
-              YoY
-            </span>
-          </>
-        ) : <span className="text-[11px]">— YoY</span>}
-      </div>
     </div>
   );
 }
