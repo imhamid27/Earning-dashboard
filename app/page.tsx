@@ -188,10 +188,31 @@ export default function DashboardPage() {
     };
   }, []);
 
-  // All companies that have filed Q4 FY26, with actual numbers.
+  // All companies that have filed Q4 FY26 with at least SOME numbers
+  // extracted. Full rows (rev + np) land first; partial rows (e.g. we
+  // parsed revenue but couldn't extract net profit from the PDF) appear
+  // with dashes in missing cells so the reader can still see what's
+  // available and click through to the filing. This is more honest than
+  // hiding partials entirely — they're real filings, just with one
+  // number stuck.
   const filed = useMemo(
     () => (board?.rows ?? [])
-      .filter((r) => r.status === "announced_with_numbers"),
+      .filter((r) =>
+        r.status === "announced_with_numbers" ||
+        (r.status === "announced" && (r.revenue != null || r.net_profit != null))
+      ),
+    [board]
+  );
+
+  // Companies that have officially announced but whose numbers haven't
+  // been extracted from the PDF yet (scanned images, non-standard
+  // templates, or Screener hasn't indexed). Shown below the main list
+  // so the reader can still see them with a PDF link.
+  const announcedNoNumbers = useMemo(
+    () => (board?.rows ?? [])
+      .filter((r) =>
+        r.status === "announced" && r.revenue == null && r.net_profit == null
+      ),
     [board]
   );
 
@@ -603,7 +624,12 @@ export default function DashboardPage() {
 
               <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
-                  All {sorted.length} that have filed · {quarter}
+                  All {sorted.length} with numbers · {quarter}
+                  {announcedNoNumbers.length > 0 ? (
+                    <span className="ml-2 text-core-pink">
+                      · {announcedNoNumbers.length} more filed · numbers pending
+                    </span>
+                  ) : null}
                 </span>
                 <label className="text-[10px] uppercase tracking-[0.14em] text-core-muted flex items-center gap-2">
                   Sort by
@@ -646,6 +672,70 @@ export default function DashboardPage() {
                     >
                       Next →
                     </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* "Filed but numbers pending" list — companies whose filing
+                  is confirmed but we haven't extracted numbers yet (scanned
+                  PDF, bespoke template, or Screener still catching up).
+                  Shown as a compact list with PDF links so the reader can
+                  still click through to the source document. */}
+              {announcedNoNumbers.length > 0 ? (
+                <div className="mt-8 pt-6 border-t border-core-line">
+                  <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
+                      Filed · numbers pending · {announcedNoNumbers.length}
+                    </span>
+                    <span className="text-[11px] text-core-muted italic">
+                      Board meeting confirmed. Numbers land once our parser
+                      resolves the filing or Screener indexes it.
+                    </span>
+                  </div>
+                  <div className="card overflow-x-auto">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Company</th>
+                          <th>Sector</th>
+                          <th>Announced</th>
+                          <th className="text-right">Filing</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {announcedNoNumbers.map((r) => (
+                          <tr key={r.ticker}>
+                            <td>
+                              <Link
+                                href={`/company/${encodeURIComponent(r.ticker)}`}
+                                className="font-semibold text-core-ink hover:text-core-pink"
+                              >
+                                {r.company_name}
+                              </Link>
+                              <div className="text-[11px] text-core-muted tabular-nums">{r.ticker}</div>
+                            </td>
+                            <td className="text-sm text-core-muted">{r.sector ?? "—"}</td>
+                            <td className="text-sm text-core-muted tabular-nums">
+                              {r.result_date ? formatDate(r.result_date) : "—"}
+                            </td>
+                            <td className="text-right">
+                              {r.filing_url ? (
+                                <a
+                                  href={r.filing_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[11px] font-medium text-core-pink hover:text-core-ink hover:underline"
+                                >
+                                  View filing ↗
+                                </a>
+                              ) : (
+                                <span className="text-[11px] text-core-muted italic">Awaiting filing</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ) : null}

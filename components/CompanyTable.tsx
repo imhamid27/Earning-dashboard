@@ -96,7 +96,12 @@ export default function CompanyTable({
         <tbody>
           {sorted.map((r) => {
             const notReported = !r.quarter_end_date;
-            const hasNumbers = r.status === "announced_with_numbers";
+            // "Has numbers" = at least one of rev/np is present. A partial
+            // row with just revenue still deserves a proper table row —
+            // dashes fill in for missing cells via formatINR(null) → "—".
+            const hasNumbers =
+              r.status === "announced_with_numbers" ||
+              (r.status === "announced" && (r.revenue != null || r.net_profit != null));
             const isUpOutlier   = highlightUp   && r.ticker === highlightUp;
             const isDownOutlier = highlightDown && r.ticker === highlightDown;
             const rowCls = notReported
