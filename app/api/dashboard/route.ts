@@ -139,6 +139,21 @@ export async function GET(req: NextRequest) {
     //   - awaiting               : nothing on file
 
     if (!latest) {
+      // A confirmed-filing event may exist even without quarterly_financials
+      // numbers yet — company announced today / recently but Screener /
+      // NSE XBRL haven't indexed the filing. Status should reflect that
+      // state, not "scheduled" (which reads as "future").
+      const announcedDate = lastAnnouncedByTicker.get(c.ticker) ?? null;
+      let status: LatestQuarterRow["status"];
+      let resultDate: string | null = null;
+      if (announcedDate) {
+        status = "announced";
+        resultDate = announcedDate;
+      } else if (nextDate) {
+        status = "scheduled";
+      } else {
+        status = "awaiting";
+      }
       return {
         company_id: c.id,
         company_name: c.company_name,
@@ -156,8 +171,8 @@ export async function GET(req: NextRequest) {
         fetched_at: "",
         revenue_trend: hist.slice(-8).map((r) => ({ q: r.quarter_label, v: r.revenue })),
         next_result_date: nextDate,
-        result_date: null,
-        status: nextDate ? "scheduled" : "awaiting"
+        result_date: resultDate,
+        status,
       };
     }
 

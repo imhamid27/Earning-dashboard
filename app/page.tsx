@@ -192,13 +192,31 @@ export default function DashboardPage() {
 
   // Pending today = has an event today but no numbers. Pulled from
   // upcoming (status=pending, date>=today) intersected with "date=today",
-  // which avoids double-counting companies we've already counted above.
-  const todayPending = useMemo(
-    () => upcoming
-      .filter((u) => u.next_result_date === todayIso)
-      .filter((u) => !todayReporters.some((r) => r.ticker === u.ticker)),
-    [upcoming, todayIso, todayReporters]
-  );
+  // PLUS dashboard rows with status='announced' and result_date=today —
+  // those are companies whose announcement event fired today but whose
+  // numbers haven't been indexed by Screener/NSE yet. Dedupe against
+  // reporters that already have numbers.
+  const todayPending = useMemo(() => {
+    const pendingFromUpcoming = upcoming
+      .filter((u) => u.next_result_date === todayIso);
+    const pendingFromAnnounced = (board?.rows ?? [])
+      .filter((r) => r.status === "announced" && r.result_date === todayIso)
+      .map((r) => ({
+        ticker: r.ticker,
+        company_name: r.company_name,
+        sector: r.sector,
+        next_result_date: todayIso,
+      }));
+    const seen = new Set<string>();
+    const all: UpcomingItem[] = [];
+    for (const u of [...pendingFromAnnounced, ...pendingFromUpcoming]) {
+      if (seen.has(u.ticker)) continue;
+      if (todayReporters.some((r) => r.ticker === u.ticker)) continue;
+      seen.add(u.ticker);
+      all.push(u);
+    }
+    return all;
+  }, [upcoming, todayIso, todayReporters, board]);
 
   // Tabs on the Live band use these.
   const tomorrowReporters = useMemo(
