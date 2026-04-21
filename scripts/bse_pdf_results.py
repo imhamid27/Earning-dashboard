@@ -67,6 +67,66 @@ import pdfplumber
 from curl_cffi import requests as cffi_requests
 from supabase import create_client
 
+# OCR deps are optional — the parser works without them on text-based PDFs.
+# We fall back to OCR only for scanned/image filings.
+try:
+    import fitz  # pymupdf, used for rasterising pages to images
+    import pytesseract
+    from PIL import Image
+    _OCR_AVAILABLE = True
+except ImportError:
+    _OCR_AVAILABLE = False
+
+
+def _try_ocr_fallback(pdf_bytes: bytes) -> str:
+    """Rasterise each page and run Tesseract OCR. Used only when pdfplumber
+    finds no financial-anchor text (scanned filings like Navkar Corp, ICICI
+    AMC, Aqylon). Returns concatenated OCR text for the first 20 pages, or
+    empty string if OCR isn't available / failed.
+
+    Why 20 pages: SEBI filings always front-load the financial table in the
+    first few pages. Going further is expensive (~2-5s per page) and only
+    gathers cover-letter prose / auditor's report which we don't need.
+    """
+    if not _OCR_AVAILABLE:
+        return ""
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    except Exception:
+        return ""
+    out: list[str] = []
+    try:
+        # Render each page at 2x scale (144 DPI equivalent) — good balance
+        # between OCR accuracy and throughput. Higher zoom helps with
+        # fine digits but slows the pipeline materially.
+        matrix = fitz.Matrix(2.0, 2.0)
+        for i in range(min(20, len(doc))):
+            try:
+                page = doc[i]
+                # Skip pages that already have ample embedded text — they
+                # don't need OCR.
+                existing = page.get_text() or ""
+                if len(existing) > 500 and any(
+                    anchor in existing.lower() for anchor in (
+                        "revenue from operations", "interest earned",
+                        "net premium earned"
+                    )
+                ):
+                    continue
+                pix = page.get_pixmap(matrix=matrix, alpha=False)
+                img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+                # PSM 6 treats the page as a single uniform block of text —
+                # works well for financial tables where rows are regular.
+                text = pytesseract.image_to_string(img, config="--psm 6")
+                if text:
+                    out.append(text)
+            except Exception:
+                # OCR errors per-page are non-fatal — we just skip that page.
+                continue
+    finally:
+        doc.close()
+    return "\n".join(out)
+
 
 SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
@@ -527,9 +587,24 @@ def parse_pdf(pdf_bytes: bytes) -> dict[str, Any]:
         pdf.close()
 
     result["text_chars"] = len(full)
-    if len(full) < 500:
-        result["error"] = "pdf appears image-scanned (no extractable text)"
-        return result
+
+    # OCR fallback: when pdfplumber extracts little or no text, or it extracts
+    # prose (cover letter) but no financial anchors, the financial TABLE is
+    # likely rasterised inside the PDF (scanned filing). Rasterise and OCR.
+    has_anchor = bool(re.search(
+        r"revenue\s+from\s+operations|interest\s+earned|net\s+premium\s+earned|"
+        r"income\s+from\s+operations",
+        full, re.IGNORECASE,
+    ))
+    if not has_anchor or len(full) < 500:
+        ocr_text = _try_ocr_fallback(pdf_bytes)
+        if ocr_text:
+            full = (full + "\n\n" + ocr_text) if full else ocr_text
+            result["text_chars"] = len(full)
+            result["ocr_applied"] = True
+        elif len(full) < 500:
+            result["error"] = "pdf appears image-scanned (OCR unavailable or failed)"
+            return result
 
     sections = split_sections(full)
     # Prefer consolidated. Fall back to standalone. Fall back to the

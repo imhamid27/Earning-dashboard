@@ -76,6 +76,19 @@ jobs:
           cache: 'pip'
           cache-dependency-path: scripts/requirements.txt
 
+      # Tesseract OCR binary + Poppler for pymupdf rasterisation. Only
+      # used by bse_pdf_results.py when it encounters a scanned/image PDF
+      # (Navkar Corp, ICICI AMC, Aqylon, etc.) — about 5-15% of BSE
+      # filings. Text-based PDFs skip this path entirely and parse
+      # instantly via pdfplumber.
+      - name: Install native OCR deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            tesseract-ocr \
+            poppler-utils
+          tesseract --version | head -1
+
       - name: Install Python deps
         run: pip install -r scripts/requirements.txt
 

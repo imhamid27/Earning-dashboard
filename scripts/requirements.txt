@@ -9,3 +9,11 @@ curl_cffi>=0.7.0
 # index lags the BSE filing by 2-12 hours; the PDF is live the moment the
 # announcement hits. Pure-Python — no Java runtime needed.
 pdfplumber>=0.11.0
+# OCR fallback for scanned-image result PDFs (Navkar Corp, ICICI AMC,
+# Aqylon, etc.). pymupdf rasterises pages → pytesseract OCRs. The native
+# tesseract binary is installed separately by CI (apt-get install
+# tesseract-ocr in the GitHub Actions workflow). Fitz (pymupdf) is also
+# a better text-extraction engine than pdfplumber for some filings.
+pymupdf>=1.24.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
