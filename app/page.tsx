@@ -55,6 +55,10 @@ function quarterAsCalendar(q: string): string {
   return `${label} ${year}`;
 }
 
+interface MarketContextResp {
+  as_of: string;
+  indices: Array<{ key: string; name: string; change_pct: number | null }>;
+}
 interface DashboardResp { quarter: string | null; rows: LatestQuarterRow[]; quarters: string[]; }
 interface SummaryResp {
   quarter: string | null;
@@ -77,6 +81,7 @@ export default function DashboardPage() {
   const [board, setBoard] = useState<DashboardResp | null>(null);
   const [summary, setSummary] = useState<SummaryResp | null>(null);
   const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
+  const [market, setMarket] = useState<MarketContextResp | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
@@ -94,15 +99,18 @@ export default function DashboardPage() {
   const fetchAll = useCallback(async () => {
     setError(null);
     try {
-      const [b, s, up] = await Promise.all([
+      const [b, s, up, mk] = await Promise.all([
         fetch(`/api/dashboard?quarter=${encodeURIComponent(quarter)}`).then((r) => r.json()),
         fetch(`/api/summary?quarter=${encodeURIComponent(quarter)}`).then((r) => r.json()),
-        fetch(`/api/upcoming`).then((r) => r.json())
+        fetch(`/api/upcoming`).then((r) => r.json()),
+        fetch(`/api/market-context`).then((r) => r.json()).catch(() => ({ ok: false }))
       ]);
       if (!b.ok) throw new Error(b.error || "dashboard failed");
       setBoard(b.data);
       setSummary(s.ok ? s.data : null);
       setUpcoming(up.ok ? up.data : []);
+      // Market is supporting context only — silent failure, keep last good value.
+      if (mk?.ok) setMarket(mk.data);
     } catch (err: any) { setError(err.message || "Failed to load"); }
   }, [quarter]);
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -326,6 +334,41 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {/* ==== MARKET CONTEXT STRIP ====
+          Supporting context only — not a primary signal. One line,
+          muted label, 3 indices, pct change with direction arrow.
+          Silent if the upstream fetch fails.
+       */}
+      {market && market.indices.some((i) => i.change_pct != null) ? (
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 py-2.5 text-[12px] border-y border-core-line mb-6">
+          <span className="text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold">
+            Markets
+          </span>
+          {market.indices.map((ix, i) => {
+            const up   = (ix.change_pct ?? 0) > 0;
+            const down = (ix.change_pct ?? 0) < 0;
+            const arrow = ix.change_pct == null ? "" : up ? "▲" : down ? "▼" : "■";
+            const cls = ix.change_pct == null
+              ? "text-core-muted"
+              : up ? "text-core-teal"
+              : down ? "text-core-negative"
+              : "text-core-muted";
+            return (
+              <span key={ix.key} className="whitespace-nowrap">
+                <span className="text-core-ink font-medium">{ix.name}</span>
+                <span className={`ml-1.5 tabular-nums font-semibold ${cls}`}>
+                  <span className="text-[10px] mr-0.5">{arrow}</span>
+                  {ix.change_pct != null ? formatPct(ix.change_pct) : "—"}
+                </span>
+                {i < market.indices.length - 1 ? (
+                  <span className="text-core-line-2 ml-4">·</span>
+                ) : null}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
 
       {/* =================================================================
           2. LIVE BAND — inverted black newsroom panel. Today's lead
