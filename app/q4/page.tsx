@@ -6,6 +6,7 @@ import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
 import TabScroller from "@/components/TabScroller";
 import FilingLoader from "@/components/FilingLoader";
+import PdfLink from "@/components/PdfLink";
 import { simplifyPurpose } from "@/lib/purpose";
 import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
 
@@ -210,17 +211,8 @@ export default function Q4Page() {
                               </Link>
                               <div className="text-[11px] text-core-muted flex items-center gap-2">
                                 <span>{c.ticker}</span>
-                                {c.filing_url ? (
-                                  <a
-                                    href={c.filing_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-core-pink hover:underline"
-                                    title="Open the filing submitted to BSE"
-                                  >
-                                    View filing ↗
-                                  </a>
-                                ) : null}
+                                <PdfLink url={c.filing_url} label="View filing" />
+
                               </div>
                             </td>
                             <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>

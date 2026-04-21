@@ -111,6 +111,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<SummaryResp | null>(null);
   const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
   const [market, setMarket] = useState<MarketContextResp | null>(null);
+  const [prices, setPrices] = useState<Record<string, { last_price: number | null; change_pct: number | null }>>({});
   const [error, setError] = useState<string | null>(null);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
@@ -128,11 +129,12 @@ export default function DashboardPage() {
   const fetchAll = useCallback(async () => {
     setError(null);
     try {
-      const [b, s, up, mk] = await Promise.all([
+      const [b, s, up, mk, px] = await Promise.all([
         fetch(`/api/dashboard?quarter=${encodeURIComponent(quarter)}`).then((r) => r.json()),
         fetch(`/api/summary?quarter=${encodeURIComponent(quarter)}`).then((r) => r.json()),
         fetch(`/api/upcoming`).then((r) => r.json()),
-        fetch(`/api/market-context`).then((r) => r.json()).catch(() => ({ ok: false }))
+        fetch(`/api/market-context`).then((r) => r.json()).catch(() => ({ ok: false })),
+        fetch(`/api/prices`).then((r) => r.json()).catch(() => ({ ok: false })),
       ]);
       if (!b.ok) throw new Error(b.error || "dashboard failed");
       setBoard(b.data);
@@ -140,6 +142,7 @@ export default function DashboardPage() {
       setUpcoming(up.ok ? up.data : []);
       // Market is supporting context only — silent failure, keep last good value.
       if (mk?.ok) setMarket(mk.data);
+      if (px?.ok && px.data?.prices) setPrices(px.data.prices);
     } catch (err: any) { setError(err.message || "Failed to load"); }
   }, [quarter]);
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -602,6 +605,7 @@ export default function DashboardPage() {
                 preserveOrder
                 highlightUp={surpriseMovers?.up.ticker}
                 highlightDown={surpriseMovers?.down.ticker}
+                prices={prices}
               />
               {totalPages > 1 ? (
                 <div className="mt-3 flex items-center justify-between text-xs text-core-muted">

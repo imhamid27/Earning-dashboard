@@ -1,0 +1,52 @@
+name: stock-prices
+
+# ===========================================================================
+# Universe-wide stock price refresh. Runs scripts/stock_prices.py which
+# batches yfinance.download() over all 1,076 active companies and writes
+# one stock_price snapshot per ticker to fetch_logs.
+#
+# Cadence:
+#   Every 15 min, 03:30–10:30 UTC (= 09:00–16:00 IST) weekdays — covers
+#   NSE/BSE regular session (09:15 open, 15:30 close) with a buffer on
+#   each side to catch pre-open auction and post-close updates.
+#
+# Runtime budget: ~60-90 seconds per run (6 batches × 10-15s). Well under
+# GitHub Actions' 5-min timeout configured below.
+#
+# The script itself purges stock_price rows older than 3 days at the
+# start of each run, so fetch_logs doesn't balloon unboundedly.
+# ===========================================================================
+
+on:
+  schedule:
+    # Every 15 minutes during (and around) market hours
+    - cron: '*/15 3-10 * * 1-5'
+  workflow_dispatch:
+
+# Only one price sweep at a time — if the previous run is still going
+# (e.g. Yahoo slow), drop the new one rather than queue.
+concurrency:
+  group: stock-prices
+  cancel-in-progress: true
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install Python deps
+        run: pip install -r scripts/requirements.txt
+
+      - name: Fetch stock prices
+        run: python scripts/stock_prices.py

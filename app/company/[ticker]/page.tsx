@@ -29,10 +29,18 @@ interface DetailResp {
   latest_filing_url?: string | null;
 }
 
+type PriceInfo = {
+  last_price: number | null; previous_close: number | null;
+  change_pct: number | null; day_high: number | null; day_low: number | null;
+  volume: number | null; updated_at: string;
+};
+
 export default function CompanyDetail() {
   const params = useParams<{ ticker: string }>();
   const ticker = decodeURIComponent(params.ticker);
   const [data, setData] = useState<DetailResp | null>(null);
+  const [price, setPrice] = useState<PriceInfo | null>(null);
+  const [priceStatus, setPriceStatus] = useState<"open" | "closed" | "stale" | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,6 +48,15 @@ export default function CompanyDetail() {
       .then((r) => r.json())
       .then((j) => (j.ok ? setData(j.data) : setErr(j.error)))
       .catch((e) => setErr(String(e)));
+    fetch(`/api/prices?tickers=${encodeURIComponent(ticker)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) {
+          setPrice(j.data.prices?.[ticker] ?? null);
+          setPriceStatus(j.data.market_status ?? null);
+        }
+      })
+      .catch(() => {});
   }, [ticker]);
 
   if (err) return (
@@ -89,6 +106,63 @@ export default function CompanyDetail() {
         </div>
         {latest ? <FreshnessIndicator fetchedAt={latest.fetched_at} /> : null}
       </section>
+
+      {/* Trading price card — always visible if we have a price, regardless
+          of whether quarterly data exists. Separates "what the market thinks
+          right now" from "what the company last reported". */}
+      {price && price.last_price != null ? (
+        <section className="card p-5 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-core-muted font-semibold flex items-center gap-2">
+              Trading price
+              {priceStatus === "open" ? (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.15em] text-core-teal">
+                  <span className="w-1 h-1 rounded-full bg-core-teal animate-pulse" />
+                  LIVE
+                </span>
+              ) : priceStatus === "closed" ? (
+                <span className="text-[9px] font-bold tracking-[0.15em] text-core-muted">CLOSED</span>
+              ) : null}
+            </div>
+            <div className="mt-2 flex items-baseline gap-4">
+              <div className="text-3xl md:text-4xl font-bold tabular-nums tracking-tightest">
+                ₹{price.last_price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              {price.change_pct != null ? (
+                <div className={`text-lg font-semibold tabular-nums ${price.change_pct >= 0 ? "text-core-teal" : "text-core-negative"}`}>
+                  {price.change_pct >= 0 ? "+" : ""}
+                  {(price.change_pct * 100).toFixed(2)}%
+                  {price.previous_close != null ? (
+                    <span className="ml-2 text-sm text-core-muted font-normal">
+                      vs ₹{price.previous_close.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-x-6 text-xs min-w-0">
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-core-muted">Day high</div>
+              <div className="mt-0.5 tabular-nums font-semibold">
+                {price.day_high != null ? `₹${price.day_high.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-core-muted">Day low</div>
+              <div className="mt-0.5 tabular-nums font-semibold">
+                {price.day_low != null ? `₹${price.day_low.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-core-muted">Volume</div>
+              <div className="mt-0.5 tabular-nums font-semibold">
+                {price.volume != null ? formatVolume(price.volume) : "—"}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {data.quarters.length === 0 ? (
         <EmptyState
@@ -235,6 +309,13 @@ function KPI({ label, value, sub }: { label: string; value: string; sub?: React.
       {sub ? <div className="mt-2 text-[11px]">{sub}</div> : null}
     </div>
   );
+}
+
+function formatVolume(v: number): string {
+  if (v >= 1e7) return `${(v / 1e7).toFixed(2)} Cr`;
+  if (v >= 1e5) return `${(v / 1e5).toFixed(1)} L`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(0)} K`;
+  return String(v);
 }
 
 function AboutField({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
