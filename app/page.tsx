@@ -238,21 +238,21 @@ export default function DashboardPage() {
           for current-quarter state, FIND A COMPANY for historical
           quarter browsing).
           ================================================================= */}
-      <section className="pt-6 md:pt-14 pb-6 md:pb-8">
-        <div className="flex items-start justify-between gap-6 flex-wrap">
+      <section className="pt-4 md:pt-8 pb-4 md:pb-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[10px] md:text-[11px] uppercase tracking-[0.14em] text-core-muted mb-3">
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[10px] uppercase tracking-[0.14em] text-core-muted mb-1.5">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-pink animate-pulse" />
               <span>India earnings</span>
               <span className="text-core-line-2">/</span>
               <span className="text-core-ink font-semibold">{quarter}</span>
               {cal ? <><span className="text-core-line-2">/</span><span>{cal}</span></> : null}
             </div>
-            <h1 className="font-sans font-bold tracking-tightest leading-[0.95] text-[clamp(2.5rem,6vw,4.75rem)]">
+            <h1 className="font-sans font-bold tracking-tightest leading-[0.95] text-[clamp(1.75rem,4.5vw,3.25rem)]">
               India Inc. Reporting
             </h1>
           </div>
-          <div className="shrink-0">
+          <div className="shrink-0 pt-1">
             {summary ? <FreshnessIndicator fetchedAt={summary.last_refreshed_at} /> : null}
           </div>
         </div>
@@ -277,79 +277,63 @@ export default function DashboardPage() {
       <DotDashDivider />
 
       {/* =================================================================
-          3. THE SEASON SO FAR — typographic display. Big revenue and
-          profit YoY numbers sit as a pair of editorial panels at the
-          top. A pull-quote below calls out sector leaders. Sector bar
-          chart moves into the support column below.
+          3. THE SEASON SO FAR — compact. Twin big-stat panels with
+          aggregates + inline pull-quote on sector leaders. Chart
+          sits directly beside, not below.
           ================================================================= */}
-      <section className="mt-12 md:mt-16">
-        <header className="flex items-baseline justify-between gap-4 flex-wrap mb-6 md:mb-8">
+      <section className="mt-10 md:mt-12">
+        <header className="flex items-baseline justify-between gap-4 flex-wrap mb-4">
           <div className="flex items-baseline gap-3 flex-wrap">
             <span className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] text-core-muted font-semibold">
               The season so far
             </span>
-            <span className="text-[13px] text-core-muted tabular-nums">
-              · {quarter} · {filed.length} {filed.length === 1 ? "reporter" : "reporters"}
+            <span className="text-[12px] text-core-muted tabular-nums">
+              · {quarter} · {filed.length} {filed.length === 1 ? "reporter" : "reporters"} · YoY vs {yoyQuarter(quarter)}
             </span>
           </div>
-          <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
-            YoY vs {yoyQuarter(quarter)}
-          </span>
         </header>
 
-        {/* Twin big-number panels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 border-y-2 border-core-ink">
-          <BigStat
-            label="Aggregate revenue"
-            value={summary?.avg_revenue_yoy ?? null}
-          />
-          <BigStat
-            label="Aggregate net profit"
-            value={summary?.avg_profit_yoy ?? null}
-            borderStart
-          />
-        </div>
-
-        {/* Pull-quote: sector leaders */}
-        {(seasonInsight.revLead || seasonInsight.profLead) ? (
-          <figure className="mt-10 md:mt-12 pl-6 md:pl-8 border-l-2 border-core-pink max-w-3xl">
-            <blockquote className="font-sans text-[22px] md:text-[28px] leading-[1.25] tracking-tightest">
-              {seasonInsight.revLead && seasonInsight.profLead && seasonInsight.revLead !== seasonInsight.profLead ? (
-                <>
-                  <span className="text-core-ink">{seasonInsight.revLead}</span>
-                  <span className="text-core-muted"> leads on revenue. </span>
-                  <span className="text-core-ink">{seasonInsight.profLead}</span>
-                  <span className="text-core-muted"> leads on profit.</span>
-                </>
-              ) : (seasonInsight.revLead || seasonInsight.profLead) ? (
-                <>
-                  <span className="text-core-ink">{seasonInsight.revLead || seasonInsight.profLead}</span>
-                  <span className="text-core-muted"> leads both revenue and profit growth.</span>
-                </>
-              ) : null}
-            </blockquote>
-            <figcaption className="mt-4 text-[11px] uppercase tracking-[0.14em] text-core-muted flex items-center gap-2">
-              <span className="inline-block w-1 h-1 bg-core-pink" />
-              <span>—</span>
-              <span className="inline-block w-3 h-[1px] bg-core-ink" />
-              <span>Sector leaders, {quarter}</span>
-            </figcaption>
-          </figure>
-        ) : null}
-
-        {/* Supporting chart — deemphasised */}
-        <div className="mt-10 md:mt-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-          <div className="md:col-span-4 flex flex-col gap-2">
-            <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
-              Sector breakdown
-            </span>
-            <p className="text-[13px] text-core-muted leading-snug">
-              Average revenue growth by sector across reporters so far. Positive
-              side favours sectors with expanding top lines this quarter.
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
+          {/* Left: aggregates + pull-quote */}
+          <div className="lg:col-span-6">
+            <div className="grid grid-cols-2 border-y-2 border-core-ink">
+              <BigStat
+                label="Aggregate revenue"
+                value={summary?.avg_revenue_yoy ?? null}
+              />
+              <BigStat
+                label="Aggregate net profit"
+                value={summary?.avg_profit_yoy ?? null}
+                borderStart
+              />
+            </div>
+            {(seasonInsight.revLead || seasonInsight.profLead) ? (
+              <figure className="mt-5 pl-4 border-l-2 border-core-pink">
+                <blockquote className="font-sans text-[15px] md:text-[17px] leading-[1.35] tracking-tight">
+                  {seasonInsight.revLead && seasonInsight.profLead && seasonInsight.revLead !== seasonInsight.profLead ? (
+                    <>
+                      <span className="text-core-ink font-semibold">{seasonInsight.revLead}</span>
+                      <span className="text-core-muted"> leads on revenue. </span>
+                      <span className="text-core-ink font-semibold">{seasonInsight.profLead}</span>
+                      <span className="text-core-muted"> leads on profit.</span>
+                    </>
+                  ) : (seasonInsight.revLead || seasonInsight.profLead) ? (
+                    <>
+                      <span className="text-core-ink font-semibold">{seasonInsight.revLead || seasonInsight.profLead}</span>
+                      <span className="text-core-muted"> leads both revenue and profit growth.</span>
+                    </>
+                  ) : null}
+                </blockquote>
+              </figure>
+            ) : null}
           </div>
-          <div className="md:col-span-8">
-            <SectorComparison rows={sectors?.sectors ?? []} metric="revenue_yoy" height={240} />
+
+          {/* Right: compact sector chart */}
+          <div className="lg:col-span-6">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2">
+              Sector · revenue YoY
+            </div>
+            <SectorComparison rows={sectors?.sectors ?? []} metric="revenue_yoy" height={180} />
           </div>
         </div>
       </section>
@@ -357,20 +341,15 @@ export default function DashboardPage() {
       <DotDashDivider />
 
       {/* =================================================================
-          4. COMING UP — horizontal calendar strip of the next 7 days.
-          Each day is a click-through cell showing a count; clicking
-          expands the list of companies for that day. Bellwethers still
-          to report are a visually distinct tile grid.
+          4. COMING UP — calendar strip + bellwethers. Both tight.
           ================================================================= */}
-      <section className="mt-12 md:mt-16">
-        <header className="flex items-baseline justify-between gap-4 flex-wrap mb-6 md:mb-8">
+      <section className="mt-10 md:mt-12">
+        <header className="flex items-baseline justify-between gap-4 flex-wrap mb-4">
           <div className="flex items-baseline gap-3">
             <span className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] text-core-muted font-semibold">
               Coming up
             </span>
-            <span className="text-[13px] text-core-muted">
-              · Next 7 days
-            </span>
+            <span className="text-[12px] text-core-muted">· Next 7 days</span>
           </div>
           <Link href="/upcoming" className="text-xs link-pink">
             Full calendar →
@@ -380,8 +359,8 @@ export default function DashboardPage() {
         <CalendarStrip upcoming={upcoming} todayIso={todayIso} />
 
         {majorsPending.length > 0 ? (
-          <div className="mt-10 md:mt-12">
-            <div className="flex items-baseline justify-between gap-3 flex-wrap mb-4">
+          <div className="mt-6">
+            <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
               <span className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold">
                 Big names still to report
               </span>
@@ -389,17 +368,17 @@ export default function DashboardPage() {
                 {majorsPending.length} pending
               </span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5 md:gap-2">
               {majorsPending.map((r) => (
                 <Link
                   key={r.ticker}
                   href={`/company/${encodeURIComponent(r.ticker)}`}
-                  className="group block border border-core-line bg-white p-3.5 hover:border-core-ink transition-colors"
+                  className="group block border border-core-line bg-white px-2.5 py-2 hover:border-core-ink transition-colors"
                 >
-                  <div className="text-[13px] font-semibold tracking-tightest leading-tight truncate group-hover:text-core-pink transition-colors">
+                  <div className="text-[12px] font-semibold tracking-tightest leading-tight truncate group-hover:text-core-pink transition-colors">
                     {r.company_name.replace(/ Limited$| Ltd\.?$| Industries$/i, "").trim()}
                   </div>
-                  <div className="mt-2 text-[10px] uppercase tracking-[0.14em] text-core-muted flex items-center gap-1.5">
+                  <div className="mt-1 text-[9px] uppercase tracking-[0.14em] text-core-muted flex items-center gap-1">
                     <span className="inline-block w-1 h-1 bg-core-pink rounded-full" />
                     {r.next_result_date ? formatDate(r.next_result_date) : "Unscheduled"}
                   </div>
@@ -510,17 +489,15 @@ export default function DashboardPage() {
 function DotDashDivider() {
   return (
     <div
-      className="my-12 md:my-16 flex items-center justify-center gap-2 text-core-line-2 select-none"
+      className="my-8 md:my-10 flex items-center justify-center gap-1.5 text-core-line-2 select-none"
       aria-hidden
     >
       <span className="inline-block w-1 h-1 rounded-full bg-core-ink" />
-      <span className="inline-block w-8 h-[1px] bg-core-ink" />
-      <span className="inline-block w-1 h-1 rounded-full bg-core-ink" />
-      <span className="inline-block w-16 h-[1px] bg-core-line" />
+      <span className="inline-block w-6 h-[1px] bg-core-ink" />
+      <span className="inline-block w-12 h-[1px] bg-core-line" />
       <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-pink" />
-      <span className="inline-block w-16 h-[1px] bg-core-line" />
-      <span className="inline-block w-1 h-1 rounded-full bg-core-ink" />
-      <span className="inline-block w-8 h-[1px] bg-core-ink" />
+      <span className="inline-block w-12 h-[1px] bg-core-line" />
+      <span className="inline-block w-6 h-[1px] bg-core-ink" />
       <span className="inline-block w-1 h-1 rounded-full bg-core-ink" />
     </div>
   );
@@ -550,60 +527,56 @@ function TodayBand({
   const hasActivity = filedCount > 0 || pending.length > 0;
 
   return (
-    <section className="bg-core-ink text-white rounded-xl overflow-hidden">
-      <div className="p-6 md:p-10">
-        {/* Header: day marker + live status */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/60 font-semibold mb-2">
+    <section className="bg-core-ink text-white rounded-lg overflow-hidden">
+      <div className="p-5 md:p-6">
+        {/* Header row: live kicker + day marker + count, all on one line */}
+        <div className="flex items-baseline justify-between gap-4 flex-wrap">
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/60 font-semibold">
               <span className={`inline-block w-1.5 h-1.5 rounded-full ${hasActivity ? "bg-core-pink animate-pulse" : "bg-white/30"}`} />
               <span>Today · Live</span>
             </div>
-            <div className="flex items-baseline gap-3 flex-wrap">
-              <h2 className="font-sans font-bold tracking-tightest leading-none text-[clamp(2rem,5vw,3.5rem)]">
-                {dayOfWeek}
-              </h2>
-              <span className="text-[clamp(1.25rem,2vw,1.75rem)] font-bold tabular-nums tracking-tightest text-white/50">
-                {dayShort}
-              </span>
-            </div>
+            <h2 className="text-[20px] md:text-[24px] font-bold tracking-tightest leading-none">
+              {dayOfWeek} <span className="text-white/50 font-semibold">{dayShort}</span>
+            </h2>
           </div>
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-white/60">
-              {filedCount} filed{pending.length > 0 ? ` · ${pending.length} expected` : ""}
-            </div>
+          <div className="text-[11px] uppercase tracking-[0.14em] text-white/60">
+            {filedCount} filed{pending.length > 0 ? ` · ${pending.length} expected` : ""}
           </div>
         </div>
 
-        {/* Lead reporter — display-size numbers */}
+        {/* Lead reporter — tighter numbers, single-row layout on md+ */}
         {lead ? (
-          <div className="mt-8 md:mt-10">
-            <Link
-              href={`/company/${encodeURIComponent(lead.ticker)}`}
-              className="block group"
-            >
-              <div className="flex items-baseline gap-3 flex-wrap">
-                <span className="text-[10px] uppercase tracking-[0.22em] text-white/60">
-                  Lead reporter
+          <Link
+            href={`/company/${encodeURIComponent(lead.ticker)}`}
+            className="mt-5 md:mt-6 block group"
+          >
+            <div className="flex items-baseline gap-2 flex-wrap mb-1.5">
+              <span className="text-[9px] uppercase tracking-[0.22em] text-core-pink font-semibold">
+                Lead
+              </span>
+              {lead.sector ? (
+                <span className="text-[9px] uppercase tracking-[0.14em] text-white/60">
+                  {lead.sector}
                 </span>
-                {lead.sector ? (
-                  <span className="text-[10px] uppercase tracking-[0.14em] text-core-pink">
-                    {lead.sector}
-                  </span>
-                ) : null}
+              ) : null}
+              <span className="text-[10px] text-white/40 tabular-nums">· {lead.ticker}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-baseline">
+              <div className="md:col-span-5">
+                <div className="font-sans font-bold tracking-tightest leading-[1.1] text-[22px] md:text-[28px] group-hover:text-core-pink transition-colors">
+                  {lead.company_name}
+                </div>
               </div>
-              <div className="mt-2 font-sans font-bold tracking-tightest leading-[1.05] text-[clamp(1.75rem,4vw,3rem)] group-hover:text-core-pink transition-colors">
-                {lead.company_name}
-              </div>
-              <div className="text-[11px] text-white/50 tabular-nums mt-1">{lead.ticker}</div>
-
-              <div className="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-2 gap-y-6 md:gap-x-12">
+              <div className="md:col-span-3">
                 <BigNumber
                   label="Revenue"
                   value={formatINR(lead.revenue)}
                   delta={lead.revenue_yoy}
                   dark
                 />
+              </div>
+              <div className="md:col-span-3">
                 <BigNumber
                   label="Net profit"
                   value={formatINR(lead.net_profit)}
@@ -611,43 +584,35 @@ function TodayBand({
                   dark
                 />
               </div>
-              <div className="mt-6 inline-flex items-center gap-2 text-[12px] text-white/70 group-hover:text-core-pink transition-colors">
-                Full results <span aria-hidden>→</span>
-              </div>
-            </Link>
-          </div>
+              <div className="hidden md:flex md:col-span-1 justify-end text-white/40 text-sm group-hover:text-core-pink transition-colors">→</div>
+            </div>
+          </Link>
         ) : null}
 
-        {/* Other reporters today — compact inverted rows */}
+        {/* Other reporters today — dense single-line rows */}
         {others.length > 0 ? (
-          <div className="mt-8 md:mt-10 divide-y divide-white/10 border-y border-white/10">
+          <div className="mt-4 md:mt-5 divide-y divide-white/10 border-t border-white/10">
             {others.map((r) => (
               <Link
                 key={r.ticker}
                 href={`/company/${encodeURIComponent(r.ticker)}`}
-                className="grid grid-cols-12 gap-3 py-3 hover:bg-white/5 transition-colors"
+                className="grid grid-cols-12 gap-3 py-2 hover:bg-white/5 transition-colors text-[13px]"
               >
-                <div className="col-span-12 md:col-span-5 min-w-0">
-                  <div className="font-semibold truncate tracking-tightest">{r.company_name}</div>
-                  <div className="text-[10px] uppercase tracking-[0.14em] text-white/40">
-                    {r.ticker}{r.sector ? <> · {r.sector}</> : null}
-                  </div>
+                <div className="col-span-12 md:col-span-5 min-w-0 flex items-baseline gap-2">
+                  <span className="font-semibold truncate tracking-tightest">{r.company_name}</span>
+                  <span className="text-[10px] text-white/40 tabular-nums hidden md:inline">{r.ticker}</span>
                 </div>
-                <div className="col-span-6 md:col-span-3 min-w-0">
-                  <div className="text-[9px] uppercase tracking-[0.14em] text-white/40">Revenue</div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-semibold tabular-nums">{formatINR(r.revenue)}</span>
-                    <DeltaChipDark value={r.revenue_yoy} />
-                  </div>
+                <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
+                  <span className="text-[9px] uppercase tracking-[0.14em] text-white/40">Rev</span>
+                  <span className="font-semibold tabular-nums truncate">{formatINR(r.revenue)}</span>
+                  <DeltaChipDark value={r.revenue_yoy} />
                 </div>
-                <div className="col-span-6 md:col-span-3 min-w-0">
-                  <div className="text-[9px] uppercase tracking-[0.14em] text-white/40">Profit</div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-semibold tabular-nums">{formatINR(r.net_profit)}</span>
-                    <DeltaChipDark value={r.profit_yoy} />
-                  </div>
+                <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
+                  <span className="text-[9px] uppercase tracking-[0.14em] text-white/40">Prof</span>
+                  <span className="font-semibold tabular-nums truncate">{formatINR(r.net_profit)}</span>
+                  <DeltaChipDark value={r.profit_yoy} />
                 </div>
-                <div className="hidden md:flex col-span-1 items-center justify-end text-white/40 text-xs">→</div>
+                <div className="hidden md:flex col-span-1 items-center justify-end text-white/40">→</div>
               </Link>
             ))}
           </div>
@@ -655,8 +620,8 @@ function TodayBand({
 
         {/* Pending today */}
         {pending.length > 0 ? (
-          <div className="mt-8 flex flex-wrap items-baseline gap-x-3 gap-y-2 text-sm">
-            <span className="text-[10px] uppercase tracking-[0.22em] text-white/60 mr-1">
+          <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1.5 text-[13px]">
+            <span className="text-[9px] uppercase tracking-[0.22em] text-white/60 mr-1">
               Filing pending
             </span>
             {pending.map((p, i) => (
@@ -672,7 +637,7 @@ function TodayBand({
 
         {/* Empty state */}
         {!hasActivity ? (
-          <div className="mt-8 text-white/70 text-sm md:text-base">
+          <div className="mt-4 text-white/70 text-[13px]">
             No Indian companies reported today.
             {nextUp ? (
               <> Next up: <span className="text-white font-medium">{nextUp.company_name}</span> tomorrow.</>
@@ -684,12 +649,13 @@ function TodayBand({
   );
 }
 
-// Display-size number with a small kicker label. Used on the inverted
-// TODAY band (dark=true) and potentially elsewhere.
+// Inline metric block — small kicker label + tight number + delta.
+// Used in the inverted TODAY band (dark=true). Tuned for density,
+// not display.
 function BigNumber({ label, value, delta, dark }: {
   label: string; value: string; delta: number | null | undefined; dark?: boolean;
 }) {
-  const labelCls = dark ? "text-white/60" : "text-core-muted";
+  const labelCls = dark ? "text-white/50" : "text-core-muted";
   const valCls   = dark ? "text-white" : "text-core-ink";
   const tone =
     delta == null ? (dark ? "text-white/50" : "text-core-muted") :
@@ -698,22 +664,22 @@ function BigNumber({ label, value, delta, dark }: {
   const sign = delta == null ? "" : delta > 0 ? "▲" : delta < 0 ? "▼" : "";
   return (
     <div>
-      <div className={`text-[10px] uppercase tracking-[0.22em] ${labelCls} font-semibold`}>
+      <div className={`text-[9px] uppercase tracking-[0.22em] ${labelCls} font-semibold`}>
         {label}
       </div>
-      <div className={`mt-2 font-sans font-bold tabular-nums tracking-tightest leading-none text-[clamp(2rem,4.5vw,3.25rem)] ${valCls}`}>
+      <div className={`mt-1 font-sans font-bold tabular-nums tracking-tightest leading-none text-[18px] md:text-[22px] ${valCls}`}>
         {value}
       </div>
-      <div className={`mt-2 text-sm font-semibold tabular-nums ${tone}`}>
+      <div className={`mt-1 text-[12px] font-semibold tabular-nums ${tone}`}>
         {delta != null ? (
           <>
-            <span className="text-[10px] mr-1">{sign}</span>
+            <span className="text-[9px] mr-0.5">{sign}</span>
             {formatPct(Math.abs(delta))}
-            <span className={`text-[10px] font-normal ml-2 uppercase tracking-wide ${dark ? "text-white/50" : "text-core-muted"}`}>
+            <span className={`text-[9px] font-normal ml-1 uppercase tracking-wide ${dark ? "text-white/40" : "text-core-muted"}`}>
               YoY
             </span>
           </>
-        ) : <span className="text-xs">— YoY</span>}
+        ) : <span className="text-[11px]">— YoY</span>}
       </div>
     </div>
   );
@@ -735,8 +701,8 @@ function DeltaChipDark({ value }: { value: number | null | undefined }) {
   );
 }
 
-// BigStat — twin panels on the SEASON section. Giant YoY number with
-// tiny caps label and a thin "up/down" direction marker.
+// BigStat — twin panels on the SEASON section. YoY number sized for
+// presence but not dominance; paired with a thin direction marker.
 function BigStat({ label, value, borderStart }: {
   label: string; value: number | null; borderStart?: boolean;
 }) {
@@ -746,17 +712,17 @@ function BigStat({ label, value, borderStart }: {
     value < 0     ? "text-core-negative" : "text-core-muted";
   const sign = value == null ? "" : value > 0 ? "↑" : value < 0 ? "↓" : "";
   return (
-    <div className={`p-6 md:p-10 ${borderStart ? "md:border-l border-core-ink" : ""}`}>
+    <div className={`px-4 py-4 md:px-6 md:py-5 ${borderStart ? "md:border-l border-core-ink" : ""}`}>
       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold">
         <span className="inline-block w-2 h-[2px] bg-core-ink" />
         {label}
       </div>
-      <div className={`mt-4 md:mt-6 font-sans font-bold tracking-tightest leading-none tabular-nums text-[clamp(3rem,9vw,6rem)] ${tone}`}>
+      <div className={`mt-2 font-sans font-bold tracking-tightest leading-none tabular-nums text-[36px] md:text-[48px] ${tone}`}>
         <span className="text-[0.55em] align-top mr-1 font-semibold">{sign}</span>
         {value != null ? formatPct(Math.abs(value)) : "—"}
       </div>
-      <div className="mt-3 text-[11px] uppercase tracking-[0.14em] text-core-muted">
-        {value == null ? "Not enough reporters" : `Year on year · all reporters`}
+      <div className="mt-2 text-[10px] uppercase tracking-[0.14em] text-core-muted">
+        {value == null ? "Not enough reporters" : "YoY · all reporters"}
       </div>
     </div>
   );
@@ -797,7 +763,7 @@ function CalendarStrip({ upcoming, todayIso }: {
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1.5 md:gap-2">
+      <div className="grid grid-cols-7 gap-1 md:gap-1.5">
         {days.map((d) => {
           const isActive = d.iso === openDay;
           const isToday  = d.iso === todayIso;
@@ -806,7 +772,7 @@ function CalendarStrip({ upcoming, todayIso }: {
             <button
               key={d.iso}
               onClick={() => setOpenDay(d.iso)}
-              className={`text-left p-2.5 md:p-3.5 border transition-colors ${
+              className={`text-left px-2 py-1.5 md:px-2.5 md:py-2 border transition-colors ${
                 isActive
                   ? "bg-core-ink text-white border-core-ink"
                   : hasItems
@@ -814,14 +780,14 @@ function CalendarStrip({ upcoming, todayIso }: {
                     : "bg-core-surface border-core-line text-core-muted"
               }`}
             >
-              <div className={`text-[9px] md:text-[10px] uppercase tracking-[0.14em] ${isActive ? "text-white/70" : "text-core-muted"}`}>
+              <div className={`text-[9px] uppercase tracking-[0.14em] ${isActive ? "text-white/70" : "text-core-muted"}`}>
                 {d.dow}
               </div>
-              <div className={`mt-0.5 md:mt-1 text-[18px] md:text-[22px] font-bold tabular-nums tracking-tightest leading-none ${isToday && !isActive ? "text-core-pink" : ""}`}>
+              <div className={`text-[14px] md:text-[16px] font-bold tabular-nums tracking-tightest leading-none ${isToday && !isActive ? "text-core-pink" : ""}`}>
                 {d.num}
               </div>
-              <div className={`mt-1 md:mt-1.5 text-[10px] md:text-[11px] tabular-nums ${isActive ? "text-white/80" : hasItems ? "text-core-ink font-semibold" : "text-core-muted"}`}>
-                {hasItems ? `${d.items.length} ${d.items.length === 1 ? "company" : "cos"}` : "—"}
+              <div className={`mt-0.5 text-[10px] tabular-nums ${isActive ? "text-white/80" : hasItems ? "text-core-ink font-semibold" : "text-core-muted"}`}>
+                {hasItems ? `${d.items.length}` : "—"}
               </div>
             </button>
           );
@@ -830,25 +796,22 @@ function CalendarStrip({ upcoming, todayIso }: {
 
       {/* Expanded day panel */}
       {active && active.items.length > 0 ? (
-        <div className="mt-4 md:mt-5 p-4 md:p-5 border border-core-line bg-white">
-          <div className="flex items-baseline justify-between gap-3 flex-wrap mb-3">
+        <div className="mt-3 px-3 py-2.5 border border-core-line bg-white">
+          <div className="flex items-baseline justify-between gap-3 flex-wrap mb-1.5">
             <span className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold">
               {active.iso === todayIso ? "Today" : formatDate(active.iso)}
             </span>
-            <span className="text-[11px] text-core-muted tabular-nums">
+            <span className="text-[10px] text-core-muted tabular-nums">
               {active.items.length} reporting
             </span>
           </div>
-          <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <ul className="flex flex-wrap gap-x-3.5 gap-y-1 text-[13px]">
             {active.items.slice(0, 24).map((u, i) => (
               <li key={u.ticker + u.next_result_date} className="whitespace-nowrap">
                 <Link href={`/company/${encodeURIComponent(u.ticker)}`} className="font-medium hover:text-core-pink">
                   {u.company_name}
                 </Link>
-                {u.sector ? (
-                  <span className="text-[10px] text-core-muted ml-1.5">· {u.sector}</span>
-                ) : null}
-                {i < Math.min(active.items.length, 24) - 1 ? <span className="text-core-line-2 ml-3">·</span> : null}
+                {i < Math.min(active.items.length, 24) - 1 ? <span className="text-core-line-2 ml-2">·</span> : null}
               </li>
             ))}
             {active.items.length > 24 ? (
@@ -857,7 +820,7 @@ function CalendarStrip({ upcoming, todayIso }: {
           </ul>
         </div>
       ) : active ? (
-        <div className="mt-4 md:mt-5 p-4 md:p-5 border border-core-line bg-core-surface text-sm text-core-muted">
+        <div className="mt-3 px-3 py-2.5 border border-core-line bg-core-surface text-[13px] text-core-muted">
           No companies scheduled on {formatDate(active.iso)}.
         </div>
       ) : null}
