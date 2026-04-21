@@ -76,7 +76,7 @@ export default function CompanyTable({
           <tr>
             <Th k="company_name" label="Company" {...{ sortKey, sortDir, onSort }} />
             <Th k="sector" label="Sector" {...{ sortKey, sortDir, onSort }} />
-            <th>Status</th>
+            <th>Date</th>
             <Th k="revenue"     label="Revenue"    align="right" {...{ sortKey, sortDir, onSort }} />
             <Th k="revenue_yoy" label="Rev YoY"    align="right" {...{ sortKey, sortDir, onSort }} />
             <Th k="net_profit"  label="Net profit" align="right" {...{ sortKey, sortDir, onSort }} />
