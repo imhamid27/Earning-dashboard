@@ -100,15 +100,25 @@ export default function DashboardPage() {
   }, [quarter]);
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Date anchors used throughout.
+  // Date anchors used throughout — anchored to Asia/Kolkata so "today"
+  // is India's "today", not the browser's local today (matters for
+  // readers viewing from outside India or when a container's clock is
+  // in UTC and we're near the midnight boundary).
   const { todayIso, tomorrowIso, weekEndIso } = useMemo(() => {
-    const t = new Date(); t.setHours(0, 0, 0, 0);
-    const tom = new Date(t.getTime() + 86_400_000);
-    const wk  = new Date(t.getTime() + 6 * 86_400_000);
+    // en-CA locale formats as YYYY-MM-DD — perfect for ISO date compare.
+    const fmt = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric", month: "2-digit", day: "2-digit"
+    });
+    const now = new Date();
+    const add = (days: number) => {
+      const d = new Date(now.getTime() + days * 86_400_000);
+      return fmt.format(d);
+    };
     return {
-      todayIso:    t.toISOString().slice(0, 10),
-      tomorrowIso: tom.toISOString().slice(0, 10),
-      weekEndIso:  wk.toISOString().slice(0, 10)
+      todayIso:    add(0),
+      tomorrowIso: add(1),
+      weekEndIso:  add(6)
     };
   }, []);
 
@@ -521,8 +531,14 @@ function TodayBand({
   nextUp: UpcomingItem | undefined;
   quarter: string;
 }) {
-  const dayOfWeek = new Date(todayIso + "T00:00:00").toLocaleDateString("en-US", { weekday: "long" });
-  const dayShort  = new Date(todayIso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  // Use todayIso as a simple YYYY-MM-DD string and format the day
+  // markers from it in IST-neutral parts. Parsing 'YYYY-MM-DD' as
+  // midnight local is fine — we only ever read the weekday + day of
+  // month, both of which are stable within any tz for a given ISO date.
+  const [yy, mm, dd] = todayIso.split("-").map(Number);
+  const dayDate = new Date(yy, (mm ?? 1) - 1, dd ?? 1);
+  const dayOfWeek = dayDate.toLocaleDateString("en-US", { weekday: "long" });
+  const dayShort  = dayDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   const filedCount = (lead ? 1 : 0) + others.length;
   const hasActivity = filedCount > 0 || pending.length > 0;
 
@@ -735,11 +751,15 @@ function CalendarStrip({ upcoming, todayIso }: {
 }) {
   const [openDay, setOpenDay] = useState<string | null>(null);
   const days = useMemo(() => {
-    const start = new Date(todayIso + "T00:00:00");
+    // Parse todayIso (YYYY-MM-DD, already IST-anchored by the parent)
+    // as a local-midnight Date; incrementing by calendar days is
+    // safest via direct Y/M/D math rather than adding 86.4M ms (DST
+    // is moot in IST but the pattern is cleaner).
+    const [y, m, d0] = todayIso.split("-").map(Number);
     const out: { iso: string; dow: string; num: string; items: UpcomingItem[] }[] = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(start.getTime() + i * 86_400_000);
-      const iso = d.toISOString().slice(0, 10);
+      const d = new Date(y, (m ?? 1) - 1, (d0 ?? 1) + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const items = upcoming.filter((u) => u.next_result_date === iso);
       out.push({
         iso,
