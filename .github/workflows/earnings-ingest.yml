@@ -126,6 +126,10 @@ jobs:
               # between calendar detection and numbers landing on the
               # dashboard.
               python scripts/fetch_results.py
+              # Sweep 4: take a cheap market-context snapshot (Nifty,
+              # Sensex, Bank Nifty) so the dashboard strip has fresh
+              # data without hitting Yahoo at request-time.
+              python scripts/market_snapshot.py
               ;;
             backfill)
               # Light weekly sweep: only the latest quarter per company +
