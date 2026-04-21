@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { supabaseServer } from "@/lib/supabase";
 import { jsonOk, jsonError } from "@/lib/api";
 
 // GET /api/market-context
@@ -28,6 +27,11 @@ import { jsonOk, jsonError } from "@/lib/api";
 // entirely if the response is an error or every value is null.
 
 export const dynamic = "force-dynamic";
+// Supabase client uses global fetch under the hood; Next.js otherwise
+// caches those calls indefinitely in production builds, which pinned
+// this route to the first snapshot on server start. Force every
+// fetch — Supabase included — to bypass the cache.
+export const fetchCache = "force-no-store";
 
 const ORDER: Array<{ key: string; ticker: string; fallbackName: string }> = [
   { key: "nifty50",    ticker: "^NSEI",    fallbackName: "Nifty 50"   },
@@ -39,26 +43,48 @@ const MAX_STALE_MS = 2 * 60 * 60 * 1000; // 2 hours — past this we'd rather
                                          // hide than show stale data.
 
 export async function GET(_req: NextRequest) {
-  const sb = supabaseServer();
-  const tickers = ORDER.map((o) => o.ticker);
-  const { data, error } = await sb
-    .from("fetch_logs")
-    .select("ticker,message,fetched_at")
-    .eq("source", "market_snapshot")
-    .in("ticker", tickers)
-    .order("fetched_at", { ascending: false })
-    .limit(60); // 3 indices × up to 20 recent snapshots — plenty to dedupe.
-  if (error) return jsonError(error.message, 500);
+  const url  = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key  = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return jsonError("supabase env missing", 500);
+
+  // Go direct to PostgREST instead of through supabase-js so we can
+  // pass cache:'no-store' on the underlying fetch. supabase-js's
+  // bundled fetch gets cached by Next's data cache otherwise.
+  const params = new URLSearchParams({
+    select: "ticker,message,fetched_at",
+    source: "eq.market_snapshot",
+    ticker: `in.(${ORDER.map((o) => `"${o.ticker}"`).join(",")})`,
+    order: "fetched_at.desc",
+    limit: "60",
+  });
+  const r = await fetch(`${url}/rest/v1/fetch_logs?${params.toString()}`, {
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+    },
+    cache: "no-store",
+  });
+  if (!r.ok) return jsonError(`supabase ${r.status}`, 500);
+  const data = (await r.json()) as Array<{
+    ticker: string;
+    message: string | null;
+    fetched_at: string;
+  }>;
 
   // Keep the most-recent row per ticker.
-  const latest = new Map<string, { change_pct: number | null; name: string; fetched_at: string }>();
+  const latest = new Map<string, {
+    change_pct: number | null;
+    last_price: number | null;
+    name: string;
+    fetched_at: string;
+  }>();
   for (const row of data ?? []) {
     if (latest.has(row.ticker)) continue;
     try {
       const parsed = JSON.parse(row.message || "{}");
-      const change = typeof parsed.change_pct === "number" ? parsed.change_pct : null;
       latest.set(row.ticker, {
-        change_pct: change,
+        change_pct: typeof parsed.change_pct === "number" ? parsed.change_pct : null,
+        last_price: typeof parsed.last_price === "number" ? parsed.last_price : null,
         name: typeof parsed.name === "string" ? parsed.name : "",
         fetched_at: row.fetched_at,
       });
@@ -70,16 +96,17 @@ export async function GET(_req: NextRequest) {
   let mostRecent = "";
   const indices = ORDER.map(({ key, ticker, fallbackName }) => {
     const got = latest.get(ticker);
-    if (!got) return { key, name: fallbackName, change_pct: null };
+    if (!got) return { key, name: fallbackName, change_pct: null, last_price: null };
     // Drop values that are more than MAX_STALE_MS old — stale market data
     // is worse than no market data.
     const age = Date.now() - new Date(got.fetched_at).getTime();
-    if (age > MAX_STALE_MS) return { key, name: got.name || fallbackName, change_pct: null };
+    if (age > MAX_STALE_MS) return { key, name: got.name || fallbackName, change_pct: null, last_price: null };
     if (got.fetched_at > mostRecent) mostRecent = got.fetched_at;
     return {
       key,
       name: got.name || fallbackName,
       change_pct: got.change_pct,
+      last_price: got.last_price,
     };
   });
 

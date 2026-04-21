@@ -45,19 +45,30 @@ INDICES = [
 ]
 
 
-def snapshot_one(symbol: str) -> float | None:
-    """Fetch the 2 most-recent closes for `symbol` and return
-    (last - prev) / prev as a decimal. None if unavailable."""
+def snapshot_one(symbol: str) -> tuple[float, float] | None:
+    """Return (last_price, change_pct) where `last` is the current
+    quote and `change_pct` is (last - prev_close)/prev_close as a
+    decimal. None if Yahoo doesn't return usable values.
+
+    yfinance's fast_info is the reliable source for indices — it
+    exposes Yahoo's regularMarket fields (which match NSE's official
+    day close) rather than the stale `chartPreviousClose` you get
+    from the v8/chart endpoint.
+    """
     try:
         t = yf.Ticker(symbol)
-        hist = t.history(period="5d", auto_adjust=False)
-        if hist is None or hist.empty or len(hist) < 2:
+        fi = t.fast_info
+        # fast_info uses camelCase keys. `lastPrice` = current quote;
+        # `regularMarketPreviousClose` = the true previous-session close
+        # that matches NSE's own day-over-day calculation.
+        last = fi["lastPrice"] if "lastPrice" in fi.keys() else None
+        prev = fi["regularMarketPreviousClose"] if "regularMarketPreviousClose" in fi.keys() else None
+        if last is None or prev is None:
             return None
-        closes = hist["Close"].tolist()
-        last, prev = float(closes[-1]), float(closes[-2])
-        if prev == 0:
+        last_f, prev_f = float(last), float(prev)
+        if prev_f == 0:
             return None
-        return (last - prev) / prev
+        return last_f, (last_f - prev_f) / prev_f
     except Exception as e:
         print(f"[warn] {symbol}: {e}", file=sys.stderr)
         return None
@@ -71,10 +82,11 @@ def main() -> int:
 
     wrote = 0
     for ix in INDICES:
-        change = snapshot_one(ix["symbol"])
-        if change is None:
+        res = snapshot_one(ix["symbol"])
+        if res is None:
             print(f"  {ix['symbol']:<10} no data")
             continue
+        last, change = res
         try:
             sb.table("fetch_logs").insert({
                 "ticker": ix["symbol"],
@@ -83,11 +95,12 @@ def main() -> int:
                 "message": json.dumps({
                     "key": ix["key"],
                     "name": ix["name"],
+                    "last_price": last,
                     "change_pct": change,
                 }),
             }).execute()
             wrote += 1
-            print(f"  {ix['symbol']:<10} {change*100:+.2f}%")
+            print(f"  {ix['symbol']:<10} {last:>10,.2f}  {change*100:+.2f}%")
         except Exception as e:
             print(f"  {ix['symbol']:<10} write err: {e}", file=sys.stderr)
 

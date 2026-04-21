@@ -57,7 +57,12 @@ function quarterAsCalendar(q: string): string {
 
 interface MarketContextResp {
   as_of: string;
-  indices: Array<{ key: string; name: string; change_pct: number | null }>;
+  indices: Array<{
+    key: string;
+    name: string;
+    change_pct: number | null;
+    last_price: number | null;
+  }>;
 }
 interface DashboardResp { quarter: string | null; rows: LatestQuarterRow[]; quarters: string[]; }
 interface SummaryResp {
@@ -354,9 +359,19 @@ export default function DashboardPage() {
               : up ? "text-core-teal"
               : down ? "text-core-negative"
               : "text-core-muted";
+            // Indian-style thousands grouping for index values (24,576.60).
+            const priceText = ix.last_price != null
+              ? ix.last_price.toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : null;
             return (
               <span key={ix.key} className="whitespace-nowrap">
                 <span className="text-core-ink font-medium">{ix.name}</span>
+                {priceText ? (
+                  <span className="ml-1.5 text-core-ink tabular-nums">{priceText}</span>
+                ) : null}
                 <span className={`ml-1.5 tabular-nums font-semibold ${cls}`}>
                   <span className="text-[10px] mr-0.5">{arrow}</span>
                   {ix.change_pct != null ? formatPct(ix.change_pct) : "—"}
