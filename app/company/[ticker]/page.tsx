@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import TrendChart from "@/components/TrendChart";
 import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
+import PdfLink from "@/components/PdfLink";
 import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
 
 interface DetailResp {
@@ -13,6 +14,7 @@ interface DetailResp {
     id: string; company_name: string; ticker: string; exchange: string;
     sector: string | null; industry: string | null; isin: string | null;
     market_cap_bucket: string | null; next_result_date: string | null;
+    bse_scrip?: string | null;
   };
   quarters: Array<{
     id: string; ticker: string; quarter_label: string; quarter_end_date: string;
@@ -22,7 +24,9 @@ interface DetailResp {
     fetched_at: string;
     revenue_qoq: number | null; revenue_yoy: number | null;
     profit_qoq: number | null; profit_yoy: number | null;
+    filing_url: string | null;
   }>;
+  latest_filing_url?: string | null;
 }
 
 export default function CompanyDetail() {
@@ -71,12 +75,17 @@ export default function CompanyDetail() {
             <span className="text-core-line-2">·</span><span>{data.company.exchange}</span>
             {data.company.industry ? (<><span className="text-core-line-2">·</span><span>{data.company.industry}</span></>) : null}
             {data.company.isin ? (<><span className="text-core-line-2">·</span><span className="tabular-nums">ISIN {data.company.isin}</span></>) : null}
+            {data.company.market_cap_bucket ? (<><span className="text-core-line-2">·</span><span>{data.company.market_cap_bucket} cap</span></>) : null}
+            {data.company.bse_scrip ? (<><span className="text-core-line-2">·</span><span className="tabular-nums">BSE {data.company.bse_scrip}</span></>) : null}
           </div>
-          {data.company.next_result_date ? (
-            <div className="mt-3 text-sm">
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            {data.company.next_result_date ? (
               <span className="chip chip-pink">Next results {formatDate(data.company.next_result_date)}</span>
-            </div>
-          ) : null}
+            ) : null}
+            {data.latest_filing_url ? (
+              <PdfLink url={data.latest_filing_url} label="Latest filing" />
+            ) : null}
+          </div>
         </div>
         {latest ? <FreshnessIndicator fetchedAt={latest.fetched_at} /> : null}
       </section>
@@ -114,6 +123,34 @@ export default function CompanyDetail() {
               value={latest!.eps != null ? `₹${latest!.eps.toFixed(2)}` : "—"}
               sub={prevY ? `vs ${prevY.quarter_label}` : undefined}
             />
+          </section>
+
+          {/* About this company — compact metadata card. Kept deliberately
+              factual + verifiable: what we can source from exchange filings,
+              not marketing blurbs. A future enrichment pass will add a
+              one-paragraph business summary from yfinance (committed in a
+              follow-up migration). */}
+          <section className="card p-5">
+            <h3 className="text-sm font-bold tracking-tightest mb-3 text-core-muted uppercase">
+              About
+            </h3>
+            <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+              <AboutField label="Exchange" value={data.company.exchange} />
+              <AboutField label="Sector" value={data.company.sector} />
+              <AboutField label="Industry" value={data.company.industry} />
+              <AboutField label="Market cap" value={data.company.market_cap_bucket} />
+              <AboutField label="ISIN" value={data.company.isin} mono />
+              <AboutField
+                label="NSE symbol"
+                value={data.company.ticker.endsWith(".NS") ? data.company.ticker.replace(".NS", "") : null}
+                mono
+              />
+              <AboutField label="BSE scrip" value={data.company.bse_scrip ?? null} mono />
+              <AboutField
+                label="Next results"
+                value={data.company.next_result_date ? formatDate(data.company.next_result_date) : null}
+              />
+            </dl>
           </section>
 
           {/* Charts */}
@@ -155,6 +192,7 @@ export default function CompanyDetail() {
                     <th className="text-right">Profit YoY</th>
                     <th className="text-right">Op. profit</th>
                     <th className="text-right">EPS</th>
+                    <th className="text-right">Filing</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -169,6 +207,7 @@ export default function CompanyDetail() {
                       <td className={`text-right tabular-nums font-semibold ${pctToneClass(q.profit_yoy)}`}>{formatPct(q.profit_yoy)}</td>
                       <td className="text-right tabular-nums">{formatINR(q.operating_profit)}</td>
                       <td className="text-right tabular-nums">{q.eps != null ? q.eps.toFixed(2) : "—"}</td>
+                      <td className="text-right"><PdfLink url={q.filing_url} compact /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -194,6 +233,17 @@ function KPI({ label, value, sub }: { label: string; value: string; sub?: React.
         {value}
       </div>
       {sub ? <div className="mt-2 text-[11px]">{sub}</div> : null}
+    </div>
+  );
+}
+
+function AboutField({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[10px] uppercase tracking-[0.14em] text-core-muted">{label}</dt>
+      <dd className={`mt-0.5 text-sm text-core-ink font-medium ${mono ? "tabular-nums" : ""} truncate`}>
+        {value && value.trim().length > 0 ? value : "—"}
+      </dd>
     </div>
   );
 }

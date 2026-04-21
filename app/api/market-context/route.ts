@@ -14,17 +14,19 @@ import { jsonOk, jsonError } from "@/lib/api";
 //   {
 //     ok: true,
 //     data: {
-//       as_of: "2026-04-21T10:12:00Z",   // most recent snapshot time
+//       as_of:  "2026-04-21T10:12:00Z",   // most recent snapshot time
+//       market_status: "open" | "closed" | "stale",
 //       indices: [
-//         { key: "nifty50",    name: "Nifty 50",   change_pct: 0.0087 },
-//         { key: "sensex",     name: "Sensex",     change_pct: 0.0071 },
-//         { key: "bank_nifty", name: "Bank Nifty", change_pct: 0.0124 }
+//         { key: "nifty50", name: "Nifty 50", change_pct: 0.0087, last_price: 24576.6 },
+//         ...
 //       ]
 //     }
 //   }
 //
-// change_pct is a decimal (0.0087 = +0.87%). The UI hides the strip
-// entirely if the response is an error or every value is null.
+// change_pct is a decimal (0.0087 = +0.87%). The strip ALWAYS renders
+// on the homepage — outside trading hours we just tag the values as
+// "Closed" so readers know the last-traded level rather than hiding
+// the whole strip.
 
 export const dynamic = "force-dynamic";
 // Supabase client uses global fetch under the hood; Next.js otherwise
@@ -39,8 +41,14 @@ const ORDER: Array<{ key: string; ticker: string; fallbackName: string }> = [
   { key: "bank_nifty", ticker: "^NSEBANK", fallbackName: "Bank Nifty" },
 ];
 
-const MAX_STALE_MS = 2 * 60 * 60 * 1000; // 2 hours — past this we'd rather
-                                         // hide than show stale data.
+// How old a snapshot can be before we tag it "Closed". Inside this window,
+// values render as live ticking numbers; past it, the UI shows the same
+// numbers with a "Closed" label so readers know it's last-traded, not live.
+const MARKET_OPEN_FRESH_MS = 30 * 60 * 1000; // 30 min — normal lag between cron hits
+// Upper bound on how old we'll ever serve. At some point the last-close is
+// meaningless (e.g. long weekend + holiday). We still show it so the strip
+// never disappears, but we tag it "Stale" so it's visually deprioritised.
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (worst case: extended holiday)
 
 export async function GET(_req: NextRequest) {
   const url  = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -94,14 +102,19 @@ export async function GET(_req: NextRequest) {
   }
 
   let mostRecent = "";
+  let oldestAge = 0;
   const indices = ORDER.map(({ key, ticker, fallbackName }) => {
     const got = latest.get(ticker);
     if (!got) return { key, name: fallbackName, change_pct: null, last_price: null };
-    // Drop values that are more than MAX_STALE_MS old — stale market data
-    // is worse than no market data.
     const age = Date.now() - new Date(got.fetched_at).getTime();
-    if (age > MAX_STALE_MS) return { key, name: got.name || fallbackName, change_pct: null, last_price: null };
+    // Past MAX_AGE_MS we consider the data too stale to even be "last close"
+    // (e.g. a week of downtime); null it out so the UI shows a dash but
+    // keeps the strip visible with the other indices.
+    if (age > MAX_AGE_MS) {
+      return { key, name: got.name || fallbackName, change_pct: null, last_price: null };
+    }
     if (got.fetched_at > mostRecent) mostRecent = got.fetched_at;
+    if (age > oldestAge) oldestAge = age;
     return {
       key,
       name: got.name || fallbackName,
@@ -110,11 +123,17 @@ export async function GET(_req: NextRequest) {
     };
   });
 
-  if (indices.every((x) => x.change_pct == null)) {
-    return jsonError("no recent market snapshot", 502);
-  }
+  // Tag the whole strip as open/closed/stale so the UI can style accordingly
+  // without having to compute ages itself.
+  const market_status: "open" | "closed" | "stale" =
+    oldestAge === 0 ? "stale"              // no live data at all
+      : oldestAge <= MARKET_OPEN_FRESH_MS ? "open"
+      : oldestAge <= MAX_AGE_MS ? "closed"
+      : "stale";
+
   return jsonOk({
     as_of: mostRecent || new Date().toISOString(),
+    market_status,
     indices,
   });
 }

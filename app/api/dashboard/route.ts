@@ -112,16 +112,24 @@ export async function GET(req: NextRequest) {
   // have "announced on" the same day.
   const { data: fetchedEvents } = await sb
     .from("announcement_events")
-    .select("ticker,announcement_date")
+    .select("ticker,announcement_date,raw_json")
     .in("ticker", tickers)
     .eq("status", "fetched")
     .lte("announcement_date", todayIso)
     .order("announcement_date", { ascending: false });
   const lastAnnouncedByTicker = new Map<string, string>();
+  // Most recent filing PDF URL per ticker — surfaced as a "View filing" link
+  // beside the numbers. We keep the first (newest) match; historical URLs
+  // are still retrievable from announcement_events when needed.
+  const filingUrlByTicker = new Map<string, string>();
   for (const e of fetchedEvents ?? []) {
-    // First row per ticker wins = most recent fetched announcement.
     if (!lastAnnouncedByTicker.has(e.ticker)) {
       lastAnnouncedByTicker.set(e.ticker, e.announcement_date);
+    }
+    const raw = (e as any).raw_json ?? {};
+    const url = typeof raw?.filing_url === "string" ? raw.filing_url : null;
+    if (url && !filingUrlByTicker.has(e.ticker)) {
+      filingUrlByTicker.set(e.ticker, url);
     }
   }
 
@@ -169,6 +177,7 @@ export async function GET(req: NextRequest) {
         eps: null,
         data_quality_status: "missing",
         fetched_at: "",
+        filing_url: filingUrlByTicker.get(c.ticker) ?? null,
         revenue_trend: hist.slice(-8).map((r) => ({ q: r.quarter_label, v: r.revenue })),
         next_result_date: nextDate,
         result_date: resultDate,
@@ -200,6 +209,7 @@ export async function GET(req: NextRequest) {
       eps: latest.eps,
       data_quality_status: latest.data_quality_status,
       fetched_at: latest.fetched_at,
+      filing_url: filingUrlByTicker.get(c.ticker) ?? null,
       revenue_qoq: pctChange(latest.revenue, prevQ?.revenue ?? null),
       revenue_yoy: pctChange(latest.revenue, prevY?.revenue ?? null),
       profit_qoq: pctChange(latest.net_profit, prevQ?.net_profit ?? null),

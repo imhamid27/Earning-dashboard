@@ -53,6 +53,9 @@ export interface LatestQuarterRow {
   revenue_qoq?: number | null;
   profit_yoy?: number | null;
   profit_qoq?: number | null;
+  // Official filing PDF URL, from the matching announcement_events.raw_json.
+  // Null when no filing has been captured for this quarter.
+  filing_url?: string | null;
   // Last 8 quarters of revenue, for sparklines:
   revenue_trend?: Array<{ q: string; v: number | null }>;
   // When the company is scheduled to announce the currently-selected quarter.

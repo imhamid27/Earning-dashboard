@@ -7,6 +7,7 @@ import CompanyTable from "@/components/CompanyTable";
 import CompanySearch from "@/components/CompanySearch";
 import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
+import IntelligenceStrip from "@/components/IntelligenceStrip";
 import { formatINR, formatDate, formatPct, pctToneClass } from "@/lib/format";
 import type { LatestQuarterRow } from "@/lib/types";
 
@@ -76,6 +77,10 @@ function quarterAsCalendar(q: string): string {
 
 interface MarketContextResp {
   as_of: string;
+  // "open"  : values are live-ticking (snapshot <30 min old)
+  // "closed": post-market — show last close with a "Closed" chip
+  // "stale" : no fresh data at all (extended downtime); values may be null
+  market_status?: "open" | "closed" | "stale";
   indices: Array<{
     key: string;
     name: string;
@@ -378,14 +383,25 @@ export default function DashboardPage() {
       </section>
 
       {/* ==== MARKET CONTEXT STRIP ====
-          Supporting context only — not a primary signal. One line,
-          muted label, 3 indices, pct change with direction arrow.
-          Silent if the upstream fetch fails.
+          Always visible. Outside market hours we tag it "Closed" and show
+          last-traded levels instead of hiding it — readers expect reference
+          numbers the moment the page loads, whether the market is open or
+          not.
        */}
-      {market && market.indices.some((i) => i.change_pct != null) ? (
+      {market ? (
         <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 py-2.5 text-[12px] border-y border-core-line mb-6">
-          <span className="text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold">
+          <span className="text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold flex items-center gap-1.5">
             Markets
+            {market.market_status === "open" ? (
+              <span className="inline-flex items-center gap-1 text-[8px] font-bold tracking-[0.15em] text-core-teal">
+                <span className="w-1 h-1 rounded-full bg-core-teal animate-pulse" />
+                LIVE
+              </span>
+            ) : market.market_status === "closed" ? (
+              <span className="text-[8px] font-bold tracking-[0.15em] text-core-muted">
+                · CLOSED
+              </span>
+            ) : null}
           </span>
           {market.indices.map((ix, i) => {
             const up   = (ix.change_pct ?? 0) > 0;
@@ -424,10 +440,27 @@ export default function DashboardPage() {
             className="ml-auto text-[10px] uppercase tracking-[0.14em] text-core-muted tabular-nums"
             title={market.as_of}
           >
-            Updated {formatRelative(market.as_of)}
+            {market.market_status === "closed" ? "Last close " : "Updated "}
+            {formatRelative(market.as_of)}
           </span>
         </div>
       ) : null}
+
+      {/* ==== INTELLIGENCE STRIP ====
+          Dense 4-card grid above the LIVE band. Season progress,
+          avg growth, top gainer, top decliner. Each card is a hard
+          number with a one-line context tail.
+       */}
+      <IntelligenceStrip
+        quarter={summary?.quarter ?? quarter}
+        companies_tracked={summary?.companies_tracked ?? 0}
+        companies_reported={summary?.companies_reported ?? 0}
+        avg_revenue_yoy={summary?.avg_revenue_yoy ?? null}
+        avg_profit_yoy={summary?.avg_profit_yoy ?? null}
+        biggestGainer={surpriseMovers?.up ?? null}
+        biggestLoser={surpriseMovers?.down ?? null}
+        heaviestFiler={todayReporters[0] ?? null}
+      />
 
       {/* =================================================================
           2. LIVE BAND — inverted black newsroom panel. Today's lead

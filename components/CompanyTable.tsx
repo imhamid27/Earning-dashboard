@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { formatINR, formatPct, pctToneClass, formatDate } from "@/lib/format";
 import Sparkline from "./Sparkline";
 import StatusBadge from "./StatusBadge";
+import PdfLink from "./PdfLink";
 import type { LatestQuarterRow } from "@/lib/types";
 
 type SortKey = "company_name" | "sector" | "revenue" | "revenue_yoy" | "net_profit" | "profit_yoy";
@@ -107,7 +108,12 @@ export default function CompanyTable({
                   <Link href={`/company/${encodeURIComponent(r.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink tracking-tight">
                     {r.company_name}
                   </Link>
-                  <div className="text-[11px] text-core-muted tabular-nums">{r.ticker}</div>
+                  <div className="text-[11px] text-core-muted tabular-nums flex items-center gap-2">
+                    <span>{r.ticker}</span>
+                    {r.filing_url ? (
+                      <PdfLink url={r.filing_url} compact />
+                    ) : null}
+                  </div>
                 </td>
                 <td className="text-sm text-core-muted">{r.sector ?? "—"}</td>
                 <td><StatusBadge row={r} /></td>
