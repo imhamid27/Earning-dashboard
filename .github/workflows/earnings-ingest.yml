@@ -120,11 +120,18 @@ jobs:
               # row so /q4 can surface 'View filing ↗' even before our
               # numbers pipeline catches up from Screener.
               python scripts/bse_results.py
-              # Sweep 3: for every company whose announcement has been
+              # Sweep 3 (same-day numbers): parse the BSE filing PDF for
+              # any company whose announcement is confirmed but whose
+              # numbers aren't in quarterly_financials yet. This is what
+              # closes the "filing landed, numbers still pending 4-12h
+              # waiting on Screener" gap. Screener-sourced rows are left
+              # alone; we only fill when no better source exists.
+              python scripts/bse_pdf_results.py --days 3
+              # Sweep 4: for every company whose announcement has been
               # confirmed but whose numbers are still missing, try NSE
-              # XBRL → Screener in priority order. Closes the gap
-              # between calendar detection and numbers landing on the
-              # dashboard.
+              # XBRL → Screener in priority order. Closes any remaining
+              # gap for filings we couldn't parse from BSE PDF (image
+              # scans, bespoke templates, etc.).
               python scripts/fetch_results.py
               # (Market snapshot moved to its own workflow —
               # .github/workflows/market-snapshot.yml — runs every
