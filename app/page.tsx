@@ -169,7 +169,7 @@ export default function DashboardPage() {
   // is India's "today", not the browser's local today (matters for
   // readers viewing from outside India or when a container's clock is
   // in UTC and we're near the midnight boundary).
-  const { todayIso, tomorrowIso, weekEndIso } = useMemo(() => {
+  const { yesterdayIso, todayIso, tomorrowIso, weekEndIso } = useMemo(() => {
     // en-CA locale formats as YYYY-MM-DD — perfect for ISO date compare.
     const fmt = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Kolkata",
@@ -180,7 +180,12 @@ export default function DashboardPage() {
       const d = new Date(now.getTime() + days * 86_400_000);
       return fmt.format(d);
     };
-    return { todayIso: add(0), tomorrowIso: add(1), weekEndIso: add(6) };
+    return {
+      yesterdayIso: add(-1),
+      todayIso:     add(0),
+      tomorrowIso:  add(1),
+      weekEndIso:   add(6),
+    };
   }, []);
 
   // All companies that have filed Q4 FY26, with actual numbers.
@@ -196,6 +201,17 @@ export default function DashboardPage() {
       .filter((r) => r.result_date === todayIso)
       .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0)),
     [filed, todayIso]
+  );
+
+  // YESTERDAY — companies whose result landed yesterday. Used as a fallback
+  // default tab in the LIVE band so the reader lands on filled content
+  // first thing in the morning, before today's filings have started
+  // coming in.
+  const yesterdayReporters = useMemo(
+    () => filed
+      .filter((r) => r.result_date === yesterdayIso)
+      .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0)),
+    [filed, yesterdayIso]
   );
 
   // Pending today = has an event today but no numbers. Pulled from
@@ -473,11 +489,13 @@ export default function DashboardPage() {
       <TodayBand
         lead={todayLead}
         others={todayOthers}
+        yesterday={yesterdayReporters}
         pending={todayPending}
         tomorrow={tomorrowReporters}
         restOfWeek={restOfWeek}
         bellwethers={bellwethers}
         todayIso={todayIso}
+        yesterdayIso={yesterdayIso}
         nextUp={tomorrowReporters[0]}
         todayChange={todayChange}
         bigNamesToday={bigNamesToday}
@@ -668,31 +686,48 @@ function DotDashDivider() {
 //   ─────────────
 //   [others today — compact horizontal rows]
 //   [pending today — chip list]
+type TabKey = "yesterday" | "today" | "tomorrow" | "week" | "bellwethers";
+
 function TodayBand({
-  lead, others, pending, tomorrow, restOfWeek, bellwethers, todayIso, nextUp,
-  todayChange, bigNamesToday
+  lead, others, yesterday, pending, tomorrow, restOfWeek, bellwethers,
+  todayIso, yesterdayIso, nextUp, todayChange, bigNamesToday
 }: {
   lead: LatestQuarterRow | undefined;
   others: LatestQuarterRow[];
+  yesterday: LatestQuarterRow[];
   pending: UpcomingItem[];
   tomorrow: UpcomingItem[];
   restOfWeek: UpcomingItem[];
   bellwethers: LatestQuarterRow[];
   todayIso: string;
+  yesterdayIso: string;
   nextUp: UpcomingItem | undefined;
   todayChange: { total: number; strong: number; weak: number } | null;
   bigNamesToday: Array<{ ticker: string; company_name: string }>;
 }) {
-  const [tab, setTab] = useState<"today" | "tomorrow" | "week" | "bellwethers">("today");
+  const filedCount = (lead ? 1 : 0) + others.length;
+
+  // Default to Today when there's actual filed content. Otherwise start
+  // the reader on Yesterday's filings — a populated tab beats an empty
+  // one with pending rows, especially in the morning before the first
+  // filings drop.
+  const initialTab: TabKey =
+    filedCount > 0 ? "today"
+    : yesterday.length > 0 ? "yesterday"
+    : "today";
+  const [tab, setTab] = useState<TabKey>(initialTab);
 
   const [yy, mm, dd] = todayIso.split("-").map(Number);
   const dayDate = new Date(yy, (mm ?? 1) - 1, dd ?? 1);
   const dayOfWeek = dayDate.toLocaleDateString("en-US", { weekday: "long" });
   const dayShort  = dayDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  const filedCount = (lead ? 1 : 0) + others.length;
+  const [yy2, mm2, dd2] = yesterdayIso.split("-").map(Number);
+  const yesterdayDate = new Date(yy2, (mm2 ?? 1) - 1, dd2 ?? 1);
+  const yesterdayShort = yesterdayDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   const hasActivity = filedCount > 0 || pending.length > 0;
 
   const counts = {
+    yesterday:   yesterday.length,
     today:       filedCount + pending.length,
     tomorrow:    tomorrow.length,
     week:        restOfWeek.length,
@@ -716,7 +751,7 @@ function TodayBand({
           </div>
           <div>
             <span className="text-white tabular-nums">{filedCount}</span>
-            <span className="text-white/60"> filed</span>
+            <span className="text-white/60"> filed today</span>
             {pending.length > 0 ? (
               <>
                 <span className="text-white/30 mx-2">·</span>
@@ -724,10 +759,31 @@ function TodayBand({
                 <span className="text-white/60"> expected</span>
               </>
             ) : null}
+            {/* Subtle reference so readers know yesterday's filings are a
+                click away — especially useful in the morning before the
+                first post-market drop. */}
+            {yesterday.length > 0 && filedCount === 0 ? (
+              <>
+                <span className="text-white/30 mx-2">·</span>
+                <button
+                  onClick={() => setTab("yesterday")}
+                  className="text-core-pink hover:text-white tabular-nums font-semibold"
+                >
+                  {yesterday.length} filed yesterday
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
 
         <nav className="mt-4 md:mt-5 flex flex-wrap gap-x-4 gap-y-1.5 border-b border-white/10 -mx-1">
+          {/* Yesterday tab is hidden when there's nothing to show —
+              keeps the nav clean during the middle of a quarter when
+              we're already deep into today's reporting. Always visible
+              if yesterday had at least one filing though. */}
+          {counts.yesterday > 0 ? (
+            <TabButton active={tab === "yesterday"}    onClick={() => setTab("yesterday")}    label="Yesterday"   count={counts.yesterday} />
+          ) : null}
           <TabButton active={tab === "today"}       onClick={() => setTab("today")}       label="Today"       count={counts.today} />
           <TabButton active={tab === "tomorrow"}    onClick={() => setTab("tomorrow")}    label="Tomorrow"    count={counts.tomorrow} />
           <TabButton active={tab === "week"}        onClick={() => setTab("week")}        label="This week"   count={counts.week} />
@@ -776,7 +832,32 @@ function TodayBand({
           </div>
         ) : null}
 
-        {tab === "today" ? (
+        {tab === "yesterday" ? (
+          <>
+            <div className="mb-4 pb-3 border-b border-white/10 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[12px]">
+              <span className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold">
+                {yesterdayShort}
+              </span>
+              <span className="text-white">
+                <span className="font-semibold tabular-nums">{yesterday.length}</span>
+                {" "}{yesterday.length === 1 ? "company" : "companies"} reported
+              </span>
+              {filedCount === 0 ? (
+                <span className="ml-auto text-white/50 italic">
+                  Today's filings expected post market
+                </span>
+              ) : null}
+            </div>
+            {/* Use the same TodayTableDark shape so layout stays identical
+                — just no pending rows (everything already filed). */}
+            <TodayTableDark
+              reported={yesterday}
+              pending={[]}
+              nextUp={undefined}
+              todayIso={yesterdayIso}
+            />
+          </>
+        ) : tab === "today" ? (
           <TodayTableDark
             reported={lead ? [lead, ...others] : others}
             pending={pending}
