@@ -6,7 +6,7 @@
 #
 # Creates three tasks under "\India Earnings Tracker\":
 #   - Daily      → 08:00 IST  (02:30 UTC)  Mon–Fri
-#   - Hourly     → every 30 min, 09:30–21:30 IST  Mon–Fri
+#   - Hourly     → top of every hour, 09:30–21:30 IST  Mon–Fri
 #   - Backfill   → Sunday 23:30 IST
 
 $ErrorActionPreference = "Stop"
@@ -56,11 +56,13 @@ $dailyTriggers = @(
 )
 New-IET-Task -Name "daily-calendars" -Mode "daily" -Triggers $dailyTriggers
 
-# Task 2: Hourly sweep every 30 min during the announcement window.
+# Task 2: Hourly sweep — top of every hour during the announcement
+# window. An hourly cadence (vs the previous every-30-min) gives
+# comfortable buffer over the typical per-run wall time of ~16 min.
 $hourlyTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At "09:30"
 $hourlyTrigger.Repetition = New-ScheduledTaskTrigger `
     -Once -At "09:30" `
-    -RepetitionInterval (New-TimeSpan -Minutes 30) `
+    -RepetitionInterval (New-TimeSpan -Minutes 60) `
     -RepetitionDuration (New-TimeSpan -Hours 12) | Select-Object -ExpandProperty Repetition
 New-IET-Task -Name "hourly-results" -Mode "hourly" -Triggers @($hourlyTrigger)
 

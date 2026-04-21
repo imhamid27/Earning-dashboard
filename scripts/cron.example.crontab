@@ -19,11 +19,13 @@ EARNINGS_APP=/path/to/Earning-Dashboard
 
 # ---------------------------------------------------------------------------
 # Hourly through the trading / announcement window.
-# 04:00–16:00 UTC = 09:30–21:30 IST — this covers the typical window when
-# Indian companies file quarterly results (usually after market close, up
-# to ~9 PM IST). Runs on weekdays only.
+# Top of every hour from 04:00 to 16:00 UTC = 09:30–21:30 IST — covers the
+# typical window when Indian companies file (usually after market close,
+# up to ~9 PM IST). Runs on weekdays only. An hourly cadence (vs the
+# previous every-30-min) gives ~40 min buffer over the typical per-run
+# wall time of ~16 min now that the tracked universe is ~1,080 companies.
 # ---------------------------------------------------------------------------
-*/30 4-16 * * 1-5  $EARNINGS_APP/scripts/cron.example.sh hourly
+0 4-16 * * 1-5  $EARNINGS_APP/scripts/cron.example.sh hourly
 
 # ---------------------------------------------------------------------------
 # Weekly Sunday 18:00 UTC (23:30 IST). Full refresh across the whole

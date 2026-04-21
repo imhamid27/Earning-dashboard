@@ -27,8 +27,14 @@ on:
   schedule:
     # daily calendar refresh × 3 (IST 08:00, 15:00, 21:00)
     - cron:  '30 2,9,15 * * 1-5'
-    # hourly sweeps (every 30 min from 04:00 to 16:00 UTC weekdays)
-    - cron:  '*/30 4-16 * * 1-5'
+    # hourly sweeps (top of every hour, 04:00–16:00 UTC weekdays). The
+    # previous every-30-min cadence caused GitHub Actions to skip slots
+    # whenever a run exceeded 30 min — which is common now that the
+    # universe is ~1,080 companies and an hourly pass averages ~16 min.
+    # Top-of-hour gives a comfortable buffer while keeping freshness
+    # acceptable (results drop in bursts around 09:00 / 15:30 / 18:00
+    # IST, all of which are covered by the daily calendar slots above).
+    - cron:  '0 4-16 * * 1-5'
     # weekly backfill
     - cron:  '0 18 * * 0'
   workflow_dispatch:
@@ -39,6 +45,15 @@ on:
         default: 'hourly'
         type: choice
         options: [daily, hourly, backfill]
+
+# Serialise runs of this workflow — queued, not dropped. Previously a
+# long-running schedule tick would cause GitHub Actions to skip any
+# overlapping scheduled run entirely; `cancel-in-progress: false`
+# means slots that land while another run is mid-flight wait their
+# turn instead of being lost.
+concurrency:
+  group: earnings-ingest
+  cancel-in-progress: false
 
 jobs:
   run:
@@ -75,7 +90,7 @@ jobs:
           fi
           case "${{ github.event.schedule }}" in
             '30 2,9,15 * * 1-5')  echo "mode=daily"    >> "$GITHUB_OUTPUT" ;;
-            '*/30 4-16 * * 1-5')  echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
+            '0 4-16 * * 1-5')     echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
             '0 18 * * 0')         echo "mode=backfill" >> "$GITHUB_OUTPUT" ;;
             *)                    echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
           esac

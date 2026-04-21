@@ -87,7 +87,7 @@ In the web application's **Scheduled Tasks** tab:
 | Cron | Command | Purpose |
 |---|---|---|
 | `30 2,9,15 * * 1-5` | `python scripts/nse_calendar.py --include-untracked && python scripts/bse_calendar.py --include-untracked && python scripts/moneycontrol_calendar.py` | Calendar refresh × 3 daily (08:00 / 15:00 / 21:00 IST) — catches every filing wave |
-| `*/30 4-16 * * 1-5` | `python scripts/nse_results.py` | Hourly filings fetch |
+| `0 4-16 * * 1-5` | `python scripts/nse_results.py` | Hourly filings fetch |
 | `0 18 * * 0` | `python scripts/nse_results.py --all --quarters 1 && python scripts/screener_results.py --missing` | Weekly backfill |
 
 **Caveat**: the Docker image we ship doesn't include Python. Either bake a

@@ -12,7 +12,9 @@ type SortDir = "asc" | "desc";
 
 export default function CompanyTable({
   rows,
-  preserveOrder = false
+  preserveOrder = false,
+  highlightUp,
+  highlightDown
 }: {
   rows: LatestQuarterRow[];
   /**
@@ -22,6 +24,10 @@ export default function CompanyTable({
    * cues in that mode — they don't re-sort.
    */
   preserveOrder?: boolean;
+  /** Ticker to highlight with a light teal tint (outlier upside). */
+  highlightUp?: string;
+  /** Ticker to highlight with a light pink tint (outlier downside). */
+  highlightDown?: string;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -82,11 +88,20 @@ export default function CompanyTable({
           {sorted.map((r) => {
             const notReported = !r.quarter_end_date;
             const hasNumbers = r.status === "announced_with_numbers";
+            const isUpOutlier   = highlightUp   && r.ticker === highlightUp;
+            const isDownOutlier = highlightDown && r.ticker === highlightDown;
+            const rowCls = notReported
+              ? "text-core-muted/70"
+              : isUpOutlier
+                ? "bg-core-teal/5"
+                : isDownOutlier
+                  ? "bg-core-negative/5"
+                  : undefined;
             return (
               <tr
                 key={r.ticker}
                 data-ticker={r.ticker}
-                className={notReported ? "text-core-muted/70" : undefined}
+                className={rowCls}
               >
                 <td>
                   <Link href={`/company/${encodeURIComponent(r.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink tracking-tight">

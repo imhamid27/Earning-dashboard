@@ -19,6 +19,27 @@ const MAJOR_TICKERS = [
   "BAJFINANCE.NS", "HCLTECH.NS", "KOTAKBANK.NS", "MARUTI.NS", "ASIANPAINT.NS"
 ];
 
+// Editorial short-name for a company. Drops corporate suffixes so big
+// names read as their natural press-reference form, and converts
+// ALL-CAPS DB rows to Title Case. Used in the inline previews where
+// space is tight (big names strip, surprise movers).
+function shortName(raw: string): string {
+  if (!raw) return "";
+  let s = raw.trim()
+    // Drop corporate suffixes + common boilerplate
+    .replace(/\s+(Limited|Ltd\.?|Inc\.?|Corp\.?|Corporation|PLC|LLP)\b.*$/i, "")
+    .replace(/\s+(Industries|Company|Industrial|Infrastructure|Enterprise(s)?|Services?)\b.*$/i, "")
+    .trim();
+  // Drop ALL-CAPS shout (like "ANAND RATHI SHARE AND STOCK BROK")
+  // and re-case to Title Case. Leave mixed-case names untouched.
+  if (/^[A-Z0-9 &\.\-\/]+$/.test(s) && s.length > 3) {
+    s = s.toLowerCase().replace(/\b([a-z])/g, (c) => c.toUpperCase());
+  }
+  // Trim to 24 chars for really stubborn names.
+  if (s.length > 28) s = s.slice(0, 26).trim() + "…";
+  return s;
+}
+
 function quarterAsCalendar(q: string): string {
   const m = /^Q([1-4])\s*FY(\d{2})$/.exec(q.trim());
   if (!m) return "";
@@ -169,6 +190,66 @@ export default function DashboardPage() {
     return out;
   }, [board, filed]);
 
+  // ─── Intelligence layer (feature 1/2/3/6) ────────────────────────────
+  // 1. "What changed today" — simple counts with strong / weak labels.
+  //    Always renders (even with zeros) so the reader knows the count
+  //    is a live reading, not a missing module.
+  const todayChange = useMemo(() => {
+    const filedToday = [...(todayReporters ?? [])];
+    const strong = filedToday.filter((r) => (r.profit_yoy ?? 0) > 0.2).length;
+    const weak   = filedToday.filter((r) => (r.profit_yoy ?? 0) < 0).length;
+    return { total: filedToday.length, strong, weak };
+  }, [todayReporters]);
+
+  // 2. Earnings pulse — top + weakest sector by profit YoY across
+  //    filed companies this quarter. Only if we have enough signal.
+  const earningsPulse = useMemo(() => {
+    if (filed.length < 5) return null;
+    const bySector = new Map<string, number[]>();
+    for (const r of filed) {
+      if (!r.sector || r.profit_yoy == null) continue;
+      if (!bySector.has(r.sector)) bySector.set(r.sector, []);
+      bySector.get(r.sector)!.push(r.profit_yoy);
+    }
+    let top: [string, number] | null = null;
+    let bot: [string, number] | null = null;
+    for (const [s, vs] of bySector) {
+      if (vs.length < 2) continue;
+      const avg = vs.reduce((a, b) => a + b, 0) / vs.length;
+      if (!top || avg > top[1]) top = [s, avg];
+      if (!bot || avg < bot[1]) bot = [s, avg];
+    }
+    if (!top || !bot || top[0] === bot[0]) return null;
+    return { top: top[0], bot: bot[0] };
+  }, [filed]);
+
+  // 3. Big names today — bellwethers actually scheduled to file today.
+  //    Shown inline under the LIVE band as a tiny preview of the
+  //    "Big names" tab.
+  const bigNamesToday = useMemo(() => {
+    const MAJOR = new Set(MAJOR_TICKERS);
+    // First: already-filed bellwethers today (highest signal).
+    const filedBig = todayReporters.filter((r) => MAJOR.has(r.ticker));
+    // Then: bellwethers scheduled for today but still pending.
+    const scheduledBig = upcoming
+      .filter((u) => u.next_result_date === todayIso && MAJOR.has(u.ticker))
+      .filter((u) => !filedBig.some((r) => r.ticker === u.ticker))
+      .map((u) => ({ ticker: u.ticker, company_name: u.company_name }));
+    return [...filedBig.map((r) => ({ ticker: r.ticker, company_name: r.company_name })), ...scheduledBig].slice(0, 3);
+  }, [todayReporters, upcoming, todayIso]);
+
+  // 6. Surprise movers — biggest up / biggest down profit YoY for the
+  //    quarter. Guards against absurd ±500% from tiny prior-year bases.
+  const surpriseMovers = useMemo(() => {
+    const clean = filed.filter((r) => r.profit_yoy != null && Math.abs(r.profit_yoy!) <= 5);
+    if (clean.length < 2) return null;
+    const sorted = [...clean].sort((a, b) => (b.profit_yoy ?? 0) - (a.profit_yoy ?? 0));
+    const up = sorted[0];
+    const down = sorted[sorted.length - 1];
+    if (up.ticker === down.ticker) return null;
+    return { up, down };
+  }, [filed]);
+
   // Browse-all table sort + pagination.
   const [allSort, setAllSort] = useState<"revenue" | "profit_yoy" | "result_date">("revenue");
   const [allPage, setAllPage] = useState(0);
@@ -182,7 +263,14 @@ export default function DashboardPage() {
       return (b.revenue ?? 0) - (a.revenue ?? 0);
     });
     const idx = sorted.findIndex((r) => r.ticker === ticker);
-    if (idx >= 0) setAllPage(Math.floor(idx / PAGE_SIZE));
+    if (idx < 0) {
+      // Ticker isn't in the filed table (hasn't reported this quarter
+      // yet, or is in a different segment). Go straight to its company
+      // page instead of silently doing nothing.
+      window.location.href = `/company/${encodeURIComponent(ticker)}`;
+      return;
+    }
+    setAllPage(Math.floor(idx / PAGE_SIZE));
     window.setTimeout(() => {
       const el = document.querySelector(`[data-ticker="${CSS.escape(ticker)}"]`) as HTMLElement | null;
       if (el) {
@@ -253,7 +341,38 @@ export default function DashboardPage() {
         bellwethers={bellwethers}
         todayIso={todayIso}
         nextUp={tomorrowReporters[0]}
+        todayChange={todayChange}
+        bigNamesToday={bigNamesToday}
       />
+
+      {earningsPulse ? (() => {
+        // If the DB sector literal is 'Other', spell it out as 'other
+        // sectors' so the sentence reads naturally. Otherwise keep the
+        // proper-noun sector name as-is.
+        const isGenericBot = /^other$/i.test(earningsPulse.bot);
+        const isGenericTop = /^other$/i.test(earningsPulse.top);
+        return (
+          <p className="mt-4 md:mt-5 text-[13px] md:text-[14px] text-core-muted italic leading-snug max-w-3xl">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-pink mr-2 align-middle" />
+            {isGenericTop ? (
+              <>Other sectors are driving profit growth; </>
+            ) : (
+              <>
+                <span className="text-core-ink font-semibold not-italic">{earningsPulse.top}</span>
+                {" "}are driving profit growth;{" "}
+              </>
+            )}
+            {isGenericBot ? (
+              <>other sectors are lagging so far.</>
+            ) : (
+              <>
+                <span className="text-core-ink font-semibold not-italic">{earningsPulse.bot}</span>
+                {" "}are lagging so far.
+              </>
+            )}
+          </p>
+        );
+      })() : null}
 
       <DotDashDivider />
 
@@ -299,6 +418,33 @@ export default function DashboardPage() {
           const pageRows = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
           return (
             <div className="mt-8">
+              {/* 6. Surprise movers — biggest upside / downside, short
+                  form. e.g. "Biggest upside: Anand Rathi (+133%)". */}
+              {surpriseMovers ? (
+                <div className="mb-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[12px] md:text-[13px]">
+                  <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted font-semibold">Surprise movers</span>
+                  <span>
+                    <span className="text-core-muted">Biggest upside: </span>
+                    <Link href={`/company/${encodeURIComponent(surpriseMovers.up.ticker)}`} className="font-semibold hover:text-core-pink">
+                      {shortName(surpriseMovers.up.company_name)}
+                    </Link>
+                    <span className={`ml-1 font-semibold tabular-nums ${pctToneClass(surpriseMovers.up.profit_yoy)}`}>
+                      ({formatPct(surpriseMovers.up.profit_yoy)})
+                    </span>
+                  </span>
+                  <span className="text-core-line-2 hidden sm:inline">·</span>
+                  <span>
+                    <span className="text-core-muted">Biggest downside: </span>
+                    <Link href={`/company/${encodeURIComponent(surpriseMovers.down.ticker)}`} className="font-semibold hover:text-core-pink">
+                      {shortName(surpriseMovers.down.company_name)}
+                    </Link>
+                    <span className={`ml-1 font-semibold tabular-nums ${pctToneClass(surpriseMovers.down.profit_yoy)}`}>
+                      ({formatPct(surpriseMovers.down.profit_yoy)})
+                    </span>
+                  </span>
+                </div>
+              ) : null}
+
               <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
                 <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
                   All {sorted.length} that have filed · {quarter}
@@ -316,7 +462,12 @@ export default function DashboardPage() {
                   </select>
                 </label>
               </div>
-              <CompanyTable rows={pageRows} preserveOrder />
+              <CompanyTable
+                rows={pageRows}
+                preserveOrder
+                highlightUp={surpriseMovers?.up.ticker}
+                highlightDown={surpriseMovers?.down.ticker}
+              />
               {totalPages > 1 ? (
                 <div className="mt-3 flex items-center justify-between text-xs text-core-muted">
                   <span>
@@ -379,7 +530,8 @@ function DotDashDivider() {
 //   [others today — compact horizontal rows]
 //   [pending today — chip list]
 function TodayBand({
-  lead, others, pending, tomorrow, restOfWeek, bellwethers, todayIso, nextUp
+  lead, others, pending, tomorrow, restOfWeek, bellwethers, todayIso, nextUp,
+  todayChange, bigNamesToday
 }: {
   lead: LatestQuarterRow | undefined;
   others: LatestQuarterRow[];
@@ -389,6 +541,8 @@ function TodayBand({
   bellwethers: LatestQuarterRow[];
   todayIso: string;
   nextUp: UpcomingItem | undefined;
+  todayChange: { total: number; strong: number; weak: number } | null;
+  bigNamesToday: Array<{ ticker: string; company_name: string }>;
 }) {
   const [tab, setTab] = useState<"today" | "tomorrow" | "week" | "bellwethers">("today");
 
@@ -440,15 +594,55 @@ function TodayBand({
           <TabButton active={tab === "week"}        onClick={() => setTab("week")}        label="This week"   count={counts.week} />
           <TabButton active={tab === "bellwethers"} onClick={() => setTab("bellwethers")} label="Big names"   count={counts.bellwethers} />
         </nav>
+
+        {/* #3 Big names today — up to 3 bellwethers filing today.
+            Names short-formed for inline legibility. */}
+        {bigNamesToday.length > 0 ? (
+          <div className="mt-3 md:mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[12px]">
+            <span className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold mr-1">
+              Big names today
+            </span>
+            {bigNamesToday.map((b, i) => (
+              <span key={b.ticker} className="whitespace-nowrap">
+                <Link href={`/company/${encodeURIComponent(b.ticker)}`} className="text-white hover:text-core-pink font-medium">
+                  {shortName(b.company_name)}
+                </Link>
+                {i < bigNamesToday.length - 1 ? <span className="text-white/30 ml-2">·</span> : null}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {/* Scrollable tab content */}
       <div className="px-5 md:px-6 pb-5 md:pb-6 pt-4 md:pt-5 overflow-y-auto flex-1">
+        {/* #1 What changed today — always visible on the Today tab so the
+            reader sees a live count, even when zero.
+            strong = profit YoY > 20%, weak = profit YoY < 0%. */}
+        {tab === "today" && todayChange ? (
+          <div className="mb-4 pb-3 border-b border-white/10 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[12px]">
+            <span className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold">Today</span>
+            <span className={todayChange.total > 0 ? "text-white" : "text-white/60"}>
+              <span className="font-semibold tabular-nums">{todayChange.total}</span>
+              {" "}reported
+            </span>
+            <span className={todayChange.strong > 0 ? "text-core-teal" : "text-white/40"}>
+              <span className="font-semibold tabular-nums">{todayChange.strong}</span>
+              {" "}strong {todayChange.strong === 1 ? "result" : "results"}
+            </span>
+            <span className={todayChange.weak > 0 ? "text-core-pink" : "text-white/40"}>
+              <span className="font-semibold tabular-nums">{todayChange.weak}</span>
+              {" "}weak {todayChange.weak === 1 ? "result" : "results"}
+            </span>
+          </div>
+        ) : null}
+
         {tab === "today" ? (
           <TodayTableDark
             reported={lead ? [lead, ...others] : others}
             pending={pending}
             nextUp={nextUp}
+            todayIso={todayIso}
           />
         ) : tab === "tomorrow" ? (
           <UpcomingTableDark items={tomorrow} emptyText="No filings scheduled tomorrow." />
@@ -488,11 +682,28 @@ function TabButton({ active, onClick, label, count }: {
 // "Filing pending" placeholder in the numeric columns. Table fills
 // in as new filings land during the day (no reload required — the
 // parent re-fetches on interval or user interaction).
-function TodayTableDark({ reported, pending, nextUp }: {
+function TodayTableDark({ reported, pending, nextUp, todayIso }: {
   reported: LatestQuarterRow[];
   pending: UpcomingItem[];
   nextUp: UpcomingItem | undefined;
+  todayIso: string;
 }) {
+  // #4 Pending clarity — rough "when to expect" hint based on IST time.
+  // BSE/NSE earnings typically land either before market open (pre 9:15)
+  // or after market close (post 15:30). We show:
+  //   - "Expected after market close" when IST < 15:30
+  //   - "Filing expected any time now" when >= 15:30 (meetings often go
+  //     late into the evening)
+  const istHour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata", hour: "2-digit", hour12: false
+    }).format(new Date())
+  );
+  const pendingHint = (u: UpcomingItem) => {
+    if (u.next_result_date !== todayIso) return "Expected " + formatDate(u.next_result_date);
+    if (istHour < 15) return "Expected today (post market)";
+    return "Expected today (any time now)";
+  };
   if (reported.length === 0 && pending.length === 0) {
     return (
       <div className="text-white/70 text-[13px]">
@@ -562,11 +773,8 @@ function TodayTableDark({ reported, pending, nextUp }: {
               </div>
             ) : null}
           </div>
-          <div className="col-span-6 md:col-span-3 text-white/40 text-[12px] italic">
-            Awaiting filing
-          </div>
-          <div className="col-span-6 md:col-span-3 text-white/40 text-[12px] italic">
-            Awaiting filing
+          <div className="col-span-12 md:col-span-6 text-white/50 text-[12px] italic">
+            {pendingHint(p)}
           </div>
           <div className="hidden md:flex md:col-span-1 items-center justify-end">
             <span className="text-[9px] uppercase tracking-[0.14em] text-core-pink font-semibold">Pending</span>
