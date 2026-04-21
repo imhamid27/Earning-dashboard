@@ -12,7 +12,7 @@ export default function Footer() {
               India Earnings Tracker
             </div>
             <p className="leading-relaxed max-w-sm">
-              Quarterly results from India's listed companies, updated daily as they report.
+              Tracking quarterly results from India&apos;s listed companies, updated as disclosures come in.
             </p>
           </div>
           <div className="md:text-right">
@@ -20,7 +20,7 @@ export default function Footer() {
               The Core
             </div>
             <p className="leading-relaxed">
-              For editorial use. Verify with official filings before publishing.
+              Based on company disclosures. Verify before use.
               <br />
               © {new Date().getFullYear()} The Core.
             </p>
