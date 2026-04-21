@@ -149,10 +149,13 @@ UNIT_MULTIPLIERS: list[tuple[str, int]] = [
     # "in lakh". We also list "lakhs" before "lakh" for the loose pass.
     ("in crores",    10_000_000),
     ("in crore",     10_000_000),
-    ("in cr",        10_000_000),
+    ("in crones",    10_000_000),   # Common typo seen in TATAINVEST etc.
+    ("in crs",       10_000_000),
+    ("in cr.",       10_000_000),
+    ("in cr ",       10_000_000),
     ("in lakhs",     100_000),
     ("in lakh",      100_000),
-    ("in lacs",      100_000),   # Common Indian English spelling
+    ("in lacs",      100_000),      # Common Indian English spelling
     ("in lac",       100_000),
     ("in millions",  1_000_000),
     ("in million",   1_000_000),
@@ -166,6 +169,7 @@ UNIT_MULTIPLIERS: list[tuple[str, int]] = [
 LOOSE_UNIT_TOKENS: list[tuple[str, int]] = [
     ("crores",    10_000_000),
     ("crore",     10_000_000),
+    ("crs.",      10_000_000),
     ("lakhs",     100_000),
     ("lakh",      100_000),
     ("lacs",      100_000),
@@ -175,32 +179,69 @@ LOOSE_UNIT_TOKENS: list[tuple[str, int]] = [
 
 
 def detect_unit(text: str) -> tuple[str, int] | None:
-    """Scan for a unit declaration in the section head."""
-    head = text[:3000].lower()
-    # Normalise typographic clutter. Don't naively strip 'rs ' or 'rs.' —
-    # those substrings appear inside "Particulars" and other real English
-    # words. Keep the currency symbols in; the "in crore"/"in lakh" tokens
-    # match regardless of what precedes them.
-    norm = head.replace("₹", " ").replace("(", " ").replace(")", " ") \
-               .replace("|", " ")
+    """Scan for a unit declaration in the section.
 
-    # Pass 1: precise "in <unit>" tokens.
+    Strategy (in order):
+      1. First anchor on the data line (first "Revenue from operations" /
+         "Interest earned" / "Net premium earned" row). The table caption
+         sits within ~100 lines of it — look there first. This is how we
+         pick "in lakhs" over "in crore" on filings like MAHABANK where
+         BOTH units appear in different places (table caption vs notes).
+      2. Fallback: scan the full section for the first precise unit token.
+      3. Loose bare-word pass near "Particulars" for filings that omit
+         the "in " prefix (Tata Elxsi).
+    """
+    lc = text.lower()
+    # Normalise only the glyphs/punctuation — NEVER strip 'rs ' or 'rs.'
+    # because those substrings appear inside "particulars" and other
+    # real English words.
+    norm = lc.replace("₹", " ").replace("(", " ").replace(")", " ") \
+             .replace("|", " ").replace("[", " ").replace("]", " ")
+
+    # ---- Pass 1: unit-nearest-data. ----
+    # Find the index of the first likely data-line anchor.
+    anchor_phrases = (
+        "revenue from operations",
+        "total revenue from operations",
+        "interest earned",
+        "net premium earned",
+        "income from operations",
+    )
+    anchor_idx = -1
+    for p in anchor_phrases:
+        i = norm.find(p)
+        if i != -1 and (anchor_idx == -1 or i < anchor_idx):
+            anchor_idx = i
+    if anchor_idx != -1:
+        # Look 5000 chars before and 5000 after the anchor. Units are
+        # usually declared in the table caption (right above) but some
+        # filers put them in a sub-header below (MAHABANK has "In lakhs"
+        # ~60 lines / ~3500 chars AFTER the "Interest earned" row) or
+        # within the first data row.
+        window = norm[max(0, anchor_idx - 5000): anchor_idx + 5000]
+        best: tuple[int, str, int] | None = None   # (distance, token, mult)
+        for token, mult in UNIT_MULTIPLIERS:
+            pos = window.find(token)
+            if pos == -1:
+                continue
+            # Distance from the anchor in the window-relative coordinates.
+            anchor_in_win = min(anchor_idx, 5000)
+            d = abs(pos - anchor_in_win)
+            if best is None or d < best[0]:
+                best = (d, token, mult)
+        if best:
+            return best[1], best[2]
+
+    # ---- Pass 2: first precise unit token anywhere in the section. ----
     for token, mult in UNIT_MULTIPLIERS:
         if token in norm:
             return token, mult
 
-    # Pass 2: loose standalone unit word, but only if it sits near a table
-    # caption. "Particulars" is the universal SEBI-template header for the
-    # line-item column; any bare-word unit within ~150 chars of it is the
-    # table's unit.
+    # ---- Pass 3: loose bare-word token near "Particulars". ----
     parts_idx = norm.find("particulars")
     if parts_idx != -1:
-        window = norm[max(0, parts_idx - 300): parts_idx + 50]
+        window = norm[max(0, parts_idx - 400): parts_idx + 100]
         for token, mult in LOOSE_UNIT_TOKENS:
-            # Match as standalone word — avoid matching "crore" inside
-            # "crorepati" or similar. Also skip if the word is immediately
-            # preceded by "per " (e.g. "per crore"), which is never a unit
-            # declaration.
             pat = re.compile(rf"(?<![a-z]){re.escape(token)}(?![a-z])")
             m = pat.search(window)
             if m and not window[max(0, m.start() - 5): m.start()].endswith("per "):
@@ -215,16 +256,41 @@ def detect_unit(text: str) -> tuple[str, int] | None:
 
 NUM_RE = re.compile(
     r"""
-    (?<!\w)               # not in middle of a word
-    (\(?                   # optional opening paren for negatives
-      -?                    # or leading minus
-      \d{1,3}(?:,\d{2,3})*  # digits with Indian-style grouping (lakhs/crores OK too)
-      (?:\.\d+)?            # optional decimal
-    \)?)                   # optional closing paren
+    (?<!\w)                # not in middle of a word
+    (\(?                    # optional opening paren for negatives
+      -?                     # or leading minus
+      (?:                    # number body — two allowed shapes:
+        \d{1,3}(?:,\d{2,3})+ # (a) Indian-grouped: 7,75,515 or 12,34,56,789
+        |
+        \d{1,}               # (b) ungrouped: 775515 — common in bank filings
+                             #     where columns are tabbed, no separator needed
+      )
+      (?:\.\d+)?             # optional decimal tail (paise / fractional paise)
+    \)?)                    # optional closing paren
     (?!\w)
     """,
     re.VERBOSE,
 )
+
+
+# Some PDFs render the thousand separator as a space instead of a comma
+# — "5,292.60" comes out as "5 292.60". This mangles our token extractor,
+# which sees "5" then "292.60" as separate numbers. The pattern is:
+#   (small-int 1-999) (space) (1-3 digit number .decimal) → join them.
+BROKEN_SEP_RE = re.compile(r"(?<!\d)(\d{1,3})\s+(\d{3}(?:\.\d+)?)(?!\d)")
+
+
+def _fix_broken_thousand_separators(line: str) -> str:
+    """Collapse space-as-thousand-separator. Applied up to 2× per line to
+    handle numbers like '18 651.20' being iterations of 3-digit joins."""
+    prev = None
+    cur = line
+    for _ in range(3):
+        if cur == prev:
+            break
+        prev = cur
+        cur = BROKEN_SEP_RE.sub(r"\1,\2", cur)
+    return cur
 
 
 def parse_number(tok: str) -> float | None:
@@ -306,9 +372,14 @@ def split_sections(full_text: str) -> dict[str, str]:
         end = len(full_text)
         if i + 1 < len(ordered):
             end = ordered[i + 1][1][0]
-        # Also truncate at balance-sheet-like markers if they come first.
-        # Allow up to 20 KB of section body — more than enough for the P&L.
-        end = min(end, start + 20_000)
+        # Cap section body at 80 KB — covers the P&L + notes + first few
+        # tables even for banks (where the data can sit ~700 lines below
+        # the header). Some filings don't have a next section header
+        # inside the first 30 PDF pages, so without the cap we'd scan
+        # auditor reports, balance sheets, etc. — which don't match our
+        # canonical labels so the scan falls off naturally, but 80 KB
+        # is plenty and keeps memory bounded.
+        end = min(end, start + 80_000)
         out[name] = full_text[start:end]
     return out
 
@@ -335,10 +406,12 @@ def find_label_line(section: str, aliases: list[str]) -> tuple[str, str] | None:
     operations" never shadows the data row "(a) Revenue from operations
     99,375.12 ...".
     """
-    lines = section.splitlines()
-    lc_lines = [l.lower() for l in lines]
+    # Heal the whole section up-front so numeric detection works on lines
+    # with space-as-thousand-separator.
+    healed_lines = [_fix_broken_thousand_separators(l) for l in section.splitlines()]
+    lc_lines = [l.lower() for l in healed_lines]
     for a in (s.lower() for s in aliases):
-        for line, lc in zip(lines, lc_lines):
+        for line, lc in zip(healed_lines, lc_lines):
             if a not in lc:
                 continue
             toks = numeric_tokens(line)
@@ -350,6 +423,24 @@ def find_label_line(section: str, aliases: list[str]) -> tuple[str, str] | None:
                 continue
             return a, line
     return None
+
+
+def _drop_leading_row_marker(toks: list[float]) -> list[float]:
+    """If right-of-label tokens start with a small integer row marker like
+    '5' from '(5-6)' or '7' preceding '292.60', AND the next token has a
+    decimal part (the real data is floats), drop the leading integer.
+
+    Empirically, data rows in SEBI templates always have decimal values
+    (currency with paise, or lakh counts with cents). Pure integers appearing
+    as the first token are almost always row markers or note references.
+    """
+    if len(toks) >= 2:
+        a, b = toks[0], toks[1]
+        is_small_int = (1 <= a <= 99) and float(int(a)) == a
+        b_has_decimal = float(int(b)) != b
+        if is_small_int and b_has_decimal:
+            return toks[1:]
+    return toks
 
 
 def extract_value(section: str, aliases: list[str]) -> float | None:
@@ -370,6 +461,8 @@ def extract_value(section: str, aliases: list[str]) -> float | None:
     if not hit:
         return None
     label, line = hit
+    # Heal PDFs that render thousand separators as spaces (Persistent et al.).
+    line = _fix_broken_thousand_separators(line)
     pos = line.lower().find(label)
     left_toks = numeric_tokens(line[:pos])
     right_toks = numeric_tokens(line[pos + len(label):])
@@ -377,7 +470,12 @@ def extract_value(section: str, aliases: list[str]) -> float | None:
     if len(left_toks) >= 3:
         return left_toks[0]
     if right_toks:
-        return right_toks[0]
+        # Row markers like "7 Profit for the period / year (5-6) 5 292.60"
+        # can leak into right_toks as "5" (from "(5-6)"). Drop them if the
+        # next token has a decimal (real data).
+        right_toks = _drop_leading_row_marker(right_toks)
+        if right_toks:
+            return right_toks[0]
     if left_toks:
         return left_toks[0]
     return None
@@ -435,8 +533,7 @@ def parse_pdf(pdf_bytes: bytes) -> dict[str, Any]:
 
     sections = split_sections(full)
     # Prefer consolidated. Fall back to standalone. Fall back to the
-    # "generic" (unqualified) section header. Fall back to full text
-    # (for PDFs where pdfplumber's text extraction lost the heading).
+    # "generic" (unqualified) section header.
     section_text: str
     section_name: str | None
     if "consolidated" in sections:
@@ -447,6 +544,20 @@ def parse_pdf(pdf_bytes: bytes) -> dict[str, Any]:
         section_text, section_name = sections["generic"], "unqualified"
     else:
         section_text, section_name = full, None
+
+    # Sanity check: the section we picked must actually contain a financial
+    # anchor line ("Revenue from operations" / "Interest earned" / etc.).
+    # Some PDFs have the phrase "standalone financial results" buried in
+    # notes prose (GROWW), which fools our section regex into returning
+    # a tiny irrelevant block. If that happens, fall back to full text —
+    # we'd rather parse too much than too little.
+    anchor_re = re.compile(
+        r"(revenue\s+from\s+operations|interest\s+earned|net\s+premium\s+earned|"
+        r"income\s+from\s+operations)",
+        re.IGNORECASE,
+    )
+    if not anchor_re.search(section_text) and anchor_re.search(full):
+        section_text, section_name = full, section_name or "fallback_full"
     result["section"] = section_name
 
     unit_info = detect_unit(section_text) or detect_unit(full)
