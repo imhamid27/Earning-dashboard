@@ -408,20 +408,29 @@ function TodayBand({
 
   return (
     <section className="bg-core-ink text-white rounded-lg overflow-hidden flex flex-col max-h-[460px] md:max-h-[500px]">
-      {/* Header — live kicker + day marker + count, + tabs */}
+      {/* Header — single-line banner: pulse · LIVE · WEEKDAY, DATE · count.
+          All elements the same size so nothing floats, gap-2 keeps the
+          group tight. */}
       <div className="px-5 md:px-6 pt-5 md:pt-6">
-        <div className="flex items-baseline justify-between gap-4 flex-wrap">
-          <div className="flex items-baseline gap-3 flex-wrap">
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/60 font-semibold">
-              <span className={`inline-block w-1.5 h-1.5 rounded-full ${hasActivity ? "bg-core-pink animate-pulse" : "bg-white/30"}`} />
-              <span>Live</span>
-            </div>
-            <h2 className="text-[20px] md:text-[24px] font-bold tracking-tightest leading-none">
-              {dayOfWeek} <span className="text-white/50 font-semibold">{dayShort}</span>
-            </h2>
+        <div className="flex items-center justify-between gap-4 flex-wrap text-[11px] uppercase tracking-[0.22em] text-white/60 font-semibold">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${hasActivity ? "bg-core-pink animate-pulse" : "bg-white/30"}`} />
+            <span>Live</span>
+            <span className="text-white/20">·</span>
+            <span className="text-white">
+              {dayOfWeek}, {dayShort}
+            </span>
           </div>
-          <div className="text-[11px] uppercase tracking-[0.14em] text-white/60">
-            {filedCount} filed{pending.length > 0 ? ` · ${pending.length} expected` : ""}
+          <div>
+            <span className="text-white tabular-nums">{filedCount}</span>
+            <span className="text-white/60"> filed</span>
+            {pending.length > 0 ? (
+              <>
+                <span className="text-white/30 mx-2">·</span>
+                <span className="text-white tabular-nums">{pending.length}</span>
+                <span className="text-white/60"> expected</span>
+              </>
+            ) : null}
           </div>
         </div>
 
