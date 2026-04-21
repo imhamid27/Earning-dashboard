@@ -7,8 +7,14 @@ import EmptyState from "@/components/EmptyState";
 import TabScroller from "@/components/TabScroller";
 import FilingLoader from "@/components/FilingLoader";
 import PdfLink from "@/components/PdfLink";
+import PriceChip from "@/components/PriceChip";
 import { simplifyPurpose } from "@/lib/purpose";
 import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
+
+type PriceMap = Record<
+  string,
+  { last_price: number | null; change_pct: number | null }
+>;
 
 interface Company {
   ticker: string; company_name: string; sector: string | null; industry: string | null;
@@ -40,6 +46,7 @@ const QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
 
 export default function Q4Page() {
   const [data, setData] = useState<Payload | null>(null);
+  const [prices, setPrices] = useState<PriceMap>({});
   const [err, setErr] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState<string | null>(null);
 
@@ -63,6 +70,16 @@ export default function Q4Page() {
         }
       })
       .catch((e) => setErr(String(e)));
+
+    // Prices are a separate endpoint (same as homepage). We don't want
+    // the price sidecar to block the main payload — if prices fail, the
+    // table still renders without the price chip.
+    fetch(`/api/prices`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok && j.data?.prices) setPrices(j.data.prices);
+      })
+      .catch(() => { /* silent */ });
   }, []);
 
   // Back-compat for the rest of the template, which still references `quarter`.
@@ -209,10 +226,10 @@ export default function Q4Page() {
                               <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
                                 {c.company_name}
                               </Link>
-                              <div className="text-[11px] text-core-muted flex items-center gap-2">
+                              <div className="text-[11px] text-core-muted flex items-center gap-2 flex-wrap">
                                 <span>{c.ticker}</span>
-                                <PdfLink url={c.filing_url} label="View filing" />
-
+                                <PdfLink url={c.filing_url} compact />
+                                <PriceChip p={prices[c.ticker]} />
                               </div>
                             </td>
                             <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
@@ -254,19 +271,10 @@ export default function Q4Page() {
                                 <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
                                   {c.company_name}
                                 </Link>
-                                <div className="text-[11px] text-core-muted flex items-center gap-2">
+                                <div className="text-[11px] text-core-muted flex items-center gap-2 flex-wrap">
                                   <span>{c.ticker}</span>
-                                  {c.filing_url ? (
-                                    <a
-                                      href={c.filing_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-core-pink hover:underline"
-                                      title="Open the filing submitted to BSE"
-                                    >
-                                      View filing ↗
-                                    </a>
-                                  ) : null}
+                                  <PdfLink url={c.filing_url} compact />
+                                  <PriceChip p={prices[c.ticker]} />
                                 </div>
                               </td>
                               <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
@@ -298,7 +306,6 @@ export default function Q4Page() {
                     <thead>
                       <tr>
                         <th>Company</th>
-                        <th>Ticker</th>
                         <th>Sector</th>
                         <th>Purpose</th>
                       </tr>
@@ -310,8 +317,11 @@ export default function Q4Page() {
                             <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
                               {c.company_name}
                             </Link>
+                            <div className="text-[11px] text-core-muted flex items-center gap-2 flex-wrap">
+                              <span>{c.ticker}</span>
+                              <PriceChip p={prices[c.ticker]} />
+                            </div>
                           </td>
-                          <td className="text-sm text-core-muted tabular-nums">{c.ticker}</td>
                           <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
                           <td className="text-sm text-core-ink max-w-[480px]" title={c.purpose ?? undefined}>
                             {simplifyPurpose(c.purpose, activeGroup.date)}

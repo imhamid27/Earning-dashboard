@@ -6,6 +6,7 @@ import { formatINR, formatPct, pctToneClass, formatDate } from "@/lib/format";
 import Sparkline from "./Sparkline";
 import StatusBadge from "./StatusBadge";
 import PdfLink from "./PdfLink";
+import PriceChip from "./PriceChip";
 import type { LatestQuarterRow } from "@/lib/types";
 
 type SortKey = "company_name" | "sector" | "revenue" | "revenue_yoy" | "net_profit" | "profit_yoy";
@@ -126,9 +127,7 @@ export default function CompanyTable({
                     {r.filing_url ? (
                       <PdfLink url={r.filing_url} compact />
                     ) : null}
-                    {prices && prices[r.ticker]?.last_price != null ? (
-                      <PriceChip p={prices[r.ticker]} />
-                    ) : null}
+                    <PriceChip p={prices ? prices[r.ticker] : null} />
                   </div>
                 </td>
                 <td className="text-sm text-core-muted">{r.sector ?? "—"}</td>
@@ -184,33 +183,6 @@ function daysUntilLabel(iso: string): string {
   if (diff === 1) return " · tomorrow";
   if (diff <= 14) return ` · in ${diff}d`;
   return "";
-}
-
-// Tiny "₹1,450.20 +0.87%" chip shown next to the ticker. Readable at 11px
-// and colour-coded so readers can glance a row and see both the earnings
-// picture (bigger numbers to the right) and the current share price.
-function PriceChip({ p }: { p: { last_price: number | null; change_pct: number | null } }) {
-  if (p.last_price == null) return null;
-  const priceText = p.last_price.toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  const pct = p.change_pct;
-  const cls = pct == null
-    ? "text-core-muted"
-    : pct > 0 ? "text-core-teal"
-    : pct < 0 ? "text-core-negative"
-    : "text-core-muted";
-  return (
-    <span className="inline-flex items-center gap-1">
-      <span className="text-core-ink">₹{priceText}</span>
-      {pct != null ? (
-        <span className={`${cls} font-semibold`}>
-          {pct >= 0 ? "+" : ""}{(pct * 100).toFixed(2)}%
-        </span>
-      ) : null}
-    </span>
-  );
 }
 
 function Th({
