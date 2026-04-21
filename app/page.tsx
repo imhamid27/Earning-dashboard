@@ -40,6 +40,25 @@ function shortName(raw: string): string {
   return s;
 }
 
+// "Updated 3m ago" / "Updated just now" / "Updated 12:04 PM IST" —
+// readable relative timestamp for the Market strip. Falls back to the
+// absolute IST clock time when the source is more than an hour old.
+function formatRelative(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const diffMs = Date.now() - t;
+  const mins = Math.round(diffMs / 60_000);
+  if (mins < 1)   return "just now";
+  if (mins < 60)  return `${mins}m ago`;
+  // Past an hour — show the absolute IST clock time instead of "Xh".
+  const clock = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "numeric", minute: "2-digit", hour12: true
+  }).format(new Date(iso));
+  return `${clock} IST`;
+}
+
 function quarterAsCalendar(q: string): string {
   const m = /^Q([1-4])\s*FY(\d{2})$/.exec(q.trim());
   if (!m) return "";
@@ -382,6 +401,13 @@ export default function DashboardPage() {
               </span>
             );
           })}
+          {/* Freshness stamp — pushed to the right on wide viewports. */}
+          <span
+            className="ml-auto text-[10px] uppercase tracking-[0.14em] text-core-muted tabular-nums"
+            title={market.as_of}
+          >
+            Updated {formatRelative(market.as_of)}
+          </span>
         </div>
       ) : null}
 
