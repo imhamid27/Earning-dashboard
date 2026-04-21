@@ -237,34 +237,55 @@ export default function Q4Page() {
                   </div>
                 ) : null}
                 {pending.length > 0 ? (
-                  <div className="card p-5">
-                    <div className="text-xs uppercase tracking-[0.14em] text-core-muted mb-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.14em] text-core-muted mb-2">
                       Filing pending · board meeting held, numbers not yet submitted
                     </div>
-                    <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-                      {pending.map((c) => (
-                        <li key={c.ticker} className="whitespace-nowrap">
-                          <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-medium hover:text-core-pink">
-                            {c.company_name}
-                          </Link>
-                          <span className="text-[11px] text-core-muted ml-1.5">{c.ticker}</span>
-                          {c.filing_url ? (
-                            <>
-                              <span className="text-core-line mx-1.5">·</span>
-                              <a
-                                href={c.filing_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[11px] text-core-pink hover:underline"
-                                title="Open the filing submitted to BSE"
-                              >
-                                View filing ↗
-                              </a>
-                            </>
-                          ) : null}
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="card overflow-x-auto">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Company</th>
+                            <th>Sector</th>
+                            <th className="text-right">Revenue</th>
+                            <th className="text-right">Rev YoY</th>
+                            <th className="text-right">Net profit</th>
+                            <th className="text-right">Profit YoY</th>
+                            <th className="text-right">Op. profit</th>
+                            <th className="text-right">EPS</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pending.map((c) => (
+                            <tr key={c.ticker}>
+                              <td>
+                                <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
+                                  {c.company_name}
+                                </Link>
+                                <div className="text-[11px] text-core-muted flex items-center gap-2">
+                                  <span>{c.ticker}</span>
+                                  {c.filing_url ? (
+                                    <a
+                                      href={c.filing_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-core-pink hover:underline"
+                                      title="Open the filing submitted to BSE"
+                                    >
+                                      View filing ↗
+                                    </a>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
+                              <td colSpan={6} className="text-left text-sm text-core-muted italic">
+                                Awaiting filing · numbers will appear once published
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : null}
               </section>
