@@ -335,14 +335,23 @@ NUM_RE = re.compile(
 
 # Some PDFs render the thousand separator as a space instead of a comma
 # — "5,292.60" comes out as "5 292.60". This mangles our token extractor,
-# which sees "5" then "292.60" as separate numbers. The pattern is:
-#   (small-int 1-999) (space) (1-3 digit number .decimal) → join them.
-BROKEN_SEP_RE = re.compile(r"(?<!\d)(\d{1,3})\s+(\d{3}(?:\.\d+)?)(?!\d)")
+# which sees "5" then "292.60" as separate numbers.
+#
+# CRITICAL: the second chunk MUST have a decimal. Without that constraint
+# the regex wrongly joins adjacent independent columns of a data row —
+# e.g. Maharashtra Scooters has "Total revenue from operations 603 644 665
+# 31276 18333" where "603", "644" and "665" are FIVE different columns
+# (Q4, Q3, YoY Q, FY, prev FY), not one number "603,644,665". The decimal
+# requirement tells us we're really looking at a comma-replaced-by-space
+# pattern (Indian number formatting) vs. column-separated integers.
+BROKEN_SEP_RE = re.compile(r"(?<!\d)(\d{1,3})\s+(\d{3}\.\d+)(?!\d)")
 
 
 def _fix_broken_thousand_separators(line: str) -> str:
-    """Collapse space-as-thousand-separator. Applied up to 2× per line to
-    handle numbers like '18 651.20' being iterations of 3-digit joins."""
+    """Collapse space-as-thousand-separator ONLY when the second chunk
+    has a decimal point — that's the signal the whole thing is one real
+    number (e.g. '5 292.60' → '5,292.60'). Applied up to 3× per line so
+    two-level separators like '18 651.20' and '1 234 567.89' all heal."""
     prev = None
     cur = line
     for _ in range(3):
