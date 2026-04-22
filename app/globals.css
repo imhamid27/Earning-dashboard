@@ -54,6 +54,18 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
+/* Page-level horizontal scroll safety net. Prevents any single wide
+   element — a rogue tooltip, a table that forgot overflow-x-auto, a
+   negative-margin mishap — from triggering a sideways scrollbar on
+   the whole page. Inner scroll containers (tables, tab rails, the
+   Markets index strip) still scroll internally via their own
+   overflow-x-auto; this only cuts off anything that leaks past the
+   viewport at the root level. */
+html, body {
+  overflow-x: clip;
+  max-width: 100vw;
+}
+
 /* Typographic scale — big, confident, editorial.
    All measured against a 16px base; we lean on Mona Sans's excellent
    display-weight performance so headings can be tightly tracked. */

@@ -86,30 +86,35 @@ export default function UpcomingPage() {
 
   return (
     <div className="container-core py-8 md:py-10 space-y-8 md:space-y-10">
-      {/* ============ MASTHEAD ============ */}
-      <section className="flex items-start justify-between gap-4 flex-wrap border-b border-core-line pb-6">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-x-2 text-[10px] uppercase tracking-[0.14em] text-core-muted mb-1.5">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-pink" />
-            <span>Earnings tracker</span>
-            <span className="text-core-line-2">/</span>
-            <span className="text-core-ink font-semibold">Upcoming</span>
-          </div>
-          <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-bold tracking-tightest leading-[1.05]">
-            Upcoming results
-            <span className="inline-block align-middle ml-2 -translate-y-0.5">
-              <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
-            </span>
-          </h1>
-          <p className="text-core-muted mt-3 max-w-2xl text-[14px]">
-            Companies with a scheduled earnings meeting. Results typically file after
-            market hours — <Link href="/" className="text-core-pink hover:underline">check the dashboard →</Link> once numbers land.
-          </p>
+      {/* ============ MASTHEAD ============
+          On mobile: title + description get the full width; stats stack
+          BELOW as a 3-column grid so neither crowds the other. On
+          desktop: stats sit to the right as before. */}
+      <section className="border-b border-core-line pb-6">
+        <div className="flex items-center gap-x-2 text-[10px] uppercase tracking-[0.14em] text-core-muted mb-1.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-pink" />
+          <span>Earnings tracker</span>
+          <span className="text-core-line-2">/</span>
+          <span className="text-core-ink font-semibold">Upcoming</span>
         </div>
-        <div className="flex items-baseline gap-5 md:gap-7 text-right shrink-0">
-          <StatCell n={stats.todayCount}  label="today" />
-          <StatCell n={stats.weekCount}   label="this week" />
-          <StatCell n={stats.monthCount}  label="this month" accent />
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-bold tracking-tightest leading-[1.05]">
+              Upcoming results
+              <span className="inline-block align-middle ml-2 -translate-y-0.5">
+                <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
+              </span>
+            </h1>
+            <p className="text-core-muted mt-3 max-w-2xl text-[14px]">
+              Companies with a scheduled earnings meeting. Results typically file after
+              market hours — <Link href="/" className="text-core-pink hover:underline">check the dashboard →</Link> once numbers land.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 md:flex md:items-baseline gap-4 md:gap-7 md:text-right shrink-0 pt-2 md:pt-0 border-t md:border-0 border-core-line">
+            <StatCell n={stats.todayCount}  label="today" />
+            <StatCell n={stats.weekCount}   label="this week" />
+            <StatCell n={stats.monthCount}  label="this month" accent />
+          </div>
         </div>
       </section>
 
