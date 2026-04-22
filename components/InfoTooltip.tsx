@@ -52,10 +52,27 @@ export default function InfoTooltip({
 
       {/* Tooltip body — dark chip with generous padding. Wider max-width
           than a typical tooltip (360px) so a two-line disclaimer reads
-          comfortably without awkward mid-word wraps. */}
+          comfortably without awkward mid-word wraps.
+
+          Typography RESET is important here: this tooltip frequently
+          sits inside <h1> or bold display text that applies
+          tracking-tightest + bold + larger font-size. Without explicit
+          overrides the tooltip copy would inherit all of that and the
+          words would collapse into each other ("Earningsdatasourced"
+          instead of "Earnings data sourced"). We force body-style
+          typography every time. */}
       <span
         role="tooltip"
-        className={`absolute left-1/2 -translate-x-1/2 ${flyoutPos} w-[min(360px,calc(100vw-2rem))] px-3.5 py-2.5 text-[13px] leading-[1.5] font-normal text-white bg-core-ink rounded-md shadow-xl opacity-0 invisible pointer-events-none group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-opacity duration-150 z-30`}
+        className={`absolute left-1/2 -translate-x-1/2 ${flyoutPos}
+          w-[min(360px,calc(100vw-2rem))]
+          px-3.5 py-2.5
+          bg-core-ink rounded-md shadow-xl
+          font-sans font-normal normal-case tracking-normal
+          text-[13px] leading-[1.55] text-white
+          opacity-0 invisible pointer-events-none
+          group-hover:opacity-100 group-hover:visible
+          group-focus-within:opacity-100 group-focus-within:visible
+          transition-opacity duration-150 z-30`}
       >
         {text}
       </span>

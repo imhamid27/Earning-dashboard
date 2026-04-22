@@ -114,59 +114,69 @@ export default function CompanyDetail() {
           of whether quarterly data exists. Separates "what the market thinks
           right now" from "what the company last reported". */}
       {price && price.last_price != null ? (
-        <section className="card p-5 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-core-muted font-semibold flex items-center gap-2">
-              Trading price
-              {priceStatus === "open" ? (
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.15em] text-core-teal">
-                  <span className="w-1 h-1 rounded-full bg-core-teal animate-pulse" />
-                  LIVE
-                </span>
-              ) : priceStatus === "closed" ? (
-                <span className="text-[9px] font-bold tracking-[0.15em] text-core-muted">CLOSED</span>
-              ) : null}
-            </div>
-            <div className="mt-2 flex items-baseline gap-4">
-              <div className="text-3xl md:text-4xl font-bold tabular-nums tracking-tightest">
-                ₹{price.last_price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        <section className="card p-5 md:p-6">
+          {/* Row 1: label + LIVE/CLOSED badge. Always on its own line — a
+              clean header slug that the big price hangs off. */}
+          <div className="text-[10px] uppercase tracking-[0.18em] text-core-muted font-semibold flex items-center gap-2">
+            Trading price
+            {priceStatus === "open" ? (
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.15em] text-core-teal">
+                <span className="w-1 h-1 rounded-full bg-core-teal animate-pulse" />
+                LIVE
+              </span>
+            ) : priceStatus === "closed" ? (
+              <span className="text-[9px] font-bold tracking-[0.15em] text-core-muted">CLOSED</span>
+            ) : null}
+          </div>
+
+          {/* Row 2: the headline price and the 3 sub-stats. Stacks
+              vertically on mobile; puts the stats on the right on
+              desktop. Grid-based (not flex) so the stats columns never
+              overlap each other at any viewport width. */}
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-5 md:gap-8 md:items-end">
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <div className="text-3xl md:text-4xl font-bold tabular-nums tracking-tightest leading-none">
+                  ₹{price.last_price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                {price.change_pct != null ? (
+                  <div className={`text-lg font-semibold tabular-nums leading-none ${price.change_pct >= 0 ? "text-core-teal" : "text-core-negative"}`}>
+                    {price.change_pct >= 0 ? "+" : ""}
+                    {(price.change_pct * 100).toFixed(2)}%
+                  </div>
+                ) : null}
               </div>
-              {price.change_pct != null ? (
-                <div className={`text-lg font-semibold tabular-nums ${price.change_pct >= 0 ? "text-core-teal" : "text-core-negative"}`}>
-                  {price.change_pct >= 0 ? "+" : ""}
-                  {(price.change_pct * 100).toFixed(2)}%
-                  {price.previous_close != null ? (
-                    <span className="ml-2 text-sm text-core-muted font-normal">
-                      vs ₹{price.previous_close.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  ) : null}
+              {price.previous_close != null ? (
+                <div className="mt-2 text-[11px] text-core-muted tabular-nums">
+                  vs previous close ₹{price.previous_close.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               ) : null}
             </div>
+
+            <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs md:justify-self-end">
+              <PriceStat
+                label="Day high"
+                value={price.day_high != null
+                  ? `₹${price.day_high.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "—"}
+              />
+              <PriceStat
+                label="Day low"
+                value={price.day_low != null
+                  ? `₹${price.day_low.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "—"}
+              />
+              <PriceStat
+                label="Volume"
+                value={price.volume != null ? formatVolume(price.volume) : "—"}
+              />
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-x-6 text-xs min-w-0">
-            <div>
-              <div className="text-[9px] uppercase tracking-[0.14em] text-core-muted">Day high</div>
-              <div className="mt-0.5 tabular-nums font-semibold">
-                {price.day_high != null ? `₹${price.day_high.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-[9px] uppercase tracking-[0.14em] text-core-muted">Day low</div>
-              <div className="mt-0.5 tabular-nums font-semibold">
-                {price.day_low != null ? `₹${price.day_low.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-[9px] uppercase tracking-[0.14em] text-core-muted">Volume</div>
-              <div className="mt-0.5 tabular-nums font-semibold">
-                {price.volume != null ? formatVolume(price.volume) : "—"}
-              </div>
-            </div>
-          </div>
-          {/* Price disclaimer — small, low contrast; placed inside the
-              same card so it's unambiguously tied to the price above. */}
-          <div className="w-full md:w-auto md:basis-full pt-3 mt-1 border-t border-core-line text-[10px] leading-snug text-core-muted italic">
+
+          {/* Row 3: disclaimer — ALWAYS on its own line below the grid.
+              The old layout tried to squeeze it into the flex row which
+              made the text overlap the sub-stats at awkward widths. */}
+          <div className="mt-5 pt-3 border-t border-core-line text-[11px] leading-relaxed text-core-muted italic">
             {DISCLAIMER_PRICE}
           </div>
         </section>
@@ -315,6 +325,22 @@ function KPI({ label, value, sub }: { label: string; value: string; sub?: React.
         {value}
       </div>
       {sub ? <div className="mt-2 text-[11px]">{sub}</div> : null}
+    </div>
+  );
+}
+
+// One of the three stats (high / low / volume) shown beside the trading
+// price. Tight label + value, tabular-nums so they align vertically
+// across rows regardless of digit count.
+function PriceStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 text-right">
+      <div className="text-[9px] uppercase tracking-[0.14em] text-core-muted whitespace-nowrap">
+        {label}
+      </div>
+      <div className="mt-1 tabular-nums font-semibold text-sm whitespace-nowrap">
+        {value}
+      </div>
     </div>
   );
 }

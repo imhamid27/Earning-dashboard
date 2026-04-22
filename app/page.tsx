@@ -790,18 +790,22 @@ function TodayBand({
           </div>
         </div>
 
-        <nav className="mt-4 md:mt-5 flex flex-wrap gap-x-4 gap-y-1.5 border-b border-white/10 -mx-1">
-          {/* Yesterday tab is hidden when there's nothing to show —
-              keeps the nav clean during the middle of a quarter when
-              we're already deep into today's reporting. Always visible
-              if yesterday had at least one filing though. */}
-          {counts.yesterday > 0 ? (
-            <TabButton active={tab === "yesterday"}    onClick={() => setTab("yesterday")}    label="Yesterday"   count={counts.yesterday} />
-          ) : null}
-          <TabButton active={tab === "today"}       onClick={() => setTab("today")}       label="Today"       count={counts.today} />
-          <TabButton active={tab === "tomorrow"}    onClick={() => setTab("tomorrow")}    label="Tomorrow"    count={counts.tomorrow} />
-          <TabButton active={tab === "week"}        onClick={() => setTab("week")}        label="This week"   count={counts.week} />
-          <TabButton active={tab === "bellwethers"} onClick={() => setTab("bellwethers")} label="Big names"   count={counts.bellwethers} />
+        {/* Tabs: horizontally scrollable on narrow screens so no tab ever
+            wraps or gets cut off. Flex with nowrap + overflow-x-auto,
+            and a right-edge fade mask to hint that more tabs exist. */}
+        <nav className="mt-4 md:mt-5 border-b border-white/10 -mx-5 md:mx-0 relative">
+          <div className="flex flex-nowrap gap-x-4 overflow-x-auto scrollbar-thin px-5 md:px-0">
+            {/* Yesterday tab is hidden when there's nothing to show —
+                keeps the nav clean mid-quarter when we're deep into
+                today's reporting. */}
+            {counts.yesterday > 0 ? (
+              <TabButton active={tab === "yesterday"}    onClick={() => setTab("yesterday")}    label="Yesterday"   count={counts.yesterday} />
+            ) : null}
+            <TabButton active={tab === "today"}       onClick={() => setTab("today")}       label="Today"       count={counts.today} />
+            <TabButton active={tab === "tomorrow"}    onClick={() => setTab("tomorrow")}    label="Tomorrow"    count={counts.tomorrow} />
+            <TabButton active={tab === "week"}        onClick={() => setTab("week")}        label="This week"   count={counts.week} />
+            <TabButton active={tab === "bellwethers"} onClick={() => setTab("bellwethers")} label="Big names"   count={counts.bellwethers} />
+          </div>
         </nav>
 
         {/* #3 Big names today — up to 3 bellwethers filing today.

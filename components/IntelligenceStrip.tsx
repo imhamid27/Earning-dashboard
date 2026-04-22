@@ -50,7 +50,15 @@ export default function IntelligenceStrip(props: IntelligenceStripProps) {
       : 0;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-core-line border-y border-core-line mb-6">
+    // 2×2 on mobile, 1×4 on desktop. Divide lines switch direction with
+    // the grid so we don't get orphan borders when the layout flips.
+    <div
+      className="
+        grid grid-cols-2 md:grid-cols-4
+        divide-x divide-y md:divide-y-0
+        divide-core-line border-y border-core-line mb-6
+      "
+    >
       {/* Card 1 · Season progress ------------------------------------------ */}
       <Tile
         label={`${quarter ?? "Q4"} PROGRESS`}
@@ -180,11 +188,11 @@ function Tile({
   sub?: React.ReactNode;
 }) {
   return (
-    <div className="px-4 py-3 md:px-5 md:py-3.5 min-w-0">
-      <div className="text-[9px] uppercase tracking-[0.18em] text-core-muted font-semibold">
+    <div className="px-3.5 py-3 md:px-5 md:py-3.5 min-w-0">
+      <div className="text-[9px] uppercase tracking-[0.18em] text-core-muted font-semibold truncate">
         {label}
       </div>
-      <div className="mt-1 text-[22px] md:text-[26px] leading-none font-bold tracking-tightest">
+      <div className="mt-1 text-[20px] md:text-[26px] leading-tight font-bold tracking-tightest">
         {value}
       </div>
       {sub ? (
