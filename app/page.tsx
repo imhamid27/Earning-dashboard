@@ -404,7 +404,7 @@ export default function DashboardPage() {
             </div>
             <h1 className="font-sans font-bold tracking-tightest leading-[0.95] text-[clamp(1.75rem,4.5vw,3.25rem)] flex items-baseline gap-2">
               <span>India Inc. Reporting</span>
-              <InfoTooltip text={DISCLAIMER_SHORT} />
+              <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
             </h1>
           </div>
           <div className="shrink-0 pt-1">
@@ -421,10 +421,7 @@ export default function DashboardPage() {
        */}
       {market ? (
         <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 py-2.5 text-[12px] border-y border-core-line mb-6">
-          <span
-            className="text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold flex items-center gap-1.5"
-            title={DISCLAIMER_MARKETS}
-          >
+          <span className="text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold flex items-center gap-1.5">
             Markets
             <InfoTooltip text={DISCLAIMER_MARKETS} />
             {market.market_status === "open" ? (

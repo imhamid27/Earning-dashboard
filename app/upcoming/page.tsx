@@ -97,7 +97,7 @@ export default function UpcomingPage() {
           </div>
           <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-bold tracking-tightest leading-[1.05] flex items-baseline gap-2">
             <span>Upcoming results</span>
-            <InfoTooltip text={DISCLAIMER_SHORT} />
+            <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
           </h1>
           <p className="text-core-muted mt-3 max-w-2xl text-[14px]">
             Companies with a scheduled earnings meeting. Results typically file after

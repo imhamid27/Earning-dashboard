@@ -109,7 +109,7 @@ export default function SectorsPage() {
           <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted">Earnings Tracker</div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tightest mt-1 flex items-baseline gap-2">
             <span>Sector view</span>
-            <InfoTooltip text={DISCLAIMER_SHORT} />
+            <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
           </h1>
           <p className="text-core-muted mt-2 max-w-2xl text-sm">
             How India's sectors are growing — aggregated revenue and net profit,
