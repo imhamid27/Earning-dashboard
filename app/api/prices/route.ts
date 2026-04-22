@@ -29,9 +29,26 @@ import { jsonOk, jsonError } from "@/lib/api";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-// Same thresholds the market-context route uses, for consistent UX.
-const OPEN_FRESH_MS = 30 * 60 * 1000;  // "LIVE" chip below this age
+// 7-day cap past which last-close is too stale to serve even as
+// "closed". The UI silently falls to nulls in that case.
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Is the Indian equity market open right now (Mon-Fri 09:15-15:30 IST)?
+// The LIVE/CLOSED chip tracks the MARKET state, not our data age — a
+// 10-min cron lag shouldn't flip the UI off during active trading.
+function isIndianMarketOpen(now: Date = new Date()): boolean {
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  const parts = fmt.formatToParts(now);
+  const weekday = parts.find((p) => p.type === "weekday")?.value ?? "";
+  const hour    = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute  = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  if (["Sat", "Sun"].includes(weekday)) return false;
+  const mins = hour * 60 + minute;
+  return mins >= (9 * 60 + 15) && mins <= (15 * 60 + 30);
+}
 
 export async function GET(req: NextRequest) {
   const url  = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -115,11 +132,17 @@ export async function GET(req: NextRequest) {
   const prices: Record<string, Price> = {};
   for (const [t, p] of latest) prices[t] = p;
 
+  // Base the chip on actual NSE/BSE trading hours, not our data age.
+  // Even if the snapshot cron is 10 min late, the strip still correctly
+  // reads "LIVE" during live trading — readers care about the MARKET
+  // state, not our pipeline's staleness. Freshness is surfaced
+  // separately via the updated_at timestamp.
+  const marketOpen = isIndianMarketOpen();
   const market_status: "open" | "closed" | "stale" =
     !Number.isFinite(oldestUsed) ? "stale"
-      : oldestUsed <= OPEN_FRESH_MS ? "open"
-      : oldestUsed <= MAX_AGE_MS ? "closed"
-      : "stale";
+      : oldestUsed > MAX_AGE_MS ? "stale"
+      : marketOpen ? "open"
+      : "closed";
 
   return jsonOk({
     as_of: mostRecent || new Date().toISOString(),
