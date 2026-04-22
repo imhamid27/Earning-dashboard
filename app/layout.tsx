@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 // The Core's web CSS uses Mona Sans (body + UI) + Arvo (serif accent). We
 // load both via a direct Google Fonts stylesheet link — next/font's Google
@@ -31,6 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <main className="min-h-[calc(100vh-140px)]">{children}</main>
         <Footer />
+        {/* Google Analytics — loads after hydration via next/script.
+            Covers every route because it lives in the root layout. */}
+        <GoogleAnalytics />
       </body>
     </html>
   );
