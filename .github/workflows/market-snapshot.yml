@@ -5,18 +5,20 @@ name: market-snapshot
 # ingestion workflow so it doesn't queue behind 16-min NSE sweeps.
 #
 # Cadence:
-#   Every 15 min, 03:00–11:59 UTC (= 08:30–17:29 IST) weekdays — covers
-#   pre-open through post-close on NSE/BSE. Outside those hours the
-#   previous snapshot stays live (the dashboard shows 'Updated HH:MM
-#   IST' so staleness is visible).
+#   Every 5 min, 03:00–11:59 UTC (= 08:30–17:29 IST) weekdays — covers
+#   pre-open through post-close on NSE/BSE. GitHub Actions' scheduled
+#   triggers regularly lag by 5-15 minutes under load, so a 5-min
+#   interval is the only way to guarantee ~freshness of ≤10 min during
+#   market hours. Outside those hours a stale snapshot stays live (the
+#   dashboard shows 'Last close HH:MM' so staleness is visible).
 #
 # Runtime budget: ~10 s per run (three yfinance fast_info lookups +
-# three Supabase inserts). Well under GitHub Actions' 30-min cap.
+# three Supabase inserts). Well under GitHub Actions' 5-min timeout.
 # ===========================================================================
 
 on:
   schedule:
-    - cron: '*/15 3-11 * * 1-5'
+    - cron: '*/5 3-11 * * 1-5'
   workflow_dispatch:
 
 # Market snapshots never need to pile up; if a previous one is still

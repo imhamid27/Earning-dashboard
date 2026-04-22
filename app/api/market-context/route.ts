@@ -41,14 +41,35 @@ const ORDER: Array<{ key: string; ticker: string; fallbackName: string }> = [
   { key: "bank_nifty", ticker: "^NSEBANK", fallbackName: "Bank Nifty" },
 ];
 
-// How old a snapshot can be before we tag it "Closed". Inside this window,
-// values render as live ticking numbers; past it, the UI shows the same
-// numbers with a "Closed" label so readers know it's last-traded, not live.
-const MARKET_OPEN_FRESH_MS = 30 * 60 * 1000; // 30 min — normal lag between cron hits
-// Upper bound on how old we'll ever serve. At some point the last-close is
-// meaningless (e.g. long weekend + holiday). We still show it so the strip
-// never disappears, but we tag it "Stale" so it's visually deprioritised.
-const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (worst case: extended holiday)
+// Upper bound on how old we'll ever serve. At some point the last-close
+// is meaningless (e.g. extended holiday + outage). We still show it so
+// the strip never disappears, but we tag it "Stale" so it's visually
+// deprioritised.
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Is the Indian equity market open right now (Mon-Fri 09:15-15:30 IST)?
+// This is the single source of truth for the LIVE/CLOSED chip — the chip
+// describes the MARKET, not our data freshness. That way a 10-minute cron
+// lag doesn't flip the UI to "Closed" while trading is actually live.
+// Data staleness is still visible via the "Last close Xm ago" timestamp.
+function isIndianMarketOpen(now: Date = new Date()): boolean {
+  // Pull IST weekday + HH:MM via Intl, so this works on any server TZ.
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(now);
+  const weekday = parts.find((p) => p.type === "weekday")?.value ?? "";
+  const hour    = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute  = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  if (["Sat", "Sun"].includes(weekday)) return false;
+  const mins = hour * 60 + minute;
+  // NSE/BSE regular session: 09:15 open, 15:30 close.
+  return mins >= (9 * 60 + 15) && mins <= (15 * 60 + 30);
+}
 
 export async function GET(_req: NextRequest) {
   const url  = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -123,13 +144,17 @@ export async function GET(_req: NextRequest) {
     };
   });
 
-  // Tag the whole strip as open/closed/stale so the UI can style accordingly
-  // without having to compute ages itself.
+  // Tag the strip as open/closed/stale. The indicator tracks the MARKET,
+  // not our data age — so even if the snapshot cron is 10 minutes late,
+  // the strip still shows "LIVE" during NSE/BSE trading hours (which
+  // matches the reader's expectation). We only fall to "stale" when the
+  // underlying data is genuinely too old to be usable.
+  const marketOpen = isIndianMarketOpen();
   const market_status: "open" | "closed" | "stale" =
-    oldestAge === 0 ? "stale"              // no live data at all
-      : oldestAge <= MARKET_OPEN_FRESH_MS ? "open"
-      : oldestAge <= MAX_AGE_MS ? "closed"
-      : "stale";
+    oldestAge === 0 ? "stale"                  // no data at all
+      : oldestAge > MAX_AGE_MS ? "stale"       // older than 7 days
+      : marketOpen ? "open"                    // in session → LIVE
+      : "closed";                               // off-hours → last close
 
   return jsonOk({
     as_of: mostRecent || new Date().toISOString(),
