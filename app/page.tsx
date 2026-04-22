@@ -8,6 +8,8 @@ import CompanySearch from "@/components/CompanySearch";
 import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
 import IntelligenceStrip from "@/components/IntelligenceStrip";
+import InfoTooltip from "@/components/InfoTooltip";
+import { DISCLAIMER_SHORT, DISCLAIMER_MARKETS } from "@/lib/disclaimer";
 import { formatINR, formatDate, formatPct, pctToneClass } from "@/lib/format";
 import type { LatestQuarterRow } from "@/lib/types";
 
@@ -400,8 +402,9 @@ export default function DashboardPage() {
               <span className="text-core-ink font-semibold">{quarter}</span>
               {cal ? <><span className="text-core-line-2">/</span><span>{cal}</span></> : null}
             </div>
-            <h1 className="font-sans font-bold tracking-tightest leading-[0.95] text-[clamp(1.75rem,4.5vw,3.25rem)]">
-              India Inc. Reporting
+            <h1 className="font-sans font-bold tracking-tightest leading-[0.95] text-[clamp(1.75rem,4.5vw,3.25rem)] flex items-baseline gap-2">
+              <span>India Inc. Reporting</span>
+              <InfoTooltip text={DISCLAIMER_SHORT} />
             </h1>
           </div>
           <div className="shrink-0 pt-1">
@@ -418,8 +421,12 @@ export default function DashboardPage() {
        */}
       {market ? (
         <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 py-2.5 text-[12px] border-y border-core-line mb-6">
-          <span className="text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold flex items-center gap-1.5">
+          <span
+            className="text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold flex items-center gap-1.5"
+            title={DISCLAIMER_MARKETS}
+          >
             Markets
+            <InfoTooltip text={DISCLAIMER_MARKETS} />
             {market.market_status === "open" ? (
               <span className="inline-flex items-center gap-1 text-[8px] font-bold tracking-[0.15em] text-core-teal">
                 <span className="w-1 h-1 rounded-full bg-core-teal animate-pulse" />

@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import SectorComparison from "@/components/SectorComparison";
 import EmptyState from "@/components/EmptyState";
+import InfoTooltip from "@/components/InfoTooltip";
 import { formatINR, formatPct, pctToneClass } from "@/lib/format";
+import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
 
 interface SectorRow {
   sector: string;
@@ -105,7 +107,10 @@ export default function SectorsPage() {
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted">Earnings Tracker</div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tightest mt-1">Sector view</h1>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tightest mt-1 flex items-baseline gap-2">
+            <span>Sector view</span>
+            <InfoTooltip text={DISCLAIMER_SHORT} />
+          </h1>
           <p className="text-core-muted mt-2 max-w-2xl text-sm">
             How India's sectors are growing — aggregated revenue and net profit,
             each quarter vs the same quarter last year.

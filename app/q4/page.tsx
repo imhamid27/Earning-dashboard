@@ -8,8 +8,10 @@ import TabScroller from "@/components/TabScroller";
 import FilingLoader from "@/components/FilingLoader";
 import PdfLink from "@/components/PdfLink";
 import PriceChip from "@/components/PriceChip";
+import InfoTooltip from "@/components/InfoTooltip";
 import { simplifyPurpose } from "@/lib/purpose";
 import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
+import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
 
 type PriceMap = Record<
   string,
@@ -107,8 +109,9 @@ export default function Q4Page() {
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div>
           <div className="text-xs uppercase tracking-wide text-core-muted">Earnings tracker</div>
-          <h1 className="serif text-4xl md:text-5xl leading-tight tracking-tight mt-1">
-            {quarter} announcements
+          <h1 className="serif text-4xl md:text-5xl leading-tight tracking-tight mt-1 flex items-baseline gap-2">
+            <span>{quarter} announcements</span>
+            <InfoTooltip text={DISCLAIMER_SHORT} />
           </h1>
           <p className="text-core-muted mt-2 max-w-2xl text-sm">
             Companies filing their {quarter} results, grouped by the day they announced.

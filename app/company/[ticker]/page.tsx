@@ -7,7 +7,9 @@ import TrendChart from "@/components/TrendChart";
 import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
 import PdfLink from "@/components/PdfLink";
+import InfoTooltip from "@/components/InfoTooltip";
 import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
+import { DISCLAIMER_SHORT, DISCLAIMER_PRICE } from "@/lib/disclaimer";
 
 interface DetailResp {
   company: {
@@ -84,8 +86,9 @@ export default function CompanyDetail() {
       {/* Editorial header */}
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div className="min-w-0">
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tightest leading-[1.05]">
-            {data.company.company_name}
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tightest leading-[1.05] flex items-baseline gap-2">
+            <span>{data.company.company_name}</span>
+            <InfoTooltip text={DISCLAIMER_SHORT} />
           </h1>
           <div className="text-sm text-core-muted mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-semibold text-core-ink tabular-nums">{data.company.ticker}</span>
@@ -160,6 +163,11 @@ export default function CompanyDetail() {
                 {price.volume != null ? formatVolume(price.volume) : "—"}
               </div>
             </div>
+          </div>
+          {/* Price disclaimer — small, low contrast; placed inside the
+              same card so it's unambiguously tied to the price above. */}
+          <div className="w-full md:w-auto md:basis-full pt-3 mt-1 border-t border-core-line text-[10px] leading-snug text-core-muted italic">
+            {DISCLAIMER_PRICE}
           </div>
         </section>
       ) : null}

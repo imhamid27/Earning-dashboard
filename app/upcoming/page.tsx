@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import InfoTooltip from "@/components/InfoTooltip";
 import { formatDate } from "@/lib/format";
 import { simplifyPurpose } from "@/lib/purpose";
+import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
 
 interface Row {
   company_name: string;
@@ -93,8 +95,9 @@ export default function UpcomingPage() {
             <span className="text-core-line-2">/</span>
             <span className="text-core-ink font-semibold">Upcoming</span>
           </div>
-          <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-bold tracking-tightest leading-[1.05]">
-            Upcoming results
+          <h1 className="text-[clamp(1.75rem,4vw,2.75rem)] font-bold tracking-tightest leading-[1.05] flex items-baseline gap-2">
+            <span>Upcoming results</span>
+            <InfoTooltip text={DISCLAIMER_SHORT} />
           </h1>
           <p className="text-core-muted mt-3 max-w-2xl text-[14px]">
             Companies with a scheduled earnings meeting. Results typically file after
