@@ -10,15 +10,24 @@ interface SectorRow {
   companies_reported: number;
 }
 
-// Horizontal bar chart comparing sectors by YoY revenue (default) or profit
-// growth. Bars tinted red for negative, black for positive — The Core palette.
+// Horizontal bar chart comparing sectors by YoY revenue (default) or
+// profit growth. Bars tinted teal for growth, red for contraction.
+//
+// Height scales with the number of sectors — a fixed 320px height was
+// cramping 15+ sectors into bars ~8px tall that were barely visible on
+// mobile. We now allocate ~36px per sector with a floor of 280px, so
+// the chart stays readable at any dataset size on any viewport.
+const ROW_HEIGHT = 36;
+const MIN_HEIGHT = 280;
+
 export default function SectorComparison({
   rows,
   metric = "revenue_yoy",
-  height = 320
+  height,
 }: {
   rows: SectorRow[];
   metric?: "revenue_yoy" | "profit_yoy";
+  /** Optional override. Leave undefined to auto-scale with row count. */
   height?: number;
 }) {
   const data = rows
@@ -34,19 +43,33 @@ export default function SectorComparison({
     );
   }
 
+  const computedHeight = height ?? Math.max(MIN_HEIGHT, data.length * ROW_HEIGHT + 40);
+
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: "100%", height: computedHeight }}>
       <ResponsiveContainer>
-        <BarChart data={data} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 8 }}>
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ top: 8, right: 28, left: 4, bottom: 8 }}
+          barCategoryGap="22%"
+        >
           <CartesianGrid stroke="#eee" horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 11, fill: "#6B6B6B" }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
+          <XAxis
+            type="number"
+            tick={{ fontSize: 11, fill: "#6B6B6B" }}
+            tickFormatter={(v) => `${v.toFixed(0)}%`}
+          />
           <YAxis
             type="category"
             dataKey="sector"
-            width={150}
-            tick={{ fontSize: 12, fill: "#111" }}
+            // Wider label column + slightly smaller font so long sector
+            // names like "Communication Services" fit on one line.
+            width={130}
+            tick={{ fontSize: 11, fill: "#111" }}
             tickLine={false}
             axisLine={{ stroke: "#e5e5e5" }}
+            interval={0}
           />
           <Tooltip
             contentStyle={{ borderRadius: 2, border: "1px solid #e5e5e5", fontSize: 12 }}

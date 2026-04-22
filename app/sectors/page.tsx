@@ -107,9 +107,11 @@ export default function SectorsPage() {
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted">Earnings Tracker</div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tightest mt-1 flex items-baseline gap-2">
-            <span>Sector view</span>
-            <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tightest mt-1">
+            Sector view
+            <span className="inline-block align-middle ml-2 -translate-y-0.5">
+              <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
+            </span>
           </h1>
           <p className="text-core-muted mt-2 max-w-2xl text-sm">
             How India's sectors are growing — aggregated revenue and net profit,
@@ -131,11 +133,15 @@ export default function SectorsPage() {
       {/* Sector chart + aggregates table */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="card p-5 lg:col-span-2">
-          <header className="flex items-baseline justify-between mb-3">
-            <h3 className="text-lg font-semibold tracking-tightest">Revenue growth by sector · {quarter ?? "—"}</h3>
-            <span className="text-[11px] uppercase tracking-wide text-core-muted">Teal = growth · Red = contraction</span>
+          <header className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-y-1 mb-4">
+            <h3 className="text-lg font-semibold tracking-tightest">
+              Revenue growth by sector · {quarter ?? "—"}
+            </h3>
+            <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
+              Teal = growth · Red = contraction
+            </span>
           </header>
-          <SectorComparison rows={data?.sectors ?? []} metric="revenue_yoy" height={320} />
+          <SectorComparison rows={data?.sectors ?? []} metric="revenue_yoy" />
         </div>
         <div className="card overflow-x-auto">
           <table className="data-table">

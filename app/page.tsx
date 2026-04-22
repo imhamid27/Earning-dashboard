@@ -393,24 +393,34 @@ export default function DashboardPage() {
           quarter browsing).
           ================================================================= */}
       <section className="pt-4 md:pt-8 pb-4 md:pb-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-[10px] uppercase tracking-[0.14em] text-core-muted mb-1.5">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-pink animate-pulse" />
-              <span>India earnings</span>
-              <span className="text-core-line-2">/</span>
-              <span className="text-core-ink font-semibold">{quarter}</span>
-              {cal ? <><span className="text-core-line-2">/</span><span>{cal}</span></> : null}
-            </div>
-            <h1 className="font-sans font-bold tracking-tightest leading-[0.95] text-[clamp(1.75rem,4.5vw,3.25rem)] flex items-baseline gap-2">
-              <span>India Inc. Reporting</span>
-              <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
-            </h1>
-          </div>
-          <div className="shrink-0 pt-1">
-            {summary ? <FreshnessIndicator fetchedAt={summary.last_refreshed_at} /> : null}
-          </div>
+        {/* Breadcrumb row — on mobile the freshness chip sits BELOW
+            the breadcrumb so neither wraps onto two awkward lines. */}
+        <div className="flex items-center gap-x-2 gap-y-1.5 text-[10px] uppercase tracking-[0.14em] text-core-muted mb-3 flex-wrap">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-pink animate-pulse" />
+          <span>India earnings</span>
+          <span className="text-core-line-2">/</span>
+          <span className="text-core-ink font-semibold">{quarter}</span>
+          {cal ? <><span className="text-core-line-2">/</span><span>{cal}</span></> : null}
+          {/* Freshness chip — pushed to the right on wide viewports, wraps
+              onto its own line on mobile automatically. */}
+          {summary ? (
+            <span className="md:ml-auto">
+              <FreshnessIndicator fetchedAt={summary.last_refreshed_at} />
+            </span>
+          ) : null}
         </div>
+
+        {/* Title with inline ⓘ. Critical trick: the heading is a plain
+            block element (not flex) so text can wrap naturally, AND the
+            InfoTooltip is inside a zero-width inline-block that hugs the
+            last word. This prevents the icon from being orphaned on its
+            own line on narrow viewports. */}
+        <h1 className="font-sans font-bold tracking-tightest leading-[1.02] md:leading-[0.95] text-[clamp(1.75rem,4.5vw,3.25rem)]">
+          India Inc. Reporting
+          <span className="inline-block align-middle ml-2 -translate-y-0.5">
+            <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
+          </span>
+        </h1>
       </section>
 
       {/* ==== MARKET CONTEXT STRIP ====
@@ -420,9 +430,11 @@ export default function DashboardPage() {
           not.
        */}
       {market ? (
-        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 py-2.5 text-[12px] border-y border-core-line mb-6">
-          <span className="text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold flex items-center gap-1.5">
-            Markets
+        <div className="border-y border-core-line mb-6 py-2.5">
+          {/* Label row — Markets + LIVE/CLOSED chip on its own line so
+              the indices row below can use the full width on mobile. */}
+          <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-1.5">
+            <span>Markets</span>
             <InfoTooltip text={DISCLAIMER_MARKETS} />
             {market.market_status === "open" ? (
               <span className="inline-flex items-center gap-1 text-[8px] font-bold tracking-[0.15em] text-core-teal">
@@ -434,47 +446,51 @@ export default function DashboardPage() {
                 · CLOSED
               </span>
             ) : null}
-          </span>
-          {market.indices.map((ix, i) => {
-            const up   = (ix.change_pct ?? 0) > 0;
-            const down = (ix.change_pct ?? 0) < 0;
-            const arrow = ix.change_pct == null ? "" : up ? "▲" : down ? "▼" : "■";
-            const cls = ix.change_pct == null
-              ? "text-core-muted"
-              : up ? "text-core-teal"
-              : down ? "text-core-negative"
-              : "text-core-muted";
-            // Indian-style thousands grouping for index values (24,576.60).
-            const priceText = ix.last_price != null
-              ? ix.last_price.toLocaleString("en-IN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })
-              : null;
-            return (
-              <span key={ix.key} className="whitespace-nowrap">
-                <span className="text-core-ink font-medium">{ix.name}</span>
-                {priceText ? (
-                  <span className="ml-1.5 text-core-ink tabular-nums">{priceText}</span>
-                ) : null}
-                <span className={`ml-1.5 tabular-nums font-semibold ${cls}`}>
-                  <span className="text-[10px] mr-0.5">{arrow}</span>
-                  {ix.change_pct != null ? formatPct(ix.change_pct) : "—"}
+            {/* Freshness stamp, pushed right — on mobile this keeps in
+                the label row (short), leaving the full indices row
+                available below. */}
+            <span
+              className="ml-auto text-[10px] font-normal normal-case tracking-[0.14em] text-core-muted tabular-nums"
+              title={market.as_of}
+            >
+              {market.market_status === "closed" ? "Last close " : "Updated "}
+              {formatRelative(market.as_of)}
+            </span>
+          </div>
+
+          {/* Indices row — horizontally scrollable on mobile. Never wraps,
+              never clips — readers swipe to see any index. On desktop
+              they all fit side-by-side naturally. */}
+          <div className="flex flex-nowrap items-baseline gap-x-5 overflow-x-auto scrollbar-thin text-[13px] -mx-1 px-1">
+            {market.indices.map((ix, i) => {
+              const up   = (ix.change_pct ?? 0) > 0;
+              const down = (ix.change_pct ?? 0) < 0;
+              const arrow = ix.change_pct == null ? "" : up ? "▲" : down ? "▼" : "■";
+              const cls = ix.change_pct == null
+                ? "text-core-muted"
+                : up ? "text-core-teal"
+                : down ? "text-core-negative"
+                : "text-core-muted";
+              const priceText = ix.last_price != null
+                ? ix.last_price.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })
+                : null;
+              return (
+                <span key={ix.key} className="whitespace-nowrap flex-shrink-0">
+                  <span className="text-core-ink font-medium">{ix.name}</span>
+                  {priceText ? (
+                    <span className="ml-1.5 text-core-ink tabular-nums">{priceText}</span>
+                  ) : null}
+                  <span className={`ml-1.5 tabular-nums font-semibold ${cls}`}>
+                    <span className="text-[10px] mr-0.5">{arrow}</span>
+                    {ix.change_pct != null ? formatPct(ix.change_pct) : "—"}
+                  </span>
                 </span>
-                {i < market.indices.length - 1 ? (
-                  <span className="text-core-line-2 ml-4">·</span>
-                ) : null}
-              </span>
-            );
-          })}
-          {/* Freshness stamp — pushed to the right on wide viewports. */}
-          <span
-            className="ml-auto text-[10px] uppercase tracking-[0.14em] text-core-muted tabular-nums"
-            title={market.as_of}
-          >
-            {market.market_status === "closed" ? "Last close " : "Updated "}
-            {formatRelative(market.as_of)}
-          </span>
+              );
+            })}
+          </div>
         </div>
       ) : null}
 

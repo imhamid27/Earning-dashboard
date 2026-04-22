@@ -109,9 +109,11 @@ export default function Q4Page() {
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div>
           <div className="text-xs uppercase tracking-wide text-core-muted">Earnings tracker</div>
-          <h1 className="serif text-4xl md:text-5xl leading-tight tracking-tight mt-1 flex items-baseline gap-2">
-            <span>{quarter} announcements</span>
-            <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
+          <h1 className="serif text-4xl md:text-5xl leading-tight tracking-tight mt-1">
+            {quarter} announcements
+            <span className="inline-block align-middle ml-2 -translate-y-1">
+              <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
+            </span>
           </h1>
           <p className="text-core-muted mt-2 max-w-2xl text-sm">
             Companies filing their {quarter} results, grouped by the day they announced.
@@ -198,14 +200,19 @@ export default function Q4Page() {
                   .sort((a, b) => a.company_name.localeCompare(b.company_name));
                 return (
               <section className="space-y-3">
-                <div className="flex items-baseline justify-between">
-                  <h2 className="text-xl font-bold tracking-tightest">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tightest leading-snug">
                     Results announced on {formatDate(activeGroup.date)}
-                    <span className="ml-3 text-sm text-core-muted font-normal">
-                      {filed.length} filed
-                      {pending.length > 0 ? ` · ${pending.length} filing pending` : ""}
-                    </span>
                   </h2>
+                  <div className="mt-1 text-sm text-core-muted">
+                    <span className="tabular-nums font-semibold text-core-ink">{filed.length}</span> filed
+                    {pending.length > 0 ? (
+                      <>
+                        {" · "}
+                        <span className="tabular-nums font-semibold text-core-ink">{pending.length}</span> filing pending
+                      </>
+                    ) : null}
+                  </div>
                 </div>
                 {filed.length > 0 ? (
                   <div className="card overflow-x-auto">
@@ -253,41 +260,43 @@ export default function Q4Page() {
                     <div className="text-xs uppercase tracking-[0.14em] text-core-muted mb-2">
                       Filing pending · board meeting held, numbers not yet submitted
                     </div>
-                    <div className="card overflow-x-auto">
-                      <table className="data-table">
-                        <thead>
-                          <tr>
-                            <th>Company</th>
-                            <th>Sector</th>
-                            <th className="text-right">Revenue</th>
-                            <th className="text-right">Rev YoY</th>
-                            <th className="text-right">Net profit</th>
-                            <th className="text-right">Profit YoY</th>
-                            <th className="text-right">Op. profit</th>
-                            <th className="text-right">EPS</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pending.map((c) => (
-                            <tr key={c.ticker}>
-                              <td>
-                                <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
-                                  {c.company_name}
-                                </Link>
-                                <div className="text-[11px] text-core-muted flex items-center gap-2 flex-wrap">
-                                  <span>{c.ticker}</span>
-                                  <PdfLink url={c.filing_url} label="View filing" />
-                                  <PriceChip p={prices[c.ticker]} />
-                                </div>
-                              </td>
-                              <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
-                              <td colSpan={6} className="text-left text-sm text-core-muted italic">
-                                Awaiting filing · numbers will appear once published
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    {/* Mobile-friendly card list instead of a table with
+                        empty cells. Each pending company is a single row
+                        with: name · ticker · sector · price chip · PDF link.
+                        Clean on any viewport width; no horizontal scroll,
+                        no "Awaiting…" italic spanning a dozen columns. */}
+                    <div className="card divide-y divide-core-line">
+                      {pending.map((c) => (
+                        <div
+                          key={c.ticker}
+                          className="px-4 md:px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-2"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <Link
+                              href={`/company/${encodeURIComponent(c.ticker)}`}
+                              className="font-semibold text-core-ink hover:text-core-pink block truncate"
+                            >
+                              {c.company_name}
+                            </Link>
+                            <div className="text-[11px] text-core-muted flex items-center gap-2 gap-y-1 flex-wrap mt-0.5">
+                              <span className="tabular-nums">{c.ticker}</span>
+                              {c.sector ? (
+                                <>
+                                  <span className="text-core-line-2">·</span>
+                                  <span>{c.sector}</span>
+                                </>
+                              ) : null}
+                              <PriceChip p={prices[c.ticker]} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-[11px] text-core-muted italic">
+                              Awaiting filing
+                            </span>
+                            <PdfLink url={c.filing_url} label="View filing" />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ) : null}
