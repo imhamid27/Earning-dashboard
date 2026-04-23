@@ -10,6 +10,7 @@ import EmptyState from "@/components/EmptyState";
 import IntelligenceStrip from "@/components/IntelligenceStrip";
 import InfoTooltip from "@/components/InfoTooltip";
 import { DISCLAIMER_SHORT, DISCLAIMER_MARKETS } from "@/lib/disclaimer";
+import { trackLiveBandTab } from "@/lib/analytics";
 import { formatINR, formatDate, formatPct, pctToneClass } from "@/lib/format";
 import type { LatestQuarterRow } from "@/lib/types";
 
@@ -745,7 +746,15 @@ function TodayBand({
     filedCount > 0 ? "today"
     : yesterday.length > 0 ? "yesterday"
     : "today";
-  const [tab, setTab] = useState<TabKey>(initialTab);
+  const [tab, setTabRaw] = useState<TabKey>(initialTab);
+  // Wrap setTab so every user-initiated tab switch fires a GA4
+  // select_content event. The initial tab selection (driven by
+  // filedCount / yesterday.length) doesn't go through this wrapper
+  // so we don't double-count on page load.
+  const setTab = (next: TabKey) => {
+    if (next !== tab) trackLiveBandTab(next);
+    setTabRaw(next);
+  };
 
   const [yy, mm, dd] = todayIso.split("-").map(Number);
   const dayDate = new Date(yy, (mm ?? 1) - 1, dd ?? 1);

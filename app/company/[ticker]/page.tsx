@@ -10,6 +10,7 @@ import PdfLink from "@/components/PdfLink";
 import InfoTooltip from "@/components/InfoTooltip";
 import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
 import { DISCLAIMER_SHORT, DISCLAIMER_PRICE } from "@/lib/disclaimer";
+import { trackCompanyView } from "@/lib/analytics";
 
 interface DetailResp {
   company: {
@@ -48,7 +49,21 @@ export default function CompanyDetail() {
   useEffect(() => {
     fetch(`/api/companies/${encodeURIComponent(ticker)}`)
       .then((r) => r.json())
-      .then((j) => (j.ok ? setData(j.data) : setErr(j.error)))
+      .then((j) => {
+        if (j.ok) {
+          setData(j.data);
+          // Fire a structured GA4 view_item event with ticker + sector.
+          // Complements the automatic page_view so you can see "top viewed
+          // companies" and "most-looked-at sectors" in GA4 reports.
+          trackCompanyView({
+            ticker: j.data.company.ticker,
+            company_name: j.data.company.company_name,
+            sector: j.data.company.sector,
+          });
+        } else {
+          setErr(j.error);
+        }
+      })
       .catch((e) => setErr(String(e)));
     fetch(`/api/prices?tickers=${encodeURIComponent(ticker)}`)
       .then((r) => r.json())
@@ -105,7 +120,13 @@ export default function CompanyDetail() {
               <span className="chip chip-pink">Next results {formatDate(data.company.next_result_date)}</span>
             ) : null}
             {data.latest_filing_url ? (
-              <PdfLink url={data.latest_filing_url} label="Latest filing" />
+              <PdfLink
+                url={data.latest_filing_url}
+                label="Latest filing"
+                ticker={data.company.ticker}
+                companyName={data.company.company_name}
+                source="company_detail"
+              />
             ) : null}
           </div>
         </div>
@@ -301,7 +322,15 @@ export default function CompanyDetail() {
                       <td className={`text-right tabular-nums font-semibold ${pctToneClass(q.profit_yoy)}`}>{formatPct(q.profit_yoy)}</td>
                       <td className="text-right tabular-nums">{formatINR(q.operating_profit)}</td>
                       <td className="text-right tabular-nums">{q.eps != null ? q.eps.toFixed(2) : "—"}</td>
-                      <td className="text-right"><PdfLink url={q.filing_url} compact /></td>
+                      <td className="text-right">
+                        <PdfLink
+                          url={q.filing_url}
+                          compact
+                          ticker={data.company.ticker}
+                          companyName={data.company.company_name}
+                          source="company_quarters_table"
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

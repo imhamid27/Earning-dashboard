@@ -13,12 +13,16 @@
 // keep it inline SVG so no sprite sheet / asset pipeline is required.
 
 import React from "react";
+import { trackPdfClick } from "@/lib/analytics";
 
 export default function PdfLink({
   url,
   label = "PDF",
   compact = false,
   className = "",
+  ticker,
+  companyName,
+  source = "homepage_table",
 }: {
   url: string | null | undefined;
   /** Text next to the icon. Default "PDF"; pass "View filing" for verbose. */
@@ -26,6 +30,18 @@ export default function PdfLink({
   /** When true, render icon-only (no text). Useful inside narrow columns. */
   compact?: boolean;
   className?: string;
+  /** Optional analytics context — the ticker/company this PDF belongs to,
+   *  and which page/surface the click came from. Used to populate the GA4
+   *  file_download event. Silent no-op if omitted (for uses where we
+   *  don't yet know the context). */
+  ticker?: string;
+  companyName?: string;
+  source?:
+    | "homepage_table"
+    | "homepage_live_band"
+    | "q4_page"
+    | "company_detail"
+    | "company_quarters_table";
 }) {
   if (!url) {
     // Muted dash keeps the column width stable across rows.
@@ -47,7 +63,14 @@ export default function PdfLink({
       className={`inline-flex items-center gap-1 text-[11px] font-medium text-core-pink hover:text-core-ink hover:underline underline-offset-2 ${className}`}
       // Stop the click bubbling up to the row-level Link that navigates to
       // the company page — we want the PDF to open in a new tab instead.
-      onClick={(e) => e.stopPropagation()}
+      // Also fire an analytics event so we can see which companies readers
+      // verify against the source filing.
+      onClick={(e) => {
+        e.stopPropagation();
+        if (ticker) {
+          trackPdfClick({ ticker, company_name: companyName, source, url });
+        }
+      }}
     >
       <PdfIcon />
       {!compact && <span>{label}</span>}

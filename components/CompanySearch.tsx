@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { trackCompanySearch } from "@/lib/analytics";
 
 interface Company {
   ticker: string;
@@ -108,6 +109,12 @@ export default function CompanySearch({
                 onClick={() => {
                   setSelected(c); setResults([]); setQ(c.company_name);
                   onSelect?.(c.ticker);
+                  // Fire a GA4 "search" event with the query + selected
+                  // ticker so we can see what readers hunt for.
+                  trackCompanySearch({
+                    search_term: q,
+                    selected_ticker: c.ticker,
+                  });
                 }}
                 className="w-full text-left px-4 py-2.5 hover:bg-core-surface border-b border-core-line last:border-none"
               >

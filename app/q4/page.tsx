@@ -238,7 +238,7 @@ export default function Q4Page() {
                               </Link>
                               <div className="text-[11px] text-core-muted flex items-center gap-2 flex-wrap">
                                 <span>{c.ticker}</span>
-                                <PdfLink url={c.filing_url} label="View filing" />
+                                <PdfLink url={c.filing_url} label="View filing" ticker={c.ticker} companyName={c.company_name} source="q4_page" />
                                 <PriceChip p={prices[c.ticker]} />
                               </div>
                             </td>
@@ -293,7 +293,7 @@ export default function Q4Page() {
                             <span className="text-[11px] text-core-muted italic">
                               Awaiting filing
                             </span>
-                            <PdfLink url={c.filing_url} label="View filing" />
+                            <PdfLink url={c.filing_url} label="View filing" ticker={c.ticker} companyName={c.company_name} source="q4_page" />
                           </div>
                         </div>
                       ))}

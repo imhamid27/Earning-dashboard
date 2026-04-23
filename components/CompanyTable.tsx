@@ -125,7 +125,13 @@ export default function CompanyTable({
                   <div className="text-[11px] text-core-muted tabular-nums flex items-center gap-2">
                     <span>{r.ticker}</span>
                     {r.filing_url ? (
-                      <PdfLink url={r.filing_url} compact />
+                      <PdfLink
+                        url={r.filing_url}
+                        compact
+                        ticker={r.ticker}
+                        companyName={r.company_name}
+                        source="homepage_table"
+                      />
                     ) : null}
                     <PriceChip p={prices ? prices[r.ticker] : null} />
                   </div>
