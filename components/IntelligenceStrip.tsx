@@ -1,34 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { formatINR, formatPct } from "@/lib/format";
+import { formatPct } from "@/lib/format";
 import type { LatestQuarterRow } from "@/lib/types";
 
-// A compact row of 4 information cards that sits above the LIVE band on
-// the homepage. Each card is a "numbers-first" tile: big value, one-line
-// label, one-line context. Purpose: give a reader the state of the
-// quarter in ~2 seconds of eye movement.
-//
-// Design principles:
-//   - Numbers dominate, labels are tertiary (10-11px uppercase)
-//   - Tone colour only when directional (rev/profit growth). Neutral tiles
-//     use core-ink so they don't compete with the LIVE band's red accent.
-//   - Card widths equal; grid-based so they reflow cleanly on narrow views.
-//   - Silent degrade: if a card's data is missing, the tile shows "—" but
-//     keeps its space, so the strip never half-collapses.
-
 export type IntelligenceStripProps = {
-  // Q4 (or currently-selected) reporting season progress.
   quarter: string | null;
   companies_tracked: number;
   companies_reported: number;
   avg_revenue_yoy: number | null;
   avg_profit_yoy: number | null;
-  // Today's outliers, if any.
   biggestGainer: LatestQuarterRow | null;
   biggestLoser: LatestQuarterRow | null;
-  // Today's revenue-leader (biggest filer by scale, for a sense of
-  // which top names are moving the market).
   heaviestFiler: LatestQuarterRow | null;
 };
 
@@ -50,8 +33,6 @@ export default function IntelligenceStrip(props: IntelligenceStripProps) {
       : 0;
 
   return (
-    // 2×2 on mobile, 1×4 on desktop. Divide lines switch direction with
-    // the grid so we don't get orphan borders when the layout flips.
     <div
       className="
         grid grid-cols-2 md:grid-cols-4
@@ -59,7 +40,6 @@ export default function IntelligenceStrip(props: IntelligenceStripProps) {
         divide-core-line border-y border-core-line mb-6
       "
     >
-      {/* Card 1 · Season progress ------------------------------------------ */}
       <Tile
         label={`${quarter ?? "Q4"} PROGRESS`}
         value={
@@ -85,48 +65,44 @@ export default function IntelligenceStrip(props: IntelligenceStripProps) {
         }
       />
 
-      {/* Card 2 · Season revenue growth ------------------------------------- */}
       <Tile
-        label="SEASON · AVG REVENUE"
+        label="SEASON . AVG REVENUE"
         value={
           avg_revenue_yoy != null ? (
             <span
               className={`tabular-nums ${avg_revenue_yoy >= 0 ? "text-core-teal" : "text-core-negative"}`}
             >
-              {avg_revenue_yoy >= 0 ? "+" : ""}
-              {(avg_revenue_yoy * 100).toFixed(1)}%
+              {formatPct(avg_revenue_yoy)}
             </span>
           ) : (
-            <span className="text-core-muted">—</span>
+            <span className="text-core-muted">Data not available</span>
           )
         }
         sub={
           <>
-            <span className="text-core-muted">YoY across filed companies · </span>
+            <span className="text-core-muted">YoY across filed companies . </span>
             {avg_profit_yoy != null ? (
               <span
                 className={avg_profit_yoy >= 0 ? "text-core-teal" : "text-core-negative"}
               >
-                profit {avg_profit_yoy >= 0 ? "+" : ""}
-                {(avg_profit_yoy * 100).toFixed(1)}%
+                profit {formatPct(avg_profit_yoy)}
               </span>
             ) : (
-              <span>profit —</span>
+              <span>profit Data not available</span>
             )}
           </>
         }
       />
 
-      {/* Card 3 · Biggest gainer (capped at 500% to filter tiny-base outliers) */}
       <Tile
-        label="TOP GAINER · PROFIT YoY"
+        label="TOP GAINER . PROFIT YoY"
         value={
-          biggestGainer && biggestGainer.profit_yoy != null ? (
+          biggestGainer && (biggestGainer.profit_yoy != null || biggestGainer.profit_yoy_label) ? (
             <span className="tabular-nums text-core-teal">
-              +{(biggestGainer.profit_yoy * 100).toFixed(0)}%
+              {formatPct(biggestGainer.profit_yoy, 0, { label: biggestGainer.profit_yoy_label ?? null })}
             </span>
           ) : (
-            <span className="text-core-muted">—</span>
+            <span className="text-core-muted">Data not available</span>
           )
         }
         sub={
@@ -144,16 +120,15 @@ export default function IntelligenceStrip(props: IntelligenceStripProps) {
         }
       />
 
-      {/* Card 4 · Biggest decliner -------------------------------------------- */}
       <Tile
-        label="TOP DECLINER · PROFIT YoY"
+        label="TOP DECLINER . PROFIT YoY"
         value={
-          biggestLoser && biggestLoser.profit_yoy != null ? (
+          biggestLoser && (biggestLoser.profit_yoy != null || biggestLoser.profit_yoy_label) ? (
             <span className="tabular-nums text-core-negative">
-              {(biggestLoser.profit_yoy * 100).toFixed(0)}%
+              {formatPct(biggestLoser.profit_yoy, 0, { label: biggestLoser.profit_yoy_label ?? null })}
             </span>
           ) : (
-            <span className="text-core-muted">—</span>
+            <span className="text-core-muted">Data not available</span>
           )
         }
         sub={

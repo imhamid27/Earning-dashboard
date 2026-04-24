@@ -53,6 +53,9 @@ export interface LatestQuarterRow {
   revenue_qoq?: number | null;
   profit_yoy?: number | null;
   profit_qoq?: number | null;
+  profit_yoy_label?: string | null;
+  revenue_validation_issue?: string | null;
+  net_profit_validation_issue?: string | null;
   // Official filing PDF URL, from the matching announcement_events.raw_json.
   // Null when no filing has been captured for this quarter.
   filing_url?: string | null;

@@ -1,12 +1,8 @@
 import Link from "next/link";
-import { formatINR, formatPct, pctToneClass, formatDate } from "@/lib/format";
+import { formatINR, formatPct, formatDate } from "@/lib/format";
 import Sparkline from "./Sparkline";
 import type { LatestQuarterRow } from "@/lib/types";
 
-// "Featured" card — used for the top N reporters on the homepage. Designed
-// to be scanned at a glance: company + sector up top, two big hero numbers
-// (revenue + profit) with YoY delta chips beside, sparkline on the right,
-// CTA at the bottom. Much more editorial than a row in a table.
 export default function FeaturedCard({ row, quarter }: { row: LatestQuarterRow; quarter: string }) {
   const deltaClass = (v: number | null | undefined) => {
     if (v == null) return "delta-flat";
@@ -22,7 +18,6 @@ export default function FeaturedCard({ row, quarter }: { row: LatestQuarterRow; 
       href={`/company/${encodeURIComponent(row.ticker)}`}
       className="card card-hover block p-5 group"
     >
-      {/* Header row — sector chip, ticker, external marker */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -43,25 +38,28 @@ export default function FeaturedCard({ row, quarter }: { row: LatestQuarterRow; 
         </div>
       </div>
 
-      {/* Two hero stats */}
       <div className="mt-4 grid grid-cols-2 gap-5">
         <HeroStat
           label="Revenue"
-          value={formatINR(row.revenue)}
+          value={formatINR(row.revenue, { invalid: !!row.revenue_validation_issue })}
           delta={row.revenue_yoy}
+          deltaLabel={null}
           deltaClass={deltaClass(row.revenue_yoy)}
           sign={sign(row.revenue_yoy)}
         />
         <HeroStat
           label="Net profit"
-          value={formatINR(row.net_profit)}
+          value={formatINR(row.net_profit, {
+            invalid: !!row.net_profit_validation_issue,
+            zeroLabel: "No profit reported"
+          })}
           delta={row.profit_yoy}
+          deltaLabel={row.profit_yoy_label ?? null}
           deltaClass={deltaClass(row.profit_yoy)}
           sign={sign(row.profit_yoy)}
         />
       </div>
 
-      {/* Footer — sparkline + subtle CTA */}
       <div className="mt-5 flex items-end justify-between border-t border-core-line pt-4">
         <div>
           <div className="text-[10px] uppercase tracking-wide text-core-muted mb-1">
@@ -79,10 +77,11 @@ export default function FeaturedCard({ row, quarter }: { row: LatestQuarterRow; 
 }
 
 function HeroStat({
-  label, value, delta, deltaClass, sign
+  label, value, delta, deltaLabel, deltaClass, sign
 }: {
   label: string; value: string;
   delta: number | null | undefined;
+  deltaLabel: string | null;
   deltaClass: string;
   sign: string;
 }) {
@@ -93,16 +92,16 @@ function HeroStat({
         {value}
       </div>
       <div className={`delta ${deltaClass} mt-1`}>
-        {delta != null ? (
+        {delta != null || deltaLabel ? (
           <>
-            <span aria-hidden className="text-[10px]">{sign}</span>
-            <span>{formatPct(delta)}</span>
+            {!deltaLabel ? <span aria-hidden className="text-[10px]">{sign}</span> : null}
+            <span>{formatPct(delta, 1, { label: deltaLabel })}</span>
             <span className="text-[10px] font-normal text-core-muted ml-1 uppercase tracking-wide">
               YoY
             </span>
           </>
         ) : (
-          <span className="text-core-muted text-xs">— YoY</span>
+          <span className="text-core-muted text-xs">Data not available</span>
         )}
       </div>
     </div>

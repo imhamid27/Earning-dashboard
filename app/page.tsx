@@ -486,7 +486,7 @@ export default function DashboardPage() {
                   ) : null}
                   <span className={`ml-1.5 tabular-nums font-semibold ${cls}`}>
                     <span className="text-[10px] mr-0.5">{arrow}</span>
-                    {ix.change_pct != null ? formatPct(ix.change_pct) : "—"}
+                    {ix.change_pct != null ? formatPct(ix.change_pct) : "Data not available"}
                   </span>
                 </span>
               );
@@ -1005,12 +1005,19 @@ function TodayTableDark({ reported, pending, nextUp, todayIso }: {
             ) : null}
           </div>
           <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
-            <span className="font-semibold tabular-nums truncate">{formatINR(r.revenue)}</span>
-            <DeltaChipDark value={r.revenue_yoy} />
+            <span className="font-semibold tabular-nums truncate">
+              {formatINR(r.revenue, { invalid: !!r.revenue_validation_issue })}
+            </span>
+            <DeltaChipDarkLabelled value={r.revenue_yoy} />
           </div>
           <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
-            <span className="font-semibold tabular-nums truncate">{formatINR(r.net_profit)}</span>
-            <DeltaChipDark value={r.profit_yoy} />
+            <span className="font-semibold tabular-nums truncate">
+              {formatINR(r.net_profit, {
+                invalid: !!r.net_profit_validation_issue,
+                zeroLabel: "No profit reported",
+              })}
+            </span>
+            <DeltaChipDarkLabelled value={r.profit_yoy} label={r.profit_yoy_label} />
           </div>
           <div className="hidden md:flex md:col-span-1 items-center justify-end">
             <span className="text-[9px] uppercase tracking-[0.14em] text-core-teal font-semibold">Filed</span>
@@ -1074,7 +1081,7 @@ function UpcomingTableDark({ items, emptyText }: {
             <span className="text-[10px] text-white/40 tabular-nums hidden lg:inline">{u.ticker}</span>
           </div>
           <div className="hidden md:block md:col-span-3 text-[12px] text-white/60 truncate">
-            {u.sector ?? "—"}
+            {u.sector ?? "Data not available"}
           </div>
           <div className="col-span-4 md:col-span-3 md:text-right text-[12px] text-white/70 tabular-nums whitespace-nowrap">
             {formatDate(u.next_result_date)}
@@ -1109,7 +1116,7 @@ function BellwetherTableDark({ items }: { items: LatestQuarterRow[] }) {
             <span className="text-[10px] text-white/40 tabular-nums hidden lg:inline">{r.ticker}</span>
           </div>
           <div className="hidden md:block md:col-span-3 text-[12px] text-white/60 truncate">
-            {r.sector ?? "—"}
+            {r.sector ?? "Data not available"}
           </div>
           <div className="col-span-4 md:col-span-3 md:text-right text-[12px] text-white/70 tabular-nums whitespace-nowrap">
             {r.next_result_date ? formatDate(r.next_result_date) : "Unscheduled"}
@@ -1135,4 +1142,14 @@ function DeltaChipDark({ value }: { value: number | null | undefined }) {
     </span>
   );
 }
-
+function DeltaChipDarkLabelled({
+  value,
+  label,
+}: {
+  value: number | null | undefined;
+  label?: string | null;
+}) {
+  if (label) return <span className="text-[11px] text-white/70">{label}</span>;
+  if (value == null) return <span className="text-[11px] text-white/40">Data not available</span>;
+  return <DeltaChipDark value={value} />;
+}

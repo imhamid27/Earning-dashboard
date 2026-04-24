@@ -4,14 +4,11 @@ import Sparkline from "./Sparkline";
 import { deriveInsight } from "@/lib/insight";
 import type { LatestQuarterRow } from "@/lib/types";
 
-// Larger "lead" card for the biggest Q4 reporter. Used once at the top of
-// the featured grid to create clear visual hierarchy (1 big + 4 small)
-// instead of the previous 6-equal-cards layout.
 export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterRow; quarter: string }) {
   const tone = (v: number | null | undefined) =>
     v == null ? "text-core-muted" :
-    v > 0     ? "text-core-teal" :
-    v < 0     ? "text-core-negative" : "text-core-muted";
+    v > 0 ? "text-core-teal" :
+    v < 0 ? "text-core-negative" : "text-core-muted";
   const sign = (v: number | null | undefined) => v == null ? "" : v > 0 ? "▲" : v < 0 ? "▼" : "■";
 
   return (
@@ -20,7 +17,6 @@ export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterR
       className="card card-hover block group xl:col-span-2"
     >
       <div className="grid grid-cols-1 md:grid-cols-5 gap-0">
-        {/* Left: company identity + KPIs */}
         <div className="md:col-span-3 p-6 md:p-7 space-y-5">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -43,7 +39,7 @@ export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterR
             <div>
               <div className="text-[10px] uppercase tracking-[0.14em] text-core-muted">Revenue</div>
               <div className="mt-1.5 text-[32px] font-bold tabular-nums tracking-tightest leading-none">
-                {formatINR(row.revenue)}
+                {formatINR(row.revenue, { invalid: !!row.revenue_validation_issue })}
               </div>
               <div className={`mt-2 text-sm font-semibold tabular-nums ${tone(row.revenue_yoy)}`}>
                 {row.revenue_yoy != null ? (
@@ -52,22 +48,25 @@ export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterR
                     {formatPct(row.revenue_yoy)}
                     <span className="text-[10px] font-normal text-core-muted ml-1.5 uppercase tracking-wide">YoY</span>
                   </>
-                ) : "— YoY"}
+                ) : "Data not available"}
               </div>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-[0.14em] text-core-muted">Net profit</div>
               <div className="mt-1.5 text-[32px] font-bold tabular-nums tracking-tightest leading-none">
-                {formatINR(row.net_profit)}
+                {formatINR(row.net_profit, {
+                  invalid: !!row.net_profit_validation_issue,
+                  zeroLabel: "No profit reported"
+                })}
               </div>
               <div className={`mt-2 text-sm font-semibold tabular-nums ${tone(row.profit_yoy)}`}>
-                {row.profit_yoy != null ? (
+                {row.profit_yoy != null || row.profit_yoy_label ? (
                   <>
-                    <span className="text-[10px]">{sign(row.profit_yoy)}</span>{" "}
-                    {formatPct(row.profit_yoy)}
+                    {!row.profit_yoy_label ? <span className="text-[10px]">{sign(row.profit_yoy)}</span> : null}{" "}
+                    {formatPct(row.profit_yoy, 1, { label: row.profit_yoy_label })}
                     <span className="text-[10px] font-normal text-core-muted ml-1.5 uppercase tracking-wide">YoY</span>
                   </>
-                ) : "— YoY"}
+                ) : "Data not available"}
               </div>
             </div>
           </div>
@@ -85,7 +84,6 @@ export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterR
             ) : null}
           </div>
 
-          {/* Insight line — a single factual observation from the numbers */}
           {(() => {
             const insight = deriveInsight(row);
             return insight ? (
@@ -99,7 +97,6 @@ export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterR
           })()}
         </div>
 
-        {/* Right: sparkline panel */}
         <div className="md:col-span-2 bg-core-surface border-t md:border-t-0 md:border-l border-core-line p-6 flex flex-col justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
