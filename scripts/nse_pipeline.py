@@ -49,6 +49,7 @@ def main() -> int:
         code |= run("bse_calendar.py", []) or 0
         code |= run("moneycontrol_calendar.py", []) or 0
     if do_hourly:
+        code |= run("bse_pdf_results.py", []) or 0
         code |= run("nse_results.py", []) or 0
     if args.fallback_yahoo:
         code |= run("ingest.py", []) or 0
