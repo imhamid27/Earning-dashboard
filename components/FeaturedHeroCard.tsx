@@ -48,7 +48,7 @@ export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterR
                     {formatPct(row.revenue_yoy)}
                     <span className="text-[10px] font-normal text-core-muted ml-1.5 uppercase tracking-wide">YoY</span>
                   </>
-                ) : row.revenue == null ? null : "Data not available"}
+                ) : "Data not available"}
               </div>
             </div>
             <div>
@@ -66,7 +66,7 @@ export default function FeaturedHeroCard({ row, quarter }: { row: LatestQuarterR
                     {formatPct(row.profit_yoy, 1, { label: row.profit_yoy_label })}
                     <span className="text-[10px] font-normal text-core-muted ml-1.5 uppercase tracking-wide">YoY</span>
                   </>
-                ) : row.net_profit == null ? null : "Data not available"}
+                ) : "Data not available"}
               </div>
             </div>
           </div>

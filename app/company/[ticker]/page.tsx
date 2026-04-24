@@ -149,7 +149,7 @@ export default function CompanyDetail() {
             <div className="min-w-0">
               <div className="flex items-baseline gap-3 flex-wrap">
                 <div className="text-3xl md:text-4xl font-bold tabular-nums tracking-tightest leading-none">
-                  ₹{price.last_price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  â‚¹{price.last_price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 {price.change_pct != null ? (
                   <div className={`text-lg font-semibold tabular-nums leading-none ${price.change_pct >= 0 ? "text-core-teal" : "text-core-negative"}`}>
@@ -160,7 +160,7 @@ export default function CompanyDetail() {
               </div>
               {price.previous_close != null ? (
                 <div className="mt-2 text-[11px] text-core-muted tabular-nums">
-                  vs previous close ₹{price.previous_close.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  vs previous close â‚¹{price.previous_close.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               ) : null}
             </div>
@@ -169,13 +169,13 @@ export default function CompanyDetail() {
               <PriceStat
                 label="Day high"
                 value={price.day_high != null
-                  ? `₹${price.day_high.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  ? `â‚¹${price.day_high.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   : "Data not available"}
               />
               <PriceStat
                 label="Day low"
                 value={price.day_low != null
-                  ? `₹${price.day_low.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  ? `â‚¹${price.day_low.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   : "Data not available"}
               />
               <PriceStat
@@ -225,7 +225,7 @@ export default function CompanyDetail() {
             />
             <KPI
               label="EPS"
-              value={latest!.eps != null ? `₹${latest!.eps.toFixed(2)}` : "Data not available"}
+              value={latest!.eps != null ? `â‚¹${latest!.eps.toFixed(2)}` : "Data not available"}
               sub={prevY ? `vs ${prevY.quarter_label}` : undefined}
             />
           </section>
