@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
 import { jsonOk, jsonError, cleanQuarterLabel } from "@/lib/api";
 import { pctChange } from "@/lib/growth";
-import { validateMetricPair } from "@/lib/validation";
 
 // GET /api/sectors?quarter=Q4 FY26
 //
@@ -28,7 +27,7 @@ export async function GET(req: NextRequest) {
 
   const { data: currentRows, error } = await sb
     .from("quarterly_financials")
-    .select("ticker,fiscal_year,fiscal_quarter,revenue,net_profit,source,companies!inner(company_name,sector,industry,market_cap_bucket)")
+    .select("ticker,fiscal_year,fiscal_quarter,revenue,net_profit,companies!inner(sector)")
     .eq("quarter_label", targetQuarter);
   if (error) return jsonError(error.message, 500);
   if (!currentRows || currentRows.length === 0) return jsonOk({ quarter: targetQuarter, sectors: [] });
@@ -38,7 +37,7 @@ export async function GET(req: NextRequest) {
 
   const { data: priorRows, error: pErr } = await sb
     .from("quarterly_financials")
-    .select("ticker,revenue,net_profit,source,companies!inner(company_name,sector,industry,market_cap_bucket)")
+    .select("ticker,revenue,net_profit,companies!inner(sector)")
     .eq("fiscal_year", fy - 1)
     .eq("fiscal_quarter", fq);
   if (pErr) return jsonError(pErr.message, 500);
@@ -46,7 +45,6 @@ export async function GET(req: NextRequest) {
   type Agg = { rev: number; prof: number; count: number };
   const acc = new Map<string, Agg>();
   const prev = new Map<string, Agg>();
-  const includedCurrentTickers = new Set<string>();
   const add = (map: Map<string, Agg>, sector: string | null, rev: number | null, prof: number | null) => {
     if (!sector) return;
     const cur = map.get(sector) ?? { rev: 0, prof: 0, count: 0 };
@@ -55,48 +53,8 @@ export async function GET(req: NextRequest) {
     cur.count += 1;
     map.set(sector, cur);
   };
-  const priorByTicker = new Map<string, { revenue: number | null; net_profit: number | null }>();
-  for (const r of priorRows ?? []) {
-    priorByTicker.set(r.ticker, { revenue: r.revenue, net_profit: r.net_profit });
-  }
-
-  for (const r of currentRows) {
-    const company: any = (r as any).companies ?? {};
-    const prior = priorByTicker.get(r.ticker);
-    const sanitized = validateMetricPair(
-      { revenue: r.revenue, net_profit: r.net_profit },
-      {
-        company_name: company.company_name,
-        sector: company.sector,
-        industry: company.industry,
-        market_cap_bucket: company.market_cap_bucket,
-        source: "sectors_current",
-        financial_source: (r as any).source ?? null,
-        require_verified: true,
-      },
-      { revenue: prior?.revenue ?? null, net_profit: prior?.net_profit ?? null }
-    );
-    add(acc, company.sector ?? null, sanitized.revenue, sanitized.net_profit);
-    if (sanitized.revenue != null || sanitized.net_profit != null) {
-      includedCurrentTickers.add(r.ticker);
-    }
-  }
-  for (const r of priorRows ?? []) {
-    if (!includedCurrentTickers.has(r.ticker)) continue;
-    const company: any = (r as any).companies ?? {};
-    const sanitized = validateMetricPair(
-      { revenue: r.revenue, net_profit: r.net_profit },
-      {
-        company_name: company.company_name,
-        sector: company.sector,
-        industry: company.industry,
-        market_cap_bucket: company.market_cap_bucket,
-        source: "sectors_prior",
-        financial_source: (r as any).source ?? null,
-      }
-    );
-    add(prev, company.sector ?? null, sanitized.revenue, sanitized.net_profit);
-  }
+  for (const r of currentRows) add(acc, (r as any).companies?.sector ?? null, r.revenue, r.net_profit);
+  for (const r of priorRows ?? []) add(prev, (r as any).companies?.sector ?? null, r.revenue, r.net_profit);
 
   const sectors = Array.from(acc.entries()).map(([sector, cur]) => {
     const pr = prev.get(sector);

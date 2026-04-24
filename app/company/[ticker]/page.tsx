@@ -27,9 +27,6 @@ interface DetailResp {
     fetched_at: string;
     revenue_qoq: number | null; revenue_yoy: number | null;
     profit_qoq: number | null; profit_yoy: number | null;
-    profit_yoy_label?: string | null;
-    revenue_validation_issue?: string | null;
-    net_profit_validation_issue?: string | null;
     filing_url: string | null;
   }>;
   latest_filing_url?: string | null;
@@ -55,6 +52,9 @@ export default function CompanyDetail() {
       .then((j) => {
         if (j.ok) {
           setData(j.data);
+          // Fire a structured GA4 view_item event with ticker + sector.
+          // Complements the automatic page_view so you can see "top viewed
+          // companies" and "most-looked-at sectors" in GA4 reports.
           trackCompanyView({
             ticker: j.data.company.ticker,
             company_name: j.data.company.company_name,
@@ -78,25 +78,27 @@ export default function CompanyDetail() {
 
   if (err) return (
     <div className="container-core py-10">
-      <EmptyState title="Company not found" message={err} cta={<Link href="/" className="link-pink text-sm">Back to dashboard</Link>} />
+      <EmptyState title="Company not found" message={err} cta={<Link href="/" className="link-pink text-sm">← Back to dashboard</Link>} />
     </div>
   );
   if (!data) return (
-    <div className="container-core py-10"><div className="card p-8 text-sm text-core-muted">Loading...</div></div>
+    <div className="container-core py-10"><div className="card p-8 text-sm text-core-muted">Loading…</div></div>
   );
 
   const latest = data.quarters[data.quarters.length - 1];
-  const prevY = data.quarters.length >= 5 ? data.quarters[data.quarters.length - 5] : null;
+  const prevY  = data.quarters.length >= 5 ? data.quarters[data.quarters.length - 5] : null;
 
   return (
     <div className="container-core py-8 md:py-12 space-y-10">
+      {/* Breadcrumb */}
       <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted flex items-center gap-2">
         <Link href="/" className="hover:text-core-pink">Dashboard</Link>
         <span className="text-core-line-2">/</span>
-        <span>{data.company.sector ?? "Data not available"}</span>
+        <span>{data.company.sector ?? "—"}</span>
         {data.company.industry ? (<><span className="text-core-line-2">/</span><span>{data.company.industry}</span></>) : null}
       </div>
 
+      {/* Editorial header */}
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div className="min-w-0">
           <h1 className="text-3xl md:text-5xl font-bold tracking-tightest leading-[1.05]">
@@ -107,11 +109,11 @@ export default function CompanyDetail() {
           </h1>
           <div className="text-sm text-core-muted mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-semibold text-core-ink tabular-nums">{data.company.ticker}</span>
-            <span className="text-core-line-2">.</span><span>{data.company.exchange}</span>
-            {data.company.industry ? (<><span className="text-core-line-2">.</span><span>{data.company.industry}</span></>) : null}
-            {data.company.isin ? (<><span className="text-core-line-2">.</span><span className="tabular-nums">ISIN {data.company.isin}</span></>) : null}
-            {data.company.market_cap_bucket ? (<><span className="text-core-line-2">.</span><span>{data.company.market_cap_bucket} cap</span></>) : null}
-            {data.company.bse_scrip ? (<><span className="text-core-line-2">.</span><span className="tabular-nums">BSE {data.company.bse_scrip}</span></>) : null}
+            <span className="text-core-line-2">·</span><span>{data.company.exchange}</span>
+            {data.company.industry ? (<><span className="text-core-line-2">·</span><span>{data.company.industry}</span></>) : null}
+            {data.company.isin ? (<><span className="text-core-line-2">·</span><span className="tabular-nums">ISIN {data.company.isin}</span></>) : null}
+            {data.company.market_cap_bucket ? (<><span className="text-core-line-2">·</span><span>{data.company.market_cap_bucket} cap</span></>) : null}
+            {data.company.bse_scrip ? (<><span className="text-core-line-2">·</span><span className="tabular-nums">BSE {data.company.bse_scrip}</span></>) : null}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             {data.company.next_result_date ? (
@@ -131,8 +133,13 @@ export default function CompanyDetail() {
         {latest ? <FreshnessIndicator fetchedAt={latest.fetched_at} /> : null}
       </section>
 
+      {/* Trading price card — always visible if we have a price, regardless
+          of whether quarterly data exists. Separates "what the market thinks
+          right now" from "what the company last reported". */}
       {price && price.last_price != null ? (
         <section className="card p-5 md:p-6">
+          {/* Row 1: label + LIVE/CLOSED badge. Always on its own line — a
+              clean header slug that the big price hangs off. */}
           <div className="text-[10px] uppercase tracking-[0.18em] text-core-muted font-semibold flex items-center gap-2">
             Trading price
             {priceStatus === "open" ? (
@@ -145,11 +152,15 @@ export default function CompanyDetail() {
             ) : null}
           </div>
 
+          {/* Row 2: the headline price and the 3 sub-stats. Stacks
+              vertically on mobile; puts the stats on the right on
+              desktop. Grid-based (not flex) so the stats columns never
+              overlap each other at any viewport width. */}
           <div className="mt-3 grid grid-cols-1 md:grid-cols-[auto_1fr] gap-5 md:gap-8 md:items-end">
             <div className="min-w-0">
               <div className="flex items-baseline gap-3 flex-wrap">
                 <div className="text-3xl md:text-4xl font-bold tabular-nums tracking-tightest leading-none">
-                  â‚¹{price.last_price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ₹{price.last_price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 {price.change_pct != null ? (
                   <div className={`text-lg font-semibold tabular-nums leading-none ${price.change_pct >= 0 ? "text-core-teal" : "text-core-negative"}`}>
@@ -160,7 +171,7 @@ export default function CompanyDetail() {
               </div>
               {price.previous_close != null ? (
                 <div className="mt-2 text-[11px] text-core-muted tabular-nums">
-                  vs previous close â‚¹{price.previous_close.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  vs previous close ₹{price.previous_close.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               ) : null}
             </div>
@@ -169,22 +180,25 @@ export default function CompanyDetail() {
               <PriceStat
                 label="Day high"
                 value={price.day_high != null
-                  ? `â‚¹${price.day_high.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : "Data not available"}
+                  ? `₹${price.day_high.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "—"}
               />
               <PriceStat
                 label="Day low"
                 value={price.day_low != null
-                  ? `â‚¹${price.day_low.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : "Data not available"}
+                  ? `₹${price.day_low.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "—"}
               />
               <PriceStat
                 label="Volume"
-                value={price.volume != null ? formatVolume(price.volume) : "Data not available"}
+                value={price.volume != null ? formatVolume(price.volume) : "—"}
               />
             </div>
           </div>
 
+          {/* Row 3: disclaimer — ALWAYS on its own line below the grid.
+              The old layout tried to squeeze it into the flex row which
+              made the text overlap the sub-stats at awkward widths. */}
           <div className="mt-5 pt-3 border-t border-core-line text-[11px] leading-relaxed text-core-muted italic">
             {DISCLAIMER_PRICE}
           </div>
@@ -198,11 +212,12 @@ export default function CompanyDetail() {
         />
       ) : (
         <>
+          {/* KPI row — hairline-separated cells (matches homepage) */}
           <section className="grid grid-cols-2 md:grid-cols-4 divide-x divide-core-line border-y border-core-line">
             <KPI label="Latest quarter" value={latest!.quarter_label} sub={formatDate(latest!.quarter_end_date)} />
             <KPI
               label="Revenue"
-              value={formatINR(latest!.revenue, { invalid: !!latest!.revenue_validation_issue })}
+              value={formatINR(latest!.revenue)}
               sub={
                 <span className={`${pctToneClass(latest!.revenue_yoy)} font-semibold`}>
                   {formatPct(latest!.revenue_yoy)} YoY
@@ -211,25 +226,25 @@ export default function CompanyDetail() {
             />
             <KPI
               label="Net profit"
-              value={formatINR(latest!.net_profit, {
-                invalid: !!latest!.net_profit_validation_issue,
-                zeroLabel: "No profit reported",
-              })}
+              value={formatINR(latest!.net_profit)}
               sub={
                 <span className={`${pctToneClass(latest!.profit_yoy)} font-semibold`}>
-                  {latest!.profit_yoy_label
-                    ? latest!.profit_yoy_label
-                    : `${formatPct(latest!.profit_yoy)} YoY`}
+                  {formatPct(latest!.profit_yoy)} YoY
                 </span>
               }
             />
             <KPI
               label="EPS"
-              value={latest!.eps != null ? `â‚¹${latest!.eps.toFixed(2)}` : "Data not available"}
+              value={latest!.eps != null ? `₹${latest!.eps.toFixed(2)}` : "—"}
               sub={prevY ? `vs ${prevY.quarter_label}` : undefined}
             />
           </section>
 
+          {/* About this company — compact metadata card. Kept deliberately
+              factual + verifiable: what we can source from exchange filings,
+              not marketing blurbs. A future enrichment pass will add a
+              one-paragraph business summary from yfinance (committed in a
+              follow-up migration). */}
           <section className="card p-5">
             <h3 className="text-sm font-bold tracking-tightest mb-3 text-core-muted uppercase">
               About
@@ -253,6 +268,7 @@ export default function CompanyDetail() {
             </dl>
           </section>
 
+          {/* Charts */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="card p-5">
               <header className="flex items-baseline justify-between mb-3">
@@ -270,6 +286,7 @@ export default function CompanyDetail() {
             </div>
           </section>
 
+          {/* Quarterly table */}
           <section>
             <header className="flex items-baseline justify-between mb-3">
               <h2 className="text-xl font-bold tracking-tightest">Quarter-by-quarter</h2>
@@ -298,22 +315,13 @@ export default function CompanyDetail() {
                     <tr key={q.id}>
                       <td className="font-semibold tabular-nums">{q.quarter_label}</td>
                       <td className="text-sm text-core-muted tabular-nums">{formatDate(q.quarter_end_date)}</td>
-                      <td className="text-right tabular-nums font-semibold">
-                        {formatINR(q.revenue, { invalid: !!q.revenue_validation_issue })}
-                      </td>
+                      <td className="text-right tabular-nums font-semibold">{formatINR(q.revenue)}</td>
                       <td className={`text-right tabular-nums ${pctToneClass(q.revenue_qoq)}`}>{formatPct(q.revenue_qoq)}</td>
                       <td className={`text-right tabular-nums font-semibold ${pctToneClass(q.revenue_yoy)}`}>{formatPct(q.revenue_yoy)}</td>
-                      <td className="text-right tabular-nums font-semibold">
-                        {formatINR(q.net_profit, {
-                          invalid: !!q.net_profit_validation_issue,
-                          zeroLabel: "No profit reported",
-                        })}
-                      </td>
-                      <td className={`text-right tabular-nums font-semibold ${pctToneClass(q.profit_yoy)}`}>
-                        {formatPct(q.profit_yoy, 1, { label: q.profit_yoy_label ?? null })}
-                      </td>
+                      <td className="text-right tabular-nums font-semibold">{formatINR(q.net_profit)}</td>
+                      <td className={`text-right tabular-nums font-semibold ${pctToneClass(q.profit_yoy)}`}>{formatPct(q.profit_yoy)}</td>
                       <td className="text-right tabular-nums">{formatINR(q.operating_profit)}</td>
-                      <td className="text-right tabular-nums">{q.eps != null ? q.eps.toFixed(2) : "Data not available"}</td>
+                      <td className="text-right tabular-nums">{q.eps != null ? q.eps.toFixed(2) : "—"}</td>
                       <td className="text-right">
                         <PdfLink
                           url={q.filing_url}
@@ -330,6 +338,7 @@ export default function CompanyDetail() {
             </div>
           </section>
 
+          {/* Footnote — last refresh timestamp only. */}
           <section className="text-[11px] text-core-muted pt-2 border-t border-core-line">
             Last updated {formatDate(latest?.fetched_at ?? null)}.
           </section>
@@ -351,6 +360,9 @@ function KPI({ label, value, sub }: { label: string; value: string; sub?: React.
   );
 }
 
+// One of the three stats (high / low / volume) shown beside the trading
+// price. Tight label + value, tabular-nums so they align vertically
+// across rows regardless of digit count.
 function PriceStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 text-right">
@@ -376,7 +388,7 @@ function AboutField({ label, value, mono }: { label: string; value: string | nul
     <div className="min-w-0">
       <dt className="text-[10px] uppercase tracking-[0.14em] text-core-muted">{label}</dt>
       <dd className={`mt-0.5 text-sm text-core-ink font-medium ${mono ? "tabular-nums" : ""} truncate`}>
-        {value && value.trim().length > 0 ? value : "Data not available"}
+        {value && value.trim().length > 0 ? value : "—"}
       </dd>
     </div>
   );

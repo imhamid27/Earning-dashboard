@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
 import { jsonOk, jsonError, cleanQuarterLabel } from "@/lib/api";
-import { pctChange, profitTransitionLabel } from "@/lib/growth";
-import { validateMetricPair } from "@/lib/validation";
+import { pctChange } from "@/lib/growth";
 
 // GET /api/q4-announcements?quarter=Q4 FY26
 //
@@ -24,11 +23,10 @@ interface Row {
   net_profit: number | null;
   operating_profit: number | null;
   eps: number | null;
-  source: string;
   fetched_at: string;
   data_quality_status: string;
   raw_json: any;
-  companies: { company_name: string; sector: string | null; industry: string | null; market_cap_bucket?: string | null } | null;
+  companies: { company_name: string; sector: string | null; industry: string | null } | null;
 }
 
 function parseLooseDate(raw: string | null | undefined): string | null {
@@ -70,29 +68,24 @@ export async function GET(req: NextRequest) {
 
   const { data: rows, error } = await sb
     .from("quarterly_financials")
-    .select("ticker,quarter_label,quarter_end_date,revenue,net_profit,operating_profit,eps,source,fetched_at,data_quality_status,raw_json,companies!inner(company_name,sector,industry,market_cap_bucket,is_active)")
+    .select("ticker,quarter_label,quarter_end_date,revenue,net_profit,operating_profit,eps,fetched_at,data_quality_status,raw_json,companies!inner(company_name,sector,industry,is_active)")
     .eq("quarter_label", quarter)
     .eq("companies.is_active", true);
   if (error) return jsonError(error.message, 500);
 
   // Load the YoY counterpart (Q4 FY25 if quarter=Q4 FY26) for growth calc.
   const fyMatch = /^Q([1-4])\s*FY(\d{2})$/.exec(quarter);
-  let priorByTicker = new Map<string, { revenue: number | null; net_profit: number | null; market_cap_bucket?: string | null; source?: string | null }>();
+  let priorByTicker = new Map<string, { revenue: number | null; net_profit: number | null }>();
   if (fyMatch) {
     const fq = Number(fyMatch[1]);
     const fy = 2000 + Number(fyMatch[2]);
     const priorLabel = `Q${fq} FY${String(fy - 1).slice(-2)}`;
     const { data: prior } = await sb
       .from("quarterly_financials")
-      .select("ticker,revenue,net_profit,source,companies(market_cap_bucket)")
+      .select("ticker,revenue,net_profit")
       .eq("quarter_label", priorLabel);
     for (const p of prior ?? []) {
-      priorByTicker.set(p.ticker, {
-        revenue: p.revenue,
-        net_profit: p.net_profit,
-        source: p.source,
-        market_cap_bucket: (p as any).companies?.market_cap_bucket ?? null,
-      });
+      priorByTicker.set(p.ticker, { revenue: p.revenue, net_profit: p.net_profit });
     }
   }
 
@@ -115,16 +108,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
-type Company = {
+  type Company = {
     ticker: string; company_name: string; sector: string | null; industry: string | null;
     revenue: number | null; net_profit: number | null; operating_profit: number | null;
-  eps: number | null; data_quality_status: string;
-  revenue_yoy: number | null; profit_yoy: number | null;
-  profit_yoy_label: string | null;
-  revenue_validation_issue: string | null;
-  net_profit_validation_issue: string | null;
-  filing_url: string | null;
-};
+    eps: number | null; data_quality_status: string;
+    revenue_yoy: number | null; profit_yoy: number | null;
+    filing_url: string | null;
+  };
   const undated: Company[] = [];
 
   // ---------------------------------------------------------------------
@@ -176,47 +166,18 @@ type Company = {
     const prior = priorByTicker.get(e.ticker);
     const info: any = (e as any).companies || {};
     const raw: any = (e as any).raw_json || {};
-    const sanitizedPrior = prior
-      ? validateMetricPair(
-          { revenue: prior.revenue, net_profit: prior.net_profit },
-          {
-            company_name: info.company_name ?? e.ticker,
-            sector: info.sector ?? null,
-            industry: info.industry ?? null,
-            market_cap_bucket: prior.market_cap_bucket ?? null,
-            source: "q4_announcements_prior",
-            financial_source: prior.source ?? null,
-          }
-        )
-      : null;
-    const sanitized = validateMetricPair(
-      { revenue: numbers?.revenue ?? null, net_profit: numbers?.net_profit ?? null },
-      {
-        company_name: info.company_name ?? e.ticker,
-        sector: info.sector ?? null,
-        industry: info.industry ?? null,
-        market_cap_bucket: numbers?.companies?.market_cap_bucket ?? prior?.market_cap_bucket ?? null,
-        source: "q4_announcements",
-        financial_source: numbers?.source ?? null,
-        require_verified: true,
-      },
-      { revenue: sanitizedPrior?.revenue ?? null, net_profit: sanitizedPrior?.net_profit ?? null }
-    );
     per.set(e.ticker, {
       ticker: e.ticker,
       company_name: info.company_name ?? e.ticker,
       sector: info.sector ?? null,
       industry: info.industry ?? null,
-      revenue: sanitized.revenue,
-      net_profit: sanitized.net_profit,
+      revenue: numbers?.revenue ?? null,
+      net_profit: numbers?.net_profit ?? null,
       operating_profit: numbers?.operating_profit ?? null,
       eps: numbers?.eps ?? null,
       data_quality_status: numbers?.data_quality_status ?? "partial",
-      revenue_yoy: numbers ? pctChange(sanitized.revenue, sanitizedPrior?.revenue ?? null) : null,
-      profit_yoy:  numbers ? pctChange(sanitized.net_profit, sanitizedPrior?.net_profit ?? null) : null,
-      profit_yoy_label: profitTransitionLabel(sanitized.net_profit, sanitizedPrior?.net_profit ?? null),
-      revenue_validation_issue: sanitized.revenue_issue,
-      net_profit_validation_issue: sanitized.net_profit_issue,
+      revenue_yoy: numbers ? pctChange(numbers.revenue, prior?.revenue ?? null) : null,
+      profit_yoy:  numbers ? pctChange(numbers.net_profit, prior?.net_profit ?? null) : null,
       filing_url:  typeof raw.filing_url === "string" ? raw.filing_url : null,
     });
   }

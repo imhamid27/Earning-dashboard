@@ -10,17 +10,6 @@ export function pctChange(curr: number | null | undefined, base: number | null |
   return (curr - base) / base;
 }
 
-export function profitTransitionLabel(
-  curr: number | null | undefined,
-  base: number | null | undefined
-): string | null {
-  if (curr == null || base == null) return null;
-  if (!Number.isFinite(curr) || !Number.isFinite(base)) return null;
-  if (base <= 0 && curr > 0) return "Turned profitable";
-  if (base > 0 && curr <= 0) return "Turned loss-making";
-  return null;
-}
-
 export interface QuarterRow {
   quarter_end_date: string; // ISO
   revenue: number | null;

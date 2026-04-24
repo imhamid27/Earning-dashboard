@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
 import TabScroller from "@/components/TabScroller";
 import FilingLoader from "@/components/FilingLoader";
@@ -22,9 +23,6 @@ interface Company {
   revenue: number | null; net_profit: number | null; operating_profit: number | null;
   eps: number | null; data_quality_status: any;
   revenue_yoy: number | null; profit_yoy: number | null;
-  profit_yoy_label?: string | null;
-  revenue_validation_issue?: string | null;
-  net_profit_validation_issue?: string | null;
   filing_url: string | null;
 }
 interface ScheduledCompany {
@@ -43,6 +41,9 @@ interface Payload {
   undated: Company[];
 }
 
+// This page is scoped to the current reporting quarter only — it's a
+// "track this quarter as it happens" view, not a history browser. If you
+// need to browse older quarters, use the Dashboard's quarter dropdown.
 const QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
 
 export default function Q4Page() {
@@ -52,33 +53,48 @@ export default function Q4Page() {
   const [activeDate, setActiveDate] = useState<string | null>(null);
 
   useEffect(() => {
-    setData(null);
-    setErr(null);
+    setData(null); setErr(null);
     fetch(`/api/q4-announcements?quarter=${encodeURIComponent(QUARTER)}`)
       .then((r) => r.json())
       .then((j) => {
         if (!j.ok) throw new Error(j.error);
         setData(j.data);
+        // Default-active = most recent *reported* tab (readers care about
+        // what just landed); fall back to the first upcoming date if no
+        // company has reported yet.
         const reported: DateGroup[] = j.data.dates.filter((d: DateGroup) => d.kind === "reported");
-        if (reported.length > 0) setActiveDate(reported[reported.length - 1].date);
-        else if (j.data.dates.length > 0) setActiveDate(j.data.dates[0].date);
-        else setActiveDate(null);
+        if (reported.length > 0) {
+          setActiveDate(reported[reported.length - 1].date);
+        } else if (j.data.dates.length > 0) {
+          setActiveDate(j.data.dates[0].date);
+        } else {
+          setActiveDate(null);
+        }
       })
       .catch((e) => setErr(String(e)));
 
+    // Prices are a separate endpoint (same as homepage). We don't want
+    // the price sidecar to block the main payload — if prices fail, the
+    // table still renders without the price chip.
     fetch(`/api/prices`)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok && j.data?.prices) setPrices(j.data.prices);
       })
-      .catch(() => {});
+      .catch(() => { /* silent */ });
   }, []);
 
+  // Back-compat for the rest of the template, which still references `quarter`.
   const quarter = QUARTER;
 
+  // When the active date changes (default or user click), scroll the active
+  // tab into the centre of the tab scroller. Keeps the selection visible
+  // even when the rail has 30+ tabs.
   useEffect(() => {
     if (!activeDate) return;
-    const btn = document.querySelector(`button[data-active="true"]`) as HTMLElement | null;
+    const btn = document.querySelector(
+      `button[data-active="true"]`
+    ) as HTMLElement | null;
     btn?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }, [activeDate]);
 
@@ -89,6 +105,7 @@ export default function Q4Page() {
 
   return (
     <div className="container-core py-8 space-y-6">
+      {/* Heading */}
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div>
           <div className="text-xs uppercase tracking-wide text-core-muted">Earnings tracker</div>
@@ -105,11 +122,11 @@ export default function Q4Page() {
         </div>
         <div className="flex items-baseline gap-6">
           <div className="serif text-3xl font-bold tabular-nums tracking-tightest">
-            {data ? data.total_reported : "Data not available"}
+            {data ? data.total_reported : "—"}
             <span className="block text-[10px] uppercase tracking-[0.14em] text-core-muted font-normal">reported</span>
           </div>
           <div className="serif text-3xl font-bold tabular-nums tracking-tightest text-core-muted">
-            {data ? (data.total_scheduled ?? 0) : "Data not available"}
+            {data ? (data.total_scheduled ?? 0) : "—"}
             <span className="block text-[10px] uppercase tracking-[0.14em] text-core-muted font-normal">scheduled</span>
           </div>
         </div>
@@ -122,10 +139,13 @@ export default function Q4Page() {
       ) : data.dates.length === 0 ? (
         <EmptyState
           title={`No ${quarter} results yet`}
-          message="No company has announced this quarter yet. Results start landing once the quarter ends - usually a few days to weeks after."
+          message="No company has announced this quarter yet. Results start landing once the quarter ends — usually a few days to weeks after."
         />
       ) : (
         <>
+          {/* Date tabs — one chronological timeline from earliest past filing
+              through today and into upcoming scheduled dates. Horizontal
+              scroll has chevron controls + fade masks so nothing hides. */}
           <section className="border-b border-core-line">
             <TabScroller>
               {data.dates.map((g) => {
@@ -157,9 +177,20 @@ export default function Q4Page() {
             </TabScroller>
           </section>
 
+          {/* Active group — two variants: "reported" shows the full filed
+              numbers; "scheduled" shows the bare-bones list of upcoming
+              filers (no financials, they haven't announced yet). */}
           {activeGroup ? (
             activeGroup.kind === "reported" ? (
               (() => {
+                // Separate filed-with-numbers rows from "scheduled but filing
+                // still pending" rows. The calendar puts a company on
+                // DATE X because their board meeting was booked for that
+                // day, but the formal XBRL filing is usually submitted
+                // hours (sometimes a day or two) later. Showing both in
+                // the same table with em-dashes made it look like a data
+                // bug — instead, put filed rows on top and pending ones in
+                // a clearly-labelled sub-section.
                 const all = activeGroup.companies as Company[];
                 const filed = all
                   .filter((c) => c.revenue != null || c.net_profit != null)
@@ -168,112 +199,108 @@ export default function Q4Page() {
                   .filter((c) => c.revenue == null && c.net_profit == null)
                   .sort((a, b) => a.company_name.localeCompare(b.company_name));
                 return (
-                  <section className="space-y-3">
-                    <div>
-                      <h2 className="text-xl font-bold tracking-tightest leading-snug">
-                        Results announced on {formatDate(activeGroup.date)}
-                      </h2>
-                      <div className="mt-1 text-sm text-core-muted">
-                        <span className="tabular-nums font-semibold text-core-ink">{filed.length}</span> filed
-                        {pending.length > 0 ? (
-                          <>
-                            {" · "}
-                            <span className="tabular-nums font-semibold text-core-ink">{pending.length}</span> filing pending
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-                    {filed.length > 0 ? (
-                      <div className="card overflow-x-auto">
-                        <table className="data-table">
-                          <thead>
-                            <tr>
-                              <th>Company</th>
-                              <th>Sector</th>
-                              <th className="text-right">Revenue</th>
-                              <th className="text-right">Rev YoY</th>
-                              <th className="text-right">Net profit</th>
-                              <th className="text-right">Profit YoY</th>
-                              <th className="text-right">Op. profit</th>
-                              <th className="text-right">EPS</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filed.map((c) => (
-                              <tr key={c.ticker}>
-                                <td>
-                                  <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
-                                    {c.company_name}
-                                  </Link>
-                                  <div className="text-[11px] text-core-muted flex items-center gap-2 flex-wrap">
-                                    <span>{c.ticker}</span>
-                                    <PdfLink url={c.filing_url} label="View filing" ticker={c.ticker} companyName={c.company_name} source="q4_page" />
-                                    <PriceChip p={prices[c.ticker]} />
-                                  </div>
-                                </td>
-                                <td className="text-sm text-core-muted">{c.sector ?? "Data not available"}</td>
-                                <td className="text-right tabular-nums font-semibold">
-                                  {formatINR(c.revenue, { invalid: !!c.revenue_validation_issue })}
-                                </td>
-                                <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.revenue_yoy)}`}>{formatPct(c.revenue_yoy)}</td>
-                                <td className="text-right tabular-nums font-semibold">
-                                  {formatINR(c.net_profit, {
-                                    invalid: !!c.net_profit_validation_issue,
-                                    zeroLabel: "No profit reported"
-                                  })}
-                                </td>
-                                <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.profit_yoy)}`}>
-                                  {formatPct(c.profit_yoy, 1, { label: c.profit_yoy_label })}
-                                </td>
-                                <td className="text-right tabular-nums">{formatINR(c.operating_profit)}</td>
-                                <td className="text-right tabular-nums">{c.eps != null ? c.eps.toFixed(2) : "Data not available"}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : null}
+              <section className="space-y-3">
+                <div>
+                  <h2 className="text-xl font-bold tracking-tightest leading-snug">
+                    Results announced on {formatDate(activeGroup.date)}
+                  </h2>
+                  <div className="mt-1 text-sm text-core-muted">
+                    <span className="tabular-nums font-semibold text-core-ink">{filed.length}</span> filed
                     {pending.length > 0 ? (
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.14em] text-core-muted mb-2">
-                          Filing pending · board meeting held, numbers not yet submitted
-                        </div>
-                        <div className="card divide-y divide-core-line">
-                          {pending.map((c) => (
-                            <div
-                              key={c.ticker}
-                              className="px-4 md:px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-2"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <Link
-                                  href={`/company/${encodeURIComponent(c.ticker)}`}
-                                  className="font-semibold text-core-ink hover:text-core-pink block truncate"
-                                >
-                                  {c.company_name}
-                                </Link>
-                                <div className="text-[11px] text-core-muted flex items-center gap-2 gap-y-1 flex-wrap mt-0.5">
-                                  <span className="tabular-nums">{c.ticker}</span>
-                                  {c.sector ? (
-                                    <>
-                                      <span className="text-core-line-2">·</span>
-                                      <span>{c.sector}</span>
-                                    </>
-                                  ) : null}
-                                  <PriceChip p={prices[c.ticker]} />
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3 shrink-0">
-                                <span className="text-[11px] text-core-muted italic">
-                                  Awaiting filing
-                                </span>
-                                <PdfLink url={c.filing_url} label="View filing" ticker={c.ticker} companyName={c.company_name} source="q4_page" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <>
+                        {" · "}
+                        <span className="tabular-nums font-semibold text-core-ink">{pending.length}</span> filing pending
+                      </>
                     ) : null}
-                  </section>
+                  </div>
+                </div>
+                {filed.length > 0 ? (
+                  <div className="card overflow-x-auto">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Company</th>
+                          <th>Sector</th>
+                          <th className="text-right">Revenue</th>
+                          <th className="text-right">Rev YoY</th>
+                          <th className="text-right">Net profit</th>
+                          <th className="text-right">Profit YoY</th>
+                          <th className="text-right">Op. profit</th>
+                          <th className="text-right">EPS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filed.map((c) => (
+                          <tr key={c.ticker}>
+                            <td>
+                              <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
+                                {c.company_name}
+                              </Link>
+                              <div className="text-[11px] text-core-muted flex items-center gap-2 flex-wrap">
+                                <span>{c.ticker}</span>
+                                <PdfLink url={c.filing_url} label="View filing" ticker={c.ticker} companyName={c.company_name} source="q4_page" />
+                                <PriceChip p={prices[c.ticker]} />
+                              </div>
+                            </td>
+                            <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
+                            <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
+                            <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.revenue_yoy)}`}>{formatPct(c.revenue_yoy)}</td>
+                            <td className="text-right tabular-nums font-semibold">{formatINR(c.net_profit)}</td>
+                            <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.profit_yoy)}`}>{formatPct(c.profit_yoy)}</td>
+                            <td className="text-right tabular-nums">{formatINR(c.operating_profit)}</td>
+                            <td className="text-right tabular-nums">{c.eps != null ? c.eps.toFixed(2) : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+                {pending.length > 0 ? (
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.14em] text-core-muted mb-2">
+                      Filing pending · board meeting held, numbers not yet submitted
+                    </div>
+                    {/* Mobile-friendly card list instead of a table with
+                        empty cells. Each pending company is a single row
+                        with: name · ticker · sector · price chip · PDF link.
+                        Clean on any viewport width; no horizontal scroll,
+                        no "Awaiting…" italic spanning a dozen columns. */}
+                    <div className="card divide-y divide-core-line">
+                      {pending.map((c) => (
+                        <div
+                          key={c.ticker}
+                          className="px-4 md:px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-2"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <Link
+                              href={`/company/${encodeURIComponent(c.ticker)}`}
+                              className="font-semibold text-core-ink hover:text-core-pink block truncate"
+                            >
+                              {c.company_name}
+                            </Link>
+                            <div className="text-[11px] text-core-muted flex items-center gap-2 gap-y-1 flex-wrap mt-0.5">
+                              <span className="tabular-nums">{c.ticker}</span>
+                              {c.sector ? (
+                                <>
+                                  <span className="text-core-line-2">·</span>
+                                  <span>{c.sector}</span>
+                                </>
+                              ) : null}
+                              <PriceChip p={prices[c.ticker]} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-[11px] text-core-muted italic">
+                              Awaiting filing
+                            </span>
+                            <PdfLink url={c.filing_url} label="View filing" ticker={c.ticker} companyName={c.company_name} source="q4_page" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
                 );
               })()
             ) : (
@@ -307,7 +334,7 @@ export default function Q4Page() {
                               <PriceChip p={prices[c.ticker]} />
                             </div>
                           </td>
-                          <td className="text-sm text-core-muted">{c.sector ?? "Data not available"}</td>
+                          <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
                           <td className="text-sm text-core-ink max-w-[480px]" title={c.purpose ?? undefined}>
                             {simplifyPurpose(c.purpose, activeGroup.date)}
                           </td>
@@ -320,6 +347,7 @@ export default function Q4Page() {
             )
           ) : null}
 
+          {/* Undated stragglers */}
           {data.undated.length > 0 ? (
             <section className="mt-8">
               <div className="text-xs uppercase tracking-wide text-core-muted mb-2">

@@ -27,9 +27,6 @@ interface CompanyRow {
   net_profit: number | null;
   revenue_yoy?: number | null;
   profit_yoy?: number | null;
-  profit_yoy_label?: string | null;
-  revenue_validation_issue?: string | null;
-  net_profit_validation_issue?: string | null;
 }
 
 export default function SectorsPage() {
@@ -39,6 +36,7 @@ export default function SectorsPage() {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [activeSector, setActiveSector] = useState<string | null>(null);
 
+  // Pick default quarter: most recent with ≥ 100 reporters (real coverage).
   useEffect(() => {
     Promise.all([
       fetch("/api/quarters").then((r) => r.json()),
@@ -51,6 +49,7 @@ export default function SectorsPage() {
     });
   }, []);
 
+  // Sector aggregates
   useEffect(() => {
     if (!quarter) return;
     fetch(`/api/sectors?quarter=${encodeURIComponent(quarter)}`)
@@ -58,6 +57,7 @@ export default function SectorsPage() {
       .then((j) => j.ok && setData(j.data));
   }, [quarter]);
 
+  // Companies for the selected quarter — for the sector drilldown below.
   useEffect(() => {
     if (!quarter) return;
     fetch(`/api/dashboard?quarter=${encodeURIComponent(quarter)}`)
@@ -75,10 +75,7 @@ export default function SectorsPage() {
               revenue: r.revenue,
               net_profit: r.net_profit,
               revenue_yoy: r.revenue_yoy ?? null,
-              profit_yoy: r.profit_yoy ?? null,
-              profit_yoy_label: r.profit_yoy_label ?? null,
-              revenue_validation_issue: r.revenue_validation_issue ?? null,
-              net_profit_validation_issue: r.net_profit_validation_issue ?? null
+              profit_yoy: r.profit_yoy ?? null
             }));
           setCompanies(rows);
         }
@@ -96,6 +93,7 @@ export default function SectorsPage() {
     return m;
   }, [companies]);
 
+  // Default activeSector to the top one as soon as data arrives.
   useEffect(() => {
     if (activeSector || !data?.sectors.length) return;
     setActiveSector(data.sectors[0].sector);
@@ -105,6 +103,7 @@ export default function SectorsPage() {
 
   return (
     <div className="container-core py-8 md:py-12 space-y-8">
+      {/* Heading */}
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted">Earnings Tracker</div>
@@ -115,7 +114,7 @@ export default function SectorsPage() {
             </span>
           </h1>
           <p className="text-core-muted mt-2 max-w-2xl text-sm">
-            How India's sectors are growing - aggregated revenue and net profit,
+            How India's sectors are growing — aggregated revenue and net profit,
             each quarter vs the same quarter last year.
           </p>
         </div>
@@ -131,11 +130,12 @@ export default function SectorsPage() {
         </label>
       </section>
 
+      {/* Sector chart + aggregates table */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="card p-5 lg:col-span-2">
           <header className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-y-1 mb-4">
             <h3 className="text-lg font-semibold tracking-tightest">
-              Revenue growth by sector · {quarter ?? "Data not available"}
+              Revenue growth by sector · {quarter ?? "—"}
             </h3>
             <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
               Teal = growth · Red = contraction
@@ -174,9 +174,10 @@ export default function SectorsPage() {
         </div>
       </section>
 
+      {/* Totals table */}
       <section>
         <header className="flex items-baseline justify-between mb-3">
-          <h2 className="text-xl font-bold tracking-tightest">Sector totals · {quarter ?? "Data not available"}</h2>
+          <h2 className="text-xl font-bold tracking-tightest">Sector totals · {quarter ?? "—"}</h2>
         </header>
         <div className="card overflow-x-auto">
           <table className="data-table">
@@ -220,6 +221,7 @@ export default function SectorsPage() {
         </div>
       </section>
 
+      {/* Drilldown — companies in the selected sector */}
       {activeSector ? (
         <section>
           <header className="flex items-baseline justify-between mb-3 border-b border-core-line pb-2">
@@ -228,7 +230,7 @@ export default function SectorsPage() {
               <h2 className="text-xl font-bold tracking-tightest mt-0.5">
                 {activeSector}
                 <span className="ml-3 text-sm font-normal text-core-muted">
-                  {sectorCompanies.length} in {quarter ?? "Data not available"}
+                  {sectorCompanies.length} in {quarter ?? "—"}
                 </span>
               </h2>
             </div>
@@ -259,20 +261,13 @@ export default function SectorsPage() {
                         </Link>
                         <div className="text-[11px] text-core-muted tabular-nums">{c.ticker}</div>
                       </td>
-                      <td className="text-right tabular-nums font-semibold">
-                        {formatINR(c.revenue, { invalid: !!c.revenue_validation_issue })}
-                      </td>
+                      <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
                       <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.revenue_yoy ?? null)}`}>
                         {formatPct(c.revenue_yoy ?? null)}
                       </td>
-                      <td className="text-right tabular-nums font-semibold">
-                        {formatINR(c.net_profit, {
-                          invalid: !!c.net_profit_validation_issue,
-                          zeroLabel: "No profit reported"
-                        })}
-                      </td>
+                      <td className="text-right tabular-nums font-semibold">{formatINR(c.net_profit)}</td>
                       <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.profit_yoy ?? null)}`}>
-                        {formatPct(c.profit_yoy ?? null, 1, { label: c.profit_yoy_label ?? null })}
+                        {formatPct(c.profit_yoy ?? null)}
                       </td>
                     </tr>
                   ))}

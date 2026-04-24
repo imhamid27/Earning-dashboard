@@ -1,9 +1,8 @@
 import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
 import { jsonOk, jsonError, cleanQuarterLabel, cleanSector, cleanBucket, cleanSearch } from "@/lib/api";
-import { pctChange, profitTransitionLabel } from "@/lib/growth";
+import { pctChange, withGrowth } from "@/lib/growth";
 import type { LatestQuarterRow } from "@/lib/types";
-import { validateMetricPair } from "@/lib/validation";
 
 // GET /api/dashboard?quarter=Q4 FY26&sector=Financials&q=bank&bucket=LARGE
 //
@@ -40,12 +39,12 @@ export async function GET(req: NextRequest) {
     fiscal_year: number; fiscal_quarter: number;
     revenue: number | null; net_profit: number | null;
     operating_profit: number | null; eps: number | null;
-    data_quality_status: any; fetched_at: string; raw_json: any; source: string;
+    data_quality_status: any; fetched_at: string; raw_json: any;
   }> = [];
   for (let page = 0; page < 20; page++) {
     const { data, error: fErr } = await sb
       .from("quarterly_financials")
-      .select("ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps,data_quality_status,fetched_at,raw_json,source")
+      .select("ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps,data_quality_status,fetched_at,raw_json")
       .in("ticker", tickers)
       .order("quarter_end_date", { ascending: true })
       .range(page * PAGE, (page + 1) * PAGE - 1);
@@ -189,46 +188,7 @@ export async function GET(req: NextRequest) {
     const idx = hist.findIndex((r) => r.quarter_end_date === latest.quarter_end_date);
     const prevQ = idx >= 1 ? hist[idx - 1] : null;
     const prevY = idx >= 4 ? hist[idx - 4] : null;
-    const prevQSanitized = prevQ
-      ? validateMetricPair(
-          { revenue: prevQ.revenue, net_profit: prevQ.net_profit },
-          {
-            company_name: c.company_name,
-            sector: c.sector,
-            industry: c.industry,
-            market_cap_bucket: c.market_cap_bucket,
-            source: "dashboard_prev_q",
-            financial_source: prevQ.source,
-          }
-        )
-      : null;
-    const prevYSanitized = prevY
-      ? validateMetricPair(
-          { revenue: prevY.revenue, net_profit: prevY.net_profit },
-          {
-            company_name: c.company_name,
-            sector: c.sector,
-            industry: c.industry,
-            market_cap_bucket: c.market_cap_bucket,
-            source: "dashboard_prev_y",
-            financial_source: prevY.source,
-          }
-        )
-      : null;
-    const sanitized = validateMetricPair(
-      { revenue: latest.revenue, net_profit: latest.net_profit },
-      {
-        company_name: c.company_name,
-        sector: c.sector,
-        industry: c.industry,
-        market_cap_bucket: c.market_cap_bucket,
-        source: "dashboard",
-        financial_source: latest.source,
-        require_verified: true,
-      },
-      { revenue: prevYSanitized?.revenue ?? null, net_profit: prevYSanitized?.net_profit ?? null }
-    );
-    const hasNumbers = sanitized.revenue != null && sanitized.net_profit != null;
+    const hasNumbers = latest.revenue != null && latest.net_profit != null;
     // Prefer the fetched-event date — it's the real filing day tracked from
     // exchange calendars. Fall back to raw_json/fetched_at only if no event
     // exists for this ticker.
@@ -243,20 +203,17 @@ export async function GET(req: NextRequest) {
       ticker: c.ticker,
       quarter_label: latest.quarter_label,
       quarter_end_date: latest.quarter_end_date,
-      revenue: sanitized.revenue,
-      net_profit: sanitized.net_profit,
+      revenue: latest.revenue,
+      net_profit: latest.net_profit,
       operating_profit: latest.operating_profit,
       eps: latest.eps,
       data_quality_status: latest.data_quality_status,
       fetched_at: latest.fetched_at,
       filing_url: filingUrlByTicker.get(c.ticker) ?? null,
-      revenue_qoq: pctChange(sanitized.revenue, prevQSanitized?.revenue ?? null),
-      revenue_yoy: pctChange(sanitized.revenue, prevYSanitized?.revenue ?? null),
-      profit_qoq: pctChange(sanitized.net_profit, prevQSanitized?.net_profit ?? null),
-      profit_yoy: pctChange(sanitized.net_profit, prevYSanitized?.net_profit ?? null),
-      profit_yoy_label: profitTransitionLabel(sanitized.net_profit, prevYSanitized?.net_profit ?? null),
-      revenue_validation_issue: sanitized.revenue_issue,
-      net_profit_validation_issue: sanitized.net_profit_issue,
+      revenue_qoq: pctChange(latest.revenue, prevQ?.revenue ?? null),
+      revenue_yoy: pctChange(latest.revenue, prevY?.revenue ?? null),
+      profit_qoq: pctChange(latest.net_profit, prevQ?.net_profit ?? null),
+      profit_yoy: pctChange(latest.net_profit, prevY?.net_profit ?? null),
       revenue_trend: hist.slice(-8).map((r) => ({ q: r.quarter_label, v: r.revenue })),
       next_result_date: nextDate,
       result_date: resultDate,
