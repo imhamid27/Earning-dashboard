@@ -53,7 +53,6 @@ case "$MODE" in
     # 2. Gap-filler: for every announced-but-un-numbered company, try
     #    NSE XBRL → Screener until one yields numbers. Closes the gap
     #    between calendar detection and numbers landing on the dashboard.
-    "$PY" scripts/bse_pdf_results.py        >> "$LOG_FILE" 2>&1
     "$PY" scripts/nse_results.py            >> "$LOG_FILE" 2>&1
     "$PY" scripts/bse_results.py            >> "$LOG_FILE" 2>&1
     "$PY" scripts/fetch_results.py          >> "$LOG_FILE" 2>&1

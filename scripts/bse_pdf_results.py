@@ -841,17 +841,15 @@ def upsert_row(sb, company: dict, ticker: str, ann_date: date, parsed: dict,
     if parsed.get("revenue") is None and parsed.get("net_profit") is None:
         return {"written": False, "reason": "no rev/np extracted"}
 
-    # Source precedence for the same quarter:
-    #   nse     > bse_pdf > screener
-    # If NSE has already written a good row, keep it.
-    # If Screener has written a row, allow the PDF parser to replace it:
-    # the filing PDF is our primary same-day source of truth.
+    # Don't clobber a better source. If Screener or NSE has already written
+    # THIS quarter, respect it — their reconciliation is more reliable than
+    # our template-matching.
     existing = sb.table("quarterly_financials").select("source,data_quality_status") \
         .eq("ticker", ticker).eq("quarter_end_date", quarter_end.isoformat()) \
         .limit(1).execute().data or []
-    if existing and existing[0].get("source") == "nse":
+    if existing and existing[0].get("source") in ("screener", "nse"):
         if existing[0].get("data_quality_status") == "ok":
-            return {"written": False, "reason": "already have nse row"}
+            return {"written": False, "reason": f"already have {existing[0]['source']} row"}
 
     row = {
         "company_id": company["id"],
