@@ -157,7 +157,7 @@ export default function CompanyTable({
                       })}
                     </td>
                     <td className={`text-right tabular-nums font-semibold ${pctToneClass(r.profit_yoy)}`}>
-                      {formatPct(r.profit_yoy, 1, { label: r.profit_yoy_label })}
+                      {r.net_profit == null && !r.profit_yoy_label ? "" : formatPct(r.profit_yoy, 1, { label: r.profit_yoy_label })}
                     </td>
                     <td className="text-right">
                       <div className="flex justify-end"><Sparkline data={r.revenue_trend ?? []} /></div>

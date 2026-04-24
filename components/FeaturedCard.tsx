@@ -100,7 +100,7 @@ function HeroStat({
               YoY
             </span>
           </>
-        ) : (
+        ) : value === "Data not available" ? null : (
           <span className="text-core-muted text-xs">Data not available</span>
         )}
       </div>
