@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import TrendChart from "@/components/TrendChart";
 import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
 import PdfLink from "@/components/PdfLink";
 import InfoTooltip from "@/components/InfoTooltip";
-import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
+import JsonLd from "@/components/JsonLd";
+import { formatINR, formatPct, formatYoY, formatDate, pctToneClass } from "@/lib/format";
 import { DISCLAIMER_SHORT, DISCLAIMER_PRICE } from "@/lib/disclaimer";
 import { trackCompanyView } from "@/lib/analytics";
+import { siteUrl } from "@/lib/site";
 
 interface DetailResp {
   company: {
@@ -38,6 +40,9 @@ type PriceInfo = {
   volume: number | null; updated_at: string;
 };
 
+// Resolved once at module load — avoids re-calling siteUrl() on every render.
+const COMPANY_BASE = siteUrl();
+
 export default function CompanyDetail() {
   const params = useParams<{ ticker: string }>();
   const ticker = decodeURIComponent(params.ticker);
@@ -45,6 +50,87 @@ export default function CompanyDetail() {
   const [price, setPrice] = useState<PriceInfo | null>(null);
   const [priceStatus, setPriceStatus] = useState<"open" | "closed" | "stale" | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // ── AEO structured data ────────────────────────────────────────────────
+  // BreadcrumbList is stable once `data` arrives and never changes after
+  // that, so useMemo is the right hook. The schema renders as a <script>
+  // tag in the JSX — Google parses ld+json from anywhere in the HTML body,
+  // so client-component pages don't need a special server wrapper for this.
+  const BASE = COMPANY_BASE;
+  const companyJsonLd = useMemo(() => {
+    if (!data) return null;
+    const co = data.company;
+    const latest = data.quarters[data.quarters.length - 1];
+    const companyUrl = `${BASE}/company/${encodeURIComponent(ticker)}`;
+
+    const breadcrumb = {
+      "@type": "BreadcrumbList",
+      "@id": `${companyUrl}#breadcrumb`,
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Dashboard", "item": `${BASE}/` },
+        ...(co.sector ? [{
+          "@type": "ListItem", "position": 2, "name": co.sector, "item": `${BASE}/sectors`
+        }] : []),
+        {
+          "@type": "ListItem",
+          "position": co.sector ? 3 : 2,
+          "name": co.company_name,
+          "item": companyUrl
+        }
+      ]
+    };
+
+    const corporation = {
+      "@type": "Corporation",
+      "@id": `${companyUrl}#company`,
+      "name": co.company_name,
+      "tickerSymbol": ticker.replace(/\.(NS|BO)$/, ""),
+      "exchange": co.exchange,
+      ...(co.isin ? { "identifier": co.isin } : {}),
+      ...(co.sector ? { "industry": co.sector } : {}),
+      ...(co.industry ? { "description": co.industry } : {})
+    };
+
+    // Describe the financial data as a Dataset so AI engines can surface
+    // the latest numbers directly in answers.
+    const dataset = latest ? {
+      "@type": "Dataset",
+      "name": `${co.company_name} — ${latest.quarter_label} Results`,
+      "description": `${co.company_name} (${ticker}) reported revenue of ${formatINR(latest.revenue)} and net profit of ${formatINR(latest.net_profit)} for ${latest.quarter_label}.`,
+      "url": companyUrl,
+      "temporalCoverage": latest.quarter_end_date,
+      "creator": { "@id": `${BASE}/#organization` },
+      "about": { "@id": `${companyUrl}#company` },
+      "variableMeasured": [
+        ...(latest.revenue != null ? [{
+          "@type": "PropertyValue",
+          "name": "Revenue",
+          "value": (latest.revenue / 1e7).toFixed(2),
+          "unitText": "Crore INR",
+          "measurementTechnique": "NSE/BSE quarterly filing"
+        }] : []),
+        ...(latest.net_profit != null ? [{
+          "@type": "PropertyValue",
+          "name": "Net Profit",
+          "value": (latest.net_profit / 1e7).toFixed(2),
+          "unitText": "Crore INR",
+          "measurementTechnique": "NSE/BSE quarterly filing"
+        }] : []),
+        ...(latest.eps != null ? [{
+          "@type": "PropertyValue",
+          "name": "EPS",
+          "value": latest.eps.toFixed(2),
+          "unitText": "INR per share"
+        }] : [])
+      ]
+    } : null;
+
+    return {
+      "@context": "https://schema.org",
+      "@graph": [breadcrumb, corporation, ...(dataset ? [dataset] : [])]
+    };
+  }, [data, ticker, BASE]);
+  // ──────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     fetch(`/api/companies/${encodeURIComponent(ticker)}`)
@@ -90,6 +176,11 @@ export default function CompanyDetail() {
 
   return (
     <div className="container-core py-8 md:py-12 space-y-10">
+      {/* AEO: BreadcrumbList + Corporation + Dataset schemas.
+          Rendered as part of the initial HTML so Google + AI answer engines
+          see the structured data without needing to execute additional JS. */}
+      {companyJsonLd && <JsonLd data={companyJsonLd} />}
+
       {/* Breadcrumb */}
       <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted flex items-center gap-2">
         <Link href="/" className="hover:text-core-pink">Dashboard</Link>
@@ -220,7 +311,7 @@ export default function CompanyDetail() {
               value={formatINR(latest!.revenue)}
               sub={
                 <span className={`${pctToneClass(latest!.revenue_yoy)} font-semibold`}>
-                  {formatPct(latest!.revenue_yoy)} YoY
+                  {formatYoY(latest!.revenue_yoy)} YoY
                 </span>
               }
             />
@@ -229,7 +320,7 @@ export default function CompanyDetail() {
               value={formatINR(latest!.net_profit)}
               sub={
                 <span className={`${pctToneClass(latest!.profit_yoy)} font-semibold`}>
-                  {formatPct(latest!.profit_yoy)} YoY
+                  {formatYoY(latest!.profit_yoy)} YoY
                 </span>
               }
             />
@@ -316,10 +407,10 @@ export default function CompanyDetail() {
                       <td className="font-semibold tabular-nums">{q.quarter_label}</td>
                       <td className="text-sm text-core-muted tabular-nums">{formatDate(q.quarter_end_date)}</td>
                       <td className="text-right tabular-nums font-semibold">{formatINR(q.revenue)}</td>
-                      <td className={`text-right tabular-nums ${pctToneClass(q.revenue_qoq)}`}>{formatPct(q.revenue_qoq)}</td>
-                      <td className={`text-right tabular-nums font-semibold ${pctToneClass(q.revenue_yoy)}`}>{formatPct(q.revenue_yoy)}</td>
+                      <td className={`text-right tabular-nums whitespace-nowrap ${pctToneClass(q.revenue_qoq)}`}>{formatYoY(q.revenue_qoq)}</td>
+                      <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(q.revenue_yoy)}`}>{formatYoY(q.revenue_yoy)}</td>
                       <td className="text-right tabular-nums font-semibold">{formatINR(q.net_profit)}</td>
-                      <td className={`text-right tabular-nums font-semibold ${pctToneClass(q.profit_yoy)}`}>{formatPct(q.profit_yoy)}</td>
+                      <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(q.profit_yoy)}`}>{formatYoY(q.profit_yoy)}</td>
                       <td className="text-right tabular-nums">{formatINR(q.operating_profit)}</td>
                       <td className="text-right tabular-nums">{q.eps != null ? q.eps.toFixed(2) : "—"}</td>
                       <td className="text-right">

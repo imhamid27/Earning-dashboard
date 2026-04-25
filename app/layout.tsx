@@ -28,9 +28,10 @@ export const metadata: Metadata = {
     "upcoming results calendar India",
     "company quarterly earnings India"
   ],
-  alternates: {
-    canonical: "/"
-  },
+  // No global canonical override — Next.js resolves canonical per-page
+  // from metadataBase + the current route. Overriding to "/" here would
+  // make every route (including /company/TCS.NS) claim its canonical is
+  // the homepage, which is wrong.
   verification: {
     google: "elEikoaT79XYIePNYMSacPcU6RL4w4QCBtQeHU3rhcQ"
   },
@@ -67,10 +68,90 @@ export const metadata: Metadata = {
 // snippet Google provides in the GA4 dashboard.
 const GA_MEASUREMENT_ID = "G-RBFXGWE6YW";
 
+// Computed once at module load — same value used by metadataBase above.
+const SITE_URL = siteUrl();
+
+// JSON-LD graph injected in <head> for every page.
+// Organization + WebSite give AI answer engines (Google AI Overviews,
+// Perplexity, ChatGPT Browse) reliable facts about who publishes this
+// data and what the site covers. The @id URIs are reused by page-level
+// schemas as typed references.
+const SITE_SCHEMA = JSON.stringify({
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      "name": "The Core",
+      "url": "https://thecore.in",
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${SITE_URL}/icon.png`,
+        "width": 512,
+        "height": 512
+      },
+      "sameAs": ["https://thecore.in"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      "url": `${SITE_URL}/`,
+      "name": "India Earnings Tracker",
+      "description": "Track quarterly results for listed Indian companies — revenue, profit, sector trends, upcoming earnings dates, and company-level filing detail.",
+      "publisher": { "@id": `${SITE_URL}/#organization` },
+      "inLanguage": "en-IN",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": `${SITE_URL}/company/{ticker}`
+        },
+        "query-input": "required name=ticker"
+      }
+    },
+    {
+      "@type": "DataCatalog",
+      "@id": `${SITE_URL}/#datacatalog`,
+      "name": "India Listed Company Earnings",
+      "description": "Quarterly revenue, net profit, operating profit, and EPS for NSE/BSE-listed Indian companies, sourced from exchange filings.",
+      "url": `${SITE_URL}/`,
+      "provider": { "@id": `${SITE_URL}/#organization` },
+      "license": "https://thecore.in",
+      "dataset": {
+        "@type": "Dataset",
+        "name": "Indian Company Quarterly Financials",
+        "description": "Revenue, net profit, operating profit, and EPS per quarter for 1,000+ listed Indian companies.",
+        "temporalCoverage": "2020/..",
+        "spatialCoverage": {
+          "@type": "Place",
+          "name": "India",
+          "geo": { "@type": "GeoShape", "addressCountry": "IN" }
+        },
+        "creator": { "@id": `${SITE_URL}/#organization` },
+        "distribution": {
+          "@type": "DataDownload",
+          "contentUrl": `${SITE_URL}/`,
+          "encodingFormat": "text/html"
+        }
+      }
+    }
+  ]
+});
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {/* AEO: Organisation + WebSite + DataCatalog — tells AI answer
+            engines (Google AI Overviews, Perplexity, ChatGPT Browse) who
+            publishes this data and what the site covers. Must be in <head>
+            so it's present in the very first byte of HTML served to crawlers
+            that don't wait for React to hydrate. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: SITE_SCHEMA }}
+        />
+
         {/* Preconnect speeds up the first font byte noticeably. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

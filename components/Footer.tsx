@@ -1,10 +1,6 @@
 export default function Footer() {
   return (
     <footer className="mt-24 border-t border-core-line">
-      {/* Global trust line — one place, one sentence, not repeated per card. */}
-      <div className="container-core py-5 text-[12px] text-core-muted">
-        Data updated from company filings and exchange disclosures.
-      </div>
       <div className="border-t border-core-line bg-core-surface">
         <div className="container-core py-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-xs text-core-muted">
           <div>
@@ -27,7 +23,7 @@ export default function Footer() {
               <a href="https://www.bseindia.com/" target="_blank" rel="noopener noreferrer" className="hover:text-core-ink">BSE</a>
               {". Live prices from "}
               <a href="https://finance.yahoo.com/" target="_blank" rel="noopener noreferrer" className="hover:text-core-ink">Yahoo Finance</a>
-              {" — may be delayed 15-20 minutes during trading hours."}
+              {" — may be delayed 15–20 minutes during trading hours."}
             </p>
           </div>
           <div className="md:text-right">
@@ -35,9 +31,8 @@ export default function Footer() {
               The Core
             </div>
             <p className="leading-relaxed">
-              For informational and editorial use only. Not investment
-              advice. Verify against the original filing before making
-              any financial decision.
+              Verify with official filings before publishing or making any
+              financial decision.
               <br />
               © {new Date().getFullYear()} The Core.
             </p>

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { formatINR, formatPct, pctToneClass, formatDate } from "@/lib/format";
+import { formatINR, formatYoY, pctToneClass, formatDate } from "@/lib/format";
+import { resultQuality } from "@/lib/insight";
 import Sparkline from "./Sparkline";
 import StatusBadge from "./StatusBadge";
 import PdfLink from "./PdfLink";
@@ -16,6 +17,12 @@ export type PriceMap = Record<
   string,
   { last_price: number | null; change_pct: number | null }
 >;
+
+const QUALITY_CFG = {
+  strong: { cls: "text-core-teal",     label: "Strong quarter" },
+  weak:   { cls: "text-core-negative", label: "Weak quarter"   },
+  mixed:  { cls: "text-core-muted",    label: "Mixed"          },
+} as const;
 
 export default function CompanyTable({
   rows,
@@ -112,6 +119,10 @@ export default function CompanyTable({
                 : isDownOutlier
                   ? "bg-core-negative/5"
                   : undefined;
+
+            // Result quality tag — only shown when we have YoY context.
+            const quality = hasNumbers ? resultQuality(r) : null;
+
             return (
               <tr
                 key={r.ticker}
@@ -122,7 +133,7 @@ export default function CompanyTable({
                   <Link href={`/company/${encodeURIComponent(r.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink tracking-tight">
                     {r.company_name}
                   </Link>
-                  <div className="text-[11px] text-core-muted tabular-nums flex items-center gap-2">
+                  <div className="text-[11px] text-core-muted tabular-nums flex items-center gap-2 flex-wrap mt-0.5">
                     <span>{r.ticker}</span>
                     {r.filing_url ? (
                       <PdfLink
@@ -134,6 +145,12 @@ export default function CompanyTable({
                       />
                     ) : null}
                     <PriceChip p={prices ? prices[r.ticker] : null} />
+                    {/* Result quality chip — only when context is available */}
+                    {quality ? (
+                      <span className={`text-[10px] uppercase tracking-[0.1em] font-semibold ${QUALITY_CFG[quality].cls}`}>
+                        {QUALITY_CFG[quality].label}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
                 <td className="text-sm text-core-muted">{r.sector ?? "—"}</td>
@@ -150,7 +167,9 @@ export default function CompanyTable({
                   <>
                     {/* Revenue + inline scale bar */}
                     <td className="text-right tabular-nums">
-                      <div className="font-semibold">{formatINR(r.revenue)}</div>
+                      <div className="font-semibold">
+                        {r.revenue != null ? formatINR(r.revenue) : <span className="text-core-muted italic text-[12px]">N/A</span>}
+                      </div>
                       <div className="mt-1 ml-auto w-[110px]">
                         <div className="h-[3px] bg-core-line rounded-full overflow-hidden">
                           <div
@@ -160,12 +179,14 @@ export default function CompanyTable({
                         </div>
                       </div>
                     </td>
-                    <td className={`text-right tabular-nums font-semibold ${pctToneClass(r.revenue_yoy)}`}>
-                      {formatPct(r.revenue_yoy)}
+                    <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(r.revenue_yoy)}`}>
+                      {formatYoY(r.revenue_yoy)}
                     </td>
-                    <td className="text-right tabular-nums font-semibold">{formatINR(r.net_profit)}</td>
-                    <td className={`text-right tabular-nums font-semibold ${pctToneClass(r.profit_yoy)}`}>
-                      {formatPct(r.profit_yoy)}
+                    <td className="text-right tabular-nums font-semibold">
+                      {r.net_profit != null ? formatINR(r.net_profit) : <span className="text-core-muted italic text-[12px]">N/A</span>}
+                    </td>
+                    <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(r.profit_yoy)}`}>
+                      {formatYoY(r.profit_yoy)}
                     </td>
                     <td className="text-right"><div className="flex justify-end"><Sparkline data={r.revenue_trend ?? []} /></div></td>
                   </>

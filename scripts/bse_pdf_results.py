@@ -140,22 +140,28 @@ PARSER_VERSION = 1
 
 LABEL_ALIASES: dict[str, list[str]] = {
     "revenue": [
-        # Manufacturing/services (most common)
+        # Manufacturing/services (most common). These are tried first because
+        # they are the most specific and appear at the top of the P&L table.
         "revenue from operations",
         "total revenue from operations",
-        "income from operations",
-        "total income from operations",
-        # Banks
+        "revenue from contracts with customers",
+        # Banks / NBFCs — "Interest Earned" is the top-line revenue for
+        # banks (SEBI banking template). Listed before "income from
+        # operations" so that bank filings are never misrouted to a
+        # generic income subtotal that may carry a different amount.
         "interest earned",
         "total interest earned",
+        "net interest income",
         # Insurers
         "net premium earned",
         "premium earned (net)",
+        "gross premium earned",
         "gross premium written",
-        # Broad fallback — keep LAST; many filings list "Total Income"
-        # both for the P&L top line AND for "Revenue + Other income".
-        # We want the top line.
-        "revenue from contracts with customers",
+        # Generic — lower priority because many filings have both
+        # "Revenue from Operations" AND "Income from Operations" as
+        # synonyms, but some use the generic label exclusively.
+        "income from operations",
+        "total income from operations",
     ],
     "net_profit": [
         "profit for the period / year",
@@ -830,6 +836,61 @@ def resolve_targets(sb, args) -> list[dict]:
     return pruned
 
 
+def sanity_check_revenue(sb, ticker: str, parsed_revenue: float | None) -> tuple[bool, str]:
+    """Compare parsed revenue against historical median to catch OCR errors.
+
+    Returns (ok, reason). If not ok the caller should skip the write and log
+    a warning instead of writing a bad number to the DB.
+
+    Bounds are deliberately generous — we only want to catch egregious OCR
+    misreads (e.g. Union Bank ₹0.003 Cr vs historical ₹24 000 Cr), not
+    genuine business swings (±50 % QoQ is common for cyclical sectors).
+
+    Thresholds:
+      Low:  parsed < 5 % of historical median → very likely OCR-picked wrong cell
+      High: parsed > 20× historical median    → very likely column-join or unit error
+    """
+    if parsed_revenue is None:
+        return True, ""          # Nothing to check
+    if parsed_revenue <= 0:
+        return True, ""          # Negative/zero revenue is allowed (holding cos)
+
+    historical = sb.table("quarterly_financials") \
+        .select("revenue") \
+        .eq("ticker", ticker) \
+        .not_.is_("revenue", "null") \
+        .gt("revenue", 0) \
+        .order("quarter_end_date", desc=True) \
+        .limit(8) \
+        .execute().data or []
+
+    revenues = [r["revenue"] for r in historical
+                if r.get("revenue") is not None and r["revenue"] > 0]
+    if len(revenues) < 2:
+        return True, ""          # Not enough history for a meaningful check
+
+    revenues.sort()
+    n = len(revenues)
+    median = revenues[n // 2] if n % 2 else (revenues[n // 2 - 1] + revenues[n // 2]) / 2
+    if median <= 0:
+        return True, ""
+
+    ratio = parsed_revenue / median
+    if ratio < 0.05:
+        return (
+            False,
+            f"parsed revenue {parsed_revenue/1e7:.2f} Cr is only {ratio*100:.1f}% of "
+            f"historical median {median/1e7:.2f} Cr — likely OCR misread"
+        )
+    if ratio > 20:
+        return (
+            False,
+            f"parsed revenue {parsed_revenue/1e7:.2f} Cr is {ratio:.1f}× "
+            f"historical median {median/1e7:.2f} Cr — likely column-join or unit error"
+        )
+    return True, ""
+
+
 def upsert_row(sb, company: dict, ticker: str, ann_date: date, parsed: dict,
                filing_url: str, quarter_end: date) -> dict:
     """Write to quarterly_financials. Returns {'written': bool, 'reason': str}."""
@@ -840,6 +901,12 @@ def upsert_row(sb, company: dict, ticker: str, ann_date: date, parsed: dict,
 
     if parsed.get("revenue") is None and parsed.get("net_profit") is None:
         return {"written": False, "reason": "no rev/np extracted"}
+
+    # Sanity-check revenue against historical median — catches OCR misreads
+    # (e.g. Union Bank where OCR read ₹31.85 L instead of ₹24 000 Cr).
+    sane, why = sanity_check_revenue(sb, ticker, parsed.get("revenue"))
+    if not sane:
+        return {"written": False, "reason": f"sanity check failed: {why}"}
 
     # Don't clobber a better source. If Screener or NSE has already written
     # THIS quarter, respect it — their reconciliation is more reliable than

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import InfoTooltip from "@/components/InfoTooltip";
+import JsonLd from "@/components/JsonLd";
 import { formatDate } from "@/lib/format";
 import { simplifyPurpose } from "@/lib/purpose";
 import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
+import { siteUrl } from "@/lib/site";
 
 interface Row {
   company_name: string;
@@ -22,6 +24,17 @@ const BELLWETHERS = new Set([
   "ITC.NS", "HINDUNILVR.NS", "SBIN.NS", "BHARTIARTL.NS", "LT.NS",
   "BAJFINANCE.NS", "HCLTECH.NS", "KOTAKBANK.NS", "MARUTI.NS", "ASIANPAINT.NS"
 ]);
+
+// AEO: breadcrumb schema — static, built at module load.
+const BASE = siteUrl();
+const UPCOMING_BREADCRUMB = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Dashboard", "item": `${BASE}/` },
+    { "@type": "ListItem", "position": 2, "name": "Upcoming results", "item": `${BASE}/upcoming` }
+  ]
+};
 
 export default function UpcomingPage() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -86,6 +99,8 @@ export default function UpcomingPage() {
 
   return (
     <div className="container-core py-8 md:py-10 space-y-8 md:space-y-10">
+      <JsonLd data={UPCOMING_BREADCRUMB} />
+
       {/* ============ MASTHEAD ============
           On mobile: title + description get the full width; stats stack
           BELOW as a 3-column grid so neither crowds the other. On
@@ -165,49 +180,93 @@ export default function UpcomingPage() {
             </span>
             <span className="text-[12px] text-core-muted">· grouped by date</span>
           </header>
-          {groups.map((g) => (
-            <div key={g.date}>
-              <div className="flex items-baseline justify-between pb-2 mb-3 border-b border-core-line">
-                <h2 className="text-lg font-semibold tracking-tightest">
-                  {formatDate(g.date)}
-                  <span className={`ml-3 text-[11px] uppercase tracking-[0.14em] font-normal ${g.days === 0 ? "text-core-pink font-semibold" : "text-core-muted"}`}>
-                    {g.rel}
-                  </span>
-                </h2>
-                <span className="text-xs text-core-muted tabular-nums">
-                  {g.items.length} {g.items.length === 1 ? "company" : "companies"}
-                </span>
-              </div>
-              <div className="card overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Company</th>
-                      <th>Ticker</th>
-                      <th>Sector</th>
-                      <th>Purpose</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {g.items.map((r, i) => (
-                      <tr key={`${r.ticker}-${i}`}>
-                        <td>
-                          <Link href={`/company/${encodeURIComponent(r.ticker)}`} className="font-semibold hover:text-core-pink">
-                            {r.company_name}
-                          </Link>
-                        </td>
-                        <td className="text-sm text-core-muted tabular-nums">{r.ticker}</td>
-                        <td className="text-sm text-core-muted">{r.sector ?? "—"}</td>
-                        <td className="text-sm text-core-ink max-w-[420px]" title={r.purpose ?? undefined}>
-                          {simplifyPurpose(r.purpose, r.next_result_date)}
-                        </td>
+          {groups.map((g) => {
+            // Timing hint: results land either pre-market or post-market.
+            // Show a readable context note on today's date group only.
+            const istHour = Number(
+              new Intl.DateTimeFormat("en-GB", {
+                timeZone: "Asia/Kolkata", hour: "2-digit", hour12: false,
+              }).format(new Date())
+            );
+            const timingHint = g.days === 0
+              ? istHour < 9  ? "Results expected before market open or post market"
+                : istHour < 15 ? "Expected today — results typically after market close"
+                : "Expected today (any time — markets closed)"
+              : g.days === 1 ? "Expected tomorrow, typically after market close"
+              : null;
+
+            // Big names in this day's group
+            const bigNames = g.items.filter((r) => BELLWETHERS.has(r.ticker));
+
+            return (
+              <div key={g.date}>
+                <div className="flex items-baseline justify-between pb-2 mb-3 border-b border-core-line flex-wrap gap-2">
+                  <div>
+                    <h2 className="text-lg font-semibold tracking-tightest inline">
+                      {formatDate(g.date)}
+                    </h2>
+                    <span className={`ml-3 text-[11px] uppercase tracking-[0.14em] font-normal ${g.days === 0 ? "text-core-pink font-semibold" : "text-core-muted"}`}>
+                      {g.rel}
+                    </span>
+                    {timingHint ? (
+                      <span className="ml-3 text-[11px] text-core-muted italic">· {timingHint}</span>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {bigNames.length > 0 ? (
+                      <span className="text-[11px] text-core-muted">
+                        Big names:{" "}
+                        {bigNames.slice(0, 3).map((b, i) => (
+                          <span key={b.ticker}>
+                            {i > 0 ? " · " : ""}
+                            <Link href={`/company/${encodeURIComponent(b.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink">
+                              {b.company_name.replace(/ Limited$| Ltd\.?$| Industries$/i, "").trim()}
+                            </Link>
+                          </span>
+                        ))}
+                      </span>
+                    ) : null}
+                    <span className="text-xs text-core-muted tabular-nums shrink-0">
+                      {g.items.length} {g.items.length === 1 ? "company" : "companies"}
+                    </span>
+                  </div>
+                </div>
+                <div className="card overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Company</th>
+                        <th>Ticker</th>
+                        <th>Sector</th>
+                        <th>Purpose</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {g.items.map((r, i) => (
+                        <tr key={`${r.ticker}-${i}`}
+                          className={BELLWETHERS.has(r.ticker) ? "bg-core-surface" : undefined}
+                        >
+                          <td>
+                            <Link href={`/company/${encodeURIComponent(r.ticker)}`} className="font-semibold hover:text-core-pink">
+                              {r.company_name}
+                            </Link>
+                            {BELLWETHERS.has(r.ticker) ? (
+                              <span className="ml-2 text-[9px] uppercase tracking-[0.14em] text-core-pink font-semibold">Key name</span>
+                            ) : null}
+                          </td>
+                          <td className="text-sm text-core-muted tabular-nums">{r.ticker}</td>
+                          <td className="text-sm text-core-muted">{r.sector ?? "—"}</td>
+                          <td className="text-sm text-core-ink max-w-[420px]" title={r.purpose ?? undefined}>
+                            {simplifyPurpose(r.purpose, r.next_result_date)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </section>
       )}
     </div>

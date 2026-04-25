@@ -2,15 +2,46 @@
 // Reads the revenue / profit / YoY numbers and picks the most prominent
 // honest observation. Never synthetic, never generic AI language.
 
+import { TURNED_PROFITABLE, TURNED_LOSS_MAKING } from "./growth";
 import type { LatestQuarterRow } from "./types";
+
+// Classify this quarter's result as Strong / Weak / Mixed / null (not enough data).
+// Used for the quality-tag chip in the main table.
+//   Strong: meaningful profit growth (>15%) OR turned profitable
+//   Weak:   profit declined significantly (<-10%) OR turned loss-making
+//   Mixed:  everything in between (positive revenue, flat/slight profit dip, etc.)
+export function resultQuality(
+  row: Pick<LatestQuarterRow, "profit_yoy" | "revenue_yoy" | "status">
+): "strong" | "weak" | "mixed" | null {
+  if (row.status !== "announced_with_numbers") return null;
+  const p = row.profit_yoy;
+  const r = row.revenue_yoy;
+  if (p == null && r == null) return null;
+
+  const profitStrong = p != null && (p === TURNED_PROFITABLE || p > 0.15);
+  const profitWeak   = p != null && (p === TURNED_LOSS_MAKING || p < -0.10);
+  const revGood      = r != null && r > 0;
+  const revBad       = r != null && r < -0.05;
+
+  if (profitStrong && !revBad)  return "strong";
+  if (profitWeak   && !revGood) return "weak";
+  if (profitWeak   || revBad)   return "weak";   // one leg clearly bad
+  if (profitStrong || revGood)  return "strong";  // one leg clearly good
+  if (p != null    || r != null) return "mixed";
+  return null;
+}
 
 export function deriveInsight(row: LatestQuarterRow): string | null {
   if (row.status !== "announced_with_numbers") return null;
 
   const rYoy = row.revenue_yoy;
   const pYoy = row.profit_yoy;
-  const hasRev = rYoy != null && Number.isFinite(rYoy);
+  const hasRev    = rYoy != null && Number.isFinite(rYoy);
   const hasProfit = pYoy != null && Number.isFinite(pYoy);
+
+  // Sign-flip sentences — highest priority.
+  if (pYoy === TURNED_PROFITABLE)  return "Swung from a loss to profit — a positive turnaround.";
+  if (pYoy === TURNED_LOSS_MAKING) return "Slipped into a loss after a profitable prior year.";
 
   // Strong double-beat
   if (hasRev && hasProfit && rYoy! > 0.15 && pYoy! > 0.20) {

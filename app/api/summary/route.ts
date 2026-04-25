@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
 import { jsonOk, jsonError, cleanQuarterLabel } from "@/lib/api";
-import { pctChange } from "@/lib/growth";
+import { pctChange, TURNED_PROFITABLE, TURNED_LOSS_MAKING } from "@/lib/growth";
 
 // GET /api/summary?quarter=Q4 FY26
 //
@@ -101,8 +101,13 @@ export async function GET(req: NextRequest) {
     const p = priorByTicker.get(row.ticker);
     const rYoy = pctChange(row.revenue, p?.rev ?? null);
     const pYoy = pctChange(row.net_profit, p?.prof ?? null);
-    if (rYoy != null) revGrowths.push(rYoy);
-    if (pYoy != null) profGrowths.push(pYoy);
+    // Exclude sentinel values (sign-flip events) from averages — including
+    // 9999 or -9999 in a mean would make avg_revenue_yoy / avg_profit_yoy
+    // wildly misleading. The IntelligenceStrip shows the mean as a season
+    // barometer; sign-flips are outliers, not representative trends.
+    const isSentinel = (v: number) => v === TURNED_PROFITABLE || v === TURNED_LOSS_MAKING;
+    if (rYoy != null && !isSentinel(rYoy)) revGrowths.push(rYoy);
+    if (pYoy != null && !isSentinel(pYoy)) profGrowths.push(pYoy);
 
     const sector = (row as any).companies?.sector ?? null;
     if (sector) {
@@ -122,7 +127,11 @@ export async function GET(req: NextRequest) {
       companies_reported: s.reported,
       revenue_yoy: pctChange(s.rev, s.revPrev)
     }))
-    .filter((s) => s.revenue_yoy != null)
+    // Exclude nulls and sentinels — sector aggregates are sums so sentinels
+    // are rare, but guard anyway to keep the sort numerically clean.
+    .filter((s) => s.revenue_yoy != null
+      && s.revenue_yoy !== TURNED_PROFITABLE
+      && s.revenue_yoy !== TURNED_LOSS_MAKING)
     .sort((a, b) => (b.revenue_yoy! - a.revenue_yoy!))
     .slice(0, 5);
 

@@ -11,7 +11,8 @@ import IntelligenceStrip from "@/components/IntelligenceStrip";
 import InfoTooltip from "@/components/InfoTooltip";
 import { DISCLAIMER_SHORT, DISCLAIMER_MARKETS } from "@/lib/disclaimer";
 import { trackLiveBandTab } from "@/lib/analytics";
-import { formatINR, formatDate, formatPct, pctToneClass } from "@/lib/format";
+import { formatINR, formatDate, formatPct, formatYoY, pctToneClass } from "@/lib/format";
+import { TURNED_PROFITABLE, TURNED_LOSS_MAKING } from "@/lib/growth";
 import type { LatestQuarterRow } from "@/lib/types";
 
 const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
@@ -294,6 +295,10 @@ export default function DashboardPage() {
     const bySector = new Map<string, number[]>();
     for (const r of filed) {
       if (!r.sector || r.profit_yoy == null) continue;
+      // Exclude sign-flip sentinels (TURNED_PROFITABLE=9999, TURNED_LOSS_MAKING=-9999)
+      // from sector averages — including them would make one sector look like
+      // it grew +999,900% which swamps every other sector in the ranking.
+      if (Math.abs(r.profit_yoy) >= 9000) continue;
       if (!bySector.has(r.sector)) bySector.set(r.sector, []);
       bySector.get(r.sector)!.push(r.profit_yoy);
     }
@@ -336,8 +341,63 @@ export default function DashboardPage() {
     return { up, down };
   }, [filed]);
 
+  // Weekly summary — what happened in the last 7 days across all filed companies.
+  // Only rendered when ≥ 5 companies filed this week (otherwise noise > signal).
+  const weeklySummary = useMemo(() => {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+    const weekFiled = filed.filter((r) => r.result_date && r.result_date >= sevenDaysAgo);
+    if (weekFiled.length < 5) return null;
+
+    // Sector averages for this week only (exclude sign-flip sentinels).
+    const bySector = new Map<string, number[]>();
+    for (const r of weekFiled) {
+      if (!r.sector || r.profit_yoy == null || Math.abs(r.profit_yoy) >= 9000) continue;
+      if (!bySector.has(r.sector)) bySector.set(r.sector, []);
+      bySector.get(r.sector)!.push(r.profit_yoy);
+    }
+    let bestSector: [string, number] | null = null;
+    let worstSector: [string, number] | null = null;
+    for (const [s, vs] of bySector) {
+      if (vs.length < 2) continue;
+      const avg = vs.reduce((a, b) => a + b, 0) / vs.length;
+      if (!bestSector || avg > bestSector[1]) bestSector = [s, avg];
+      if (!worstSector || avg < worstSector[1]) worstSector = [s, avg];
+    }
+    return {
+      count: weekFiled.length,
+      bestSector:  bestSector ?? null,
+      worstSector: worstSector && worstSector[0] !== bestSector?.[0] ? worstSector : null,
+    };
+  }, [filed]);
+
+  // Rolling leaders — top/bottom 5 by profit_yoy this quarter.
+  // Excludes sign-flip sentinels from ranking (9999/-9999 would always dominate).
+  const rollingLeaders = useMemo(() => {
+    const withGrowth = filed
+      .filter((r) => r.profit_yoy != null && Math.abs(r.profit_yoy) < 9000)
+      .sort((a, b) => (b.profit_yoy ?? 0) - (a.profit_yoy ?? 0));
+    if (withGrowth.length < 4) return null;
+    return {
+      top:    withGrowth.slice(0, 5),
+      bottom: [...withGrowth].reverse().slice(0, 5),
+    };
+  }, [filed]);
+
+  // Next big names — first 3 MAJOR_TICKERS still scheduled to report.
+  const nextBigNames = useMemo(() => {
+    const filedSet = new Set(filed.map((r) => r.ticker));
+    return MAJOR_TICKERS
+      .filter((t) => !filedSet.has(t))
+      .slice(0, 3)
+      .map((t) => {
+        const u = upcoming.find((x) => x.ticker === t);
+        return u ?? null;
+      })
+      .filter(Boolean) as UpcomingItem[];
+  }, [filed, upcoming]);
+
   // Browse-all table sort + pagination.
-  const [allSort, setAllSort] = useState<"revenue" | "profit_yoy" | "result_date">("revenue");
+  const [allSort, setAllSort] = useState<"revenue" | "profit_yoy" | "result_date" | "sector">("revenue");
   const [allPage, setAllPage] = useState(0);
   useEffect(() => { setAllPage(0); }, [allSort, quarter]);
 
@@ -346,6 +406,7 @@ export default function DashboardPage() {
     const sorted = [...filed].sort((a, b) => {
       if (allSort === "profit_yoy") return (b.profit_yoy ?? -Infinity) - (a.profit_yoy ?? -Infinity);
       if (allSort === "result_date") return (b.result_date ?? "").localeCompare(a.result_date ?? "");
+      if (allSort === "sector") return (a.sector ?? "zzz").localeCompare(b.sector ?? "zzz");
       return (b.revenue ?? 0) - (a.revenue ?? 0);
     });
     const idx = sorted.findIndex((r) => r.ticker === ticker);
@@ -560,6 +621,87 @@ export default function DashboardPage() {
         );
       })() : null}
 
+      {/* Weekly summary — compact sentence about the last 7 days */}
+      {weeklySummary ? (
+        <p className="mt-3 text-[13px] md:text-[14px] text-core-muted italic leading-snug max-w-3xl">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-muted/50 mr-2 align-middle" />
+          This week: <span className="text-core-ink font-semibold not-italic">{weeklySummary.count}</span> companies reported
+          {weeklySummary.bestSector ? (
+            <> · <span className="text-core-teal not-italic font-semibold">{weeklySummary.bestSector[0]}</span> led on profit</>
+          ) : null}
+          {weeklySummary.worstSector ? (
+            <> · <span className="text-core-negative not-italic font-semibold">{weeklySummary.worstSector[0]}</span> lagged</>
+          ) : null}
+          {"."}
+        </p>
+      ) : null}
+
+      {/* Rolling leaders — top / bottom performers this quarter */}
+      {rollingLeaders ? (
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 max-w-3xl">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2.5">
+              Top performers · {quarter}
+            </div>
+            <div className="space-y-1.5">
+              {rollingLeaders.top.map((r) => (
+                <div key={r.ticker} className="flex items-baseline justify-between gap-3 text-[13px]">
+                  <Link
+                    href={`/company/${encodeURIComponent(r.ticker)}`}
+                    className="truncate font-medium hover:text-core-pink min-w-0"
+                    title={r.company_name}
+                  >
+                    {shortName(r.company_name)}
+                  </Link>
+                  <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
+                    {formatYoY(r.profit_yoy)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2.5">
+              Weakest performers · {quarter}
+            </div>
+            <div className="space-y-1.5">
+              {rollingLeaders.bottom.map((r) => (
+                <div key={r.ticker} className="flex items-baseline justify-between gap-3 text-[13px]">
+                  <Link
+                    href={`/company/${encodeURIComponent(r.ticker)}`}
+                    className="truncate font-medium hover:text-core-pink min-w-0"
+                    title={r.company_name}
+                  >
+                    {shortName(r.company_name)}
+                  </Link>
+                  <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
+                    {formatYoY(r.profit_yoy)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Next big names — upcoming bellwethers, shown as a tight one-liner */}
+      {nextBigNames.length > 0 ? (
+        <p className="mt-4 text-[13px] text-core-muted">
+          <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Next:</span>
+          {nextBigNames.map((u, i) => (
+            <span key={u.ticker}>
+              {i > 0 ? <span className="mx-1.5 text-core-line-2">·</span> : null}
+              <Link href={`/company/${encodeURIComponent(u.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink">
+                {shortName(u.company_name)}
+              </Link>
+              {u.next_result_date ? (
+                <span className="text-core-muted text-[12px] ml-1">({formatDate(u.next_result_date)})</span>
+              ) : null}
+            </span>
+          ))}
+        </p>
+      ) : null}
+
       <DotDashDivider />
 
 
@@ -597,6 +739,7 @@ export default function DashboardPage() {
           const sorted = [...filed].sort((a, b) => {
             if (allSort === "profit_yoy") return (b.profit_yoy ?? -Infinity) - (a.profit_yoy ?? -Infinity);
             if (allSort === "result_date") return (b.result_date ?? "").localeCompare(a.result_date ?? "");
+            if (allSort === "sector") return (a.sector ?? "zzz").localeCompare(b.sector ?? "zzz");
             return (b.revenue ?? 0) - (a.revenue ?? 0);
           });
           const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -643,8 +786,9 @@ export default function DashboardPage() {
                     className="border border-core-line bg-white text-xs px-2.5 py-1.5 rounded-md normal-case text-core-ink font-semibold focus:outline-none focus:border-core-pink"
                   >
                     <option value="revenue">Revenue (high → low)</option>
-                    <option value="profit_yoy">Profit YoY (high → low)</option>
+                    <option value="profit_yoy">Profit growth (best first)</option>
                     <option value="result_date">Announcement date (recent first)</option>
+                    <option value="sector">Sector (A → Z)</option>
                   </select>
                 </label>
               </div>
@@ -1120,18 +1264,21 @@ function BellwetherTableDark({ items }: { items: LatestQuarterRow[] }) {
   );
 }
 
-// Small coloured delta pill used inside the inverted band's compact
-// rows. Uses rgba white overlays for non-tonal positive/negative.
+// Small coloured delta pill used inside the inverted band's compact rows.
+// Handles sign-flip sentinels with short readable labels.
 function DeltaChipDark({ value }: { value: number | null | undefined }) {
   if (value == null) return <span className="text-[11px] text-white/40">—</span>;
+  if (value === TURNED_PROFITABLE)  return <span className="text-[11px] text-core-teal font-semibold">↑ Profitable</span>;
+  if (value === TURNED_LOSS_MAKING) return <span className="text-[11px] text-core-negative font-semibold">↓ Loss</span>;
   const tone =
     value > 0 ? "text-core-teal" :
     value < 0 ? "text-core-negative" : "text-white/50";
-  const sign = value > 0 ? "▲" : value < 0 ? "▼" : "";
+  const arrow = value > 0 ? "▲" : value < 0 ? "▼" : "";
+  const abs = (Math.abs(value) * 100).toFixed(1);
   return (
     <span className={`text-[11px] tabular-nums ${tone}`}>
-      <span className="text-[9px] mr-0.5">{sign}</span>
-      {formatPct(Math.abs(value))}
+      {arrow ? <span className="text-[9px] mr-0.5">{arrow}</span> : null}
+      {Math.abs(value) > 9.99 ? "n/m" : `${abs}%`}
     </span>
   );
 }

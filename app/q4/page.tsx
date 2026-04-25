@@ -9,9 +9,11 @@ import FilingLoader from "@/components/FilingLoader";
 import PdfLink from "@/components/PdfLink";
 import PriceChip from "@/components/PriceChip";
 import InfoTooltip from "@/components/InfoTooltip";
+import JsonLd from "@/components/JsonLd";
 import { simplifyPurpose } from "@/lib/purpose";
-import { formatINR, formatPct, formatDate, pctToneClass } from "@/lib/format";
+import { formatINR, formatPct, formatYoY, formatDate, pctToneClass } from "@/lib/format";
 import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
+import { siteUrl } from "@/lib/site";
 
 type PriceMap = Record<
   string,
@@ -45,6 +47,17 @@ interface Payload {
 // "track this quarter as it happens" view, not a history browser. If you
 // need to browse older quarters, use the Dashboard's quarter dropdown.
 const QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
+
+// AEO: breadcrumb schema — static, built at module load.
+const BASE = siteUrl();
+const Q4_BREADCRUMB = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Dashboard", "item": `${BASE}/` },
+    { "@type": "ListItem", "position": 2, "name": `${QUARTER} announcements`, "item": `${BASE}/q4` }
+  ]
+};
 
 export default function Q4Page() {
   const [data, setData] = useState<Payload | null>(null);
@@ -105,6 +118,8 @@ export default function Q4Page() {
 
   return (
     <div className="container-core py-8 space-y-6">
+      <JsonLd data={Q4_BREADCRUMB} />
+
       {/* Heading */}
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div>
@@ -244,9 +259,9 @@ export default function Q4Page() {
                             </td>
                             <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
                             <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
-                            <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.revenue_yoy)}`}>{formatPct(c.revenue_yoy)}</td>
+                            <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(c.revenue_yoy)}`}>{formatYoY(c.revenue_yoy)}</td>
                             <td className="text-right tabular-nums font-semibold">{formatINR(c.net_profit)}</td>
-                            <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.profit_yoy)}`}>{formatPct(c.profit_yoy)}</td>
+                            <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(c.profit_yoy)}`}>{formatYoY(c.profit_yoy)}</td>
                             <td className="text-right tabular-nums">{formatINR(c.operating_profit)}</td>
                             <td className="text-right tabular-nums">{c.eps != null ? c.eps.toFixed(2) : "—"}</td>
                           </tr>

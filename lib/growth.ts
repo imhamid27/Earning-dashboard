@@ -1,12 +1,28 @@
 // Growth calculations. All values are treated as raw rupees; returns decimals.
 //   yoy(100, 80) -> 0.25   (i.e. +25%)
-// We deliberately return null when the base is missing, zero, or negative —
-// percentage change on a negative base is misleading and should surface as "—".
+//
+// Special sentinel values for sign-flip events that can't be expressed as a
+// simple percentage. These are chosen outside the ±999% display range and
+// survive JSON serialisation (no Infinity/NaN). formatPct in lib/format.ts
+// dispatches on them to show human-readable labels.
+export const TURNED_PROFITABLE  =  9999; // loss → profit
+export const TURNED_LOSS_MAKING = -9999; // profit → loss
 
 export function pctChange(curr: number | null | undefined, base: number | null | undefined): number | null {
   if (curr == null || base == null) return null;
   if (!Number.isFinite(curr) || !Number.isFinite(base)) return null;
-  if (base <= 0) return null;
+  if (base === 0) return null; // divide-by-zero, no meaningful growth
+  if (base < 0) {
+    // Prior period was a loss.
+    if (curr > 0) return TURNED_PROFITABLE;   // swung to profit
+    if (curr === 0) return null;               // broke even — ambiguous
+    // Both periods are losses. Express as improvement/deterioration relative
+    // to the absolute size of the prior loss so the sign is intuitive:
+    // a smaller loss = positive ratio (good); larger loss = negative (bad).
+    return (curr - base) / Math.abs(base);
+  }
+  // base > 0
+  if (curr < 0) return TURNED_LOSS_MAKING; // swung to a loss
   return (curr - base) / base;
 }
 

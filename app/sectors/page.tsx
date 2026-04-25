@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import SectorComparison from "@/components/SectorComparison";
 import EmptyState from "@/components/EmptyState";
 import InfoTooltip from "@/components/InfoTooltip";
-import { formatINR, formatPct, pctToneClass } from "@/lib/format";
+import JsonLd from "@/components/JsonLd";
+import { formatINR, formatPct, formatYoY, pctToneClass } from "@/lib/format";
 import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
+import { siteUrl } from "@/lib/site";
 
 interface SectorRow {
   sector: string;
@@ -28,6 +30,17 @@ interface CompanyRow {
   revenue_yoy?: number | null;
   profit_yoy?: number | null;
 }
+
+// AEO: breadcrumb schema — static, built at module load.
+const BASE = siteUrl();
+const SECTORS_BREADCRUMB = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Dashboard", "item": `${BASE}/` },
+    { "@type": "ListItem", "position": 2, "name": "Sector view", "item": `${BASE}/sectors` }
+  ]
+};
 
 export default function SectorsPage() {
   const [quarters, setQuarters] = useState<string[]>([]);
@@ -103,6 +116,8 @@ export default function SectorsPage() {
 
   return (
     <div className="container-core py-8 md:py-12 space-y-8">
+      <JsonLd data={SECTORS_BREADCRUMB} />
+
       {/* Heading */}
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div>
@@ -161,8 +176,8 @@ export default function SectorsPage() {
                 >
                   <td className="font-semibold">{s.sector}</td>
                   <td className="text-right tabular-nums">{s.companies_reported}</td>
-                  <td className={`text-right tabular-nums font-semibold ${pctToneClass(s.revenue_yoy)}`}>
-                    {formatPct(s.revenue_yoy)}
+                  <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(s.revenue_yoy)}`}>
+                    {formatYoY(s.revenue_yoy)}
                   </td>
                 </tr>
               ))}
@@ -204,12 +219,12 @@ export default function SectorsPage() {
                   </td>
                   <td className="text-right tabular-nums">{s.companies_reported}</td>
                   <td className="text-right tabular-nums font-semibold">{formatINR(s.total_revenue)}</td>
-                  <td className={`text-right tabular-nums font-semibold ${pctToneClass(s.revenue_yoy)}`}>
-                    {formatPct(s.revenue_yoy)}
+                  <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(s.revenue_yoy)}`}>
+                    {formatYoY(s.revenue_yoy)}
                   </td>
                   <td className="text-right tabular-nums font-semibold">{formatINR(s.total_net_profit)}</td>
-                  <td className={`text-right tabular-nums font-semibold ${pctToneClass(s.profit_yoy)}`}>
-                    {formatPct(s.profit_yoy)}
+                  <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(s.profit_yoy)}`}>
+                    {formatYoY(s.profit_yoy)}
                   </td>
                 </tr>
               ))}
@@ -262,12 +277,12 @@ export default function SectorsPage() {
                         <div className="text-[11px] text-core-muted tabular-nums">{c.ticker}</div>
                       </td>
                       <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
-                      <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.revenue_yoy ?? null)}`}>
-                        {formatPct(c.revenue_yoy ?? null)}
+                      <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(c.revenue_yoy ?? null)}`}>
+                        {formatYoY(c.revenue_yoy ?? null)}
                       </td>
                       <td className="text-right tabular-nums font-semibold">{formatINR(c.net_profit)}</td>
-                      <td className={`text-right tabular-nums font-semibold ${pctToneClass(c.profit_yoy ?? null)}`}>
-                        {formatPct(c.profit_yoy ?? null)}
+                      <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(c.profit_yoy ?? null)}`}>
+                        {formatYoY(c.profit_yoy ?? null)}
                       </td>
                     </tr>
                   ))}
