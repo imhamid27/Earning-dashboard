@@ -22,10 +22,15 @@ export async function GET(req: NextRequest) {
   const ticker = sp.get("ticker")?.trim().toUpperCase() ?? null;
 
   const sb = supabaseServer();
+  // TRUST RULE: only surface quotes that carry an explicit, specific
+  // source_url (an actual article / earnings-call transcript link).
+  // Generic homepage URLs and quotes without attribution are excluded.
   let q = sb
     .from("expert_quotes")
     .select("id, expert_name, photo_url, designation, firm, quote, source_url, source_name, published_date, ticker, quarter, created_at")
     .eq("is_active", true)
+    .not("source_url", "is", null)
+    .neq("source_url", "")
     .order("created_at", { ascending: false });
 
   if (ticker) q = q.eq("ticker", ticker);

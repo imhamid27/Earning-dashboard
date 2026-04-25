@@ -406,6 +406,141 @@ export default function DashboardPage() {
       .filter(Boolean) as UpcomingItem[];
   }, [filed, upcoming]);
 
+  // ─── Advanced insight layer ──────────────────────────────────────────
+  // All computed from existing `filed` / `upcoming` data — no new API calls.
+
+  // EARNINGS BREADTH — % of reporters with profit growth / decline / flat.
+  // Requires ≥ 10 companies with meaningful profit data to be credible.
+  const earningsBreadth = useMemo(() => {
+    const meaningful = filed.filter((r) => {
+      const p = r.profit_yoy;
+      if (p == null) return false;
+      if (p === TURNED_PROFITABLE || p === TURNED_LOSS_MAKING) return true;
+      return Math.abs(p) <= 9.99;
+    });
+    if (meaningful.length < 10) return null;
+    let growing = 0, declining = 0, flat = 0;
+    for (const r of meaningful) {
+      const p = r.profit_yoy!;
+      if (p === TURNED_PROFITABLE || p > 0.05)  growing++;
+      else if (p === TURNED_LOSS_MAKING || p < -0.05) declining++;
+      else flat++;
+    }
+    return {
+      growingPct:   Math.round((growing  / meaningful.length) * 100),
+      decliningPct: Math.round((declining / meaningful.length) * 100),
+      flatPct:      Math.round((flat      / meaningful.length) * 100),
+      total:        meaningful.length,
+    };
+  }, [filed]);
+
+  // EARNINGS NARRATIVE — single evolving sentence from breadth + sector + avg.
+  // Factual only; never speculates; hides when data is thin.
+  const earningsNarrative = useMemo((): string | null => {
+    if (!summary || filed.length < 10) return null;
+    const { companies_reported: rep, companies_tracked: tracked, avg_profit_yoy: avg } = summary;
+    const parts: string[] = [];
+
+    if (rep > 0 && tracked > 0)
+      parts.push(`${rep} of ${tracked} companies in ${quarter}`);
+
+    if (avg != null && Math.abs(avg) <= 9.99) {
+      const absStr = `${Math.abs(avg * 100).toFixed(1)}%`;
+      if (avg > 0.02)       parts.push(`profit averaging +${absStr} YoY`);
+      else if (avg < -0.02) parts.push(`profit averaging −${absStr} YoY`);
+      else                  parts.push(`profit broadly flat YoY`);
+    }
+
+    if (earningsPulse?.top && !/^other$/i.test(earningsPulse.top))
+      parts.push(`led by ${earningsPulse.top}`);
+
+    if (earningsBreadth) {
+      if (earningsBreadth.growingPct >= 60)
+        parts.push(`${earningsBreadth.growingPct}% showing profit growth`);
+      else if (earningsBreadth.decliningPct >= 50)
+        parts.push(`${earningsBreadth.decliningPct}% declining`);
+      else if (earningsBreadth.growingPct > 0)
+        parts.push(`${earningsBreadth.growingPct}% growing, ${earningsBreadth.decliningPct}% declining`);
+    }
+
+    if (parts.length < 2) return null;
+    return parts.join(" · ") + ".";
+  }, [summary, filed, quarter, earningsPulse, earningsBreadth]);
+
+  // OUTLIER DETECTOR — 2–3 unusual results (margin divergence, sharp swings).
+  // Excludes companies already in rollingLeaders to avoid duplication.
+  const outliers = useMemo((): Array<{
+    ticker: string; company_name: string;
+    observation: string; tone: "positive" | "negative";
+  }> => {
+    if (filed.length < 10) return [];
+    const topSet = new Set([
+      ...(rollingLeaders?.top    ?? []).map((r) => r.ticker),
+      ...(rollingLeaders?.bottom ?? []).map((r) => r.ticker),
+    ]);
+    const pctStr = (v: number) => `${(Math.abs(v) * 100).toFixed(1)}%`;
+
+    const candidates: Array<{ ticker: string; company_name: string; observation: string; tone: "positive" | "negative" }> = [];
+    for (const r of filed) {
+      if (topSet.has(r.ticker)) continue;
+      const rv = r.revenue_yoy, pv = r.profit_yoy;
+      if (rv == null || pv == null) continue;
+      if (pv === TURNED_PROFITABLE || pv === TURNED_LOSS_MAKING) continue;
+      if (Math.abs(pv) > 9.99 || Math.abs(rv) > 9.99) continue;
+
+      // Margin collapse: revenue up, profit sharply down
+      if (rv > 0.08 && pv < -0.20) {
+        candidates.push({
+          ticker: r.ticker, company_name: r.company_name,
+          observation: `Revenue +${pctStr(rv)} but profit −${pctStr(pv)} — margin squeeze`,
+          tone: "negative",
+        });
+      // Margin surge: flat/small revenue, strong profit
+      } else if (Math.abs(rv) < 0.06 && pv > 0.35) {
+        candidates.push({
+          ticker: r.ticker, company_name: r.company_name,
+          observation: `Flat revenue, profit +${pctStr(pv)} — sharp efficiency gain`,
+          tone: "positive",
+        });
+      // Both collapsing
+      } else if (rv < -0.18 && pv < -0.18) {
+        candidates.push({
+          ticker: r.ticker, company_name: r.company_name,
+          observation: `Revenue −${pctStr(rv)}, profit −${pctStr(pv)} — broad contraction`,
+          tone: "negative",
+        });
+      }
+    }
+    // Dedupe by ticker; limit to 3
+    const seen = new Set<string>();
+    return candidates.filter((c) => {
+      if (seen.has(c.ticker)) return false;
+      seen.add(c.ticker);
+      return true;
+    }).slice(0, 3);
+  }, [filed, rollingLeaders]);
+
+  // WHAT TO WATCH NEXT — forward-looking line from upcoming + sector.
+  const watchNext = useMemo(() => {
+    if (upcoming.length === 0) return null;
+    const MAJOR = new Set(MAJOR_TICKERS);
+    const filedSet = new Set(filed.map((r) => r.ticker));
+    const nextBellwethers = upcoming
+      .filter((u) => MAJOR.has(u.ticker) && !filedSet.has(u.ticker))
+      .sort((a, b) => (a.next_result_date ?? "").localeCompare(b.next_result_date ?? ""))
+      .slice(0, 3);
+    const sectorMap: Record<string, number> = {};
+    for (const u of upcoming) {
+      if (u.sector && !filedSet.has(u.ticker))
+        sectorMap[u.sector] = (sectorMap[u.sector] ?? 0) + 1;
+    }
+    const topPendingSector = Object.entries(sectorMap)
+      .filter(([, n]) => n >= 3)
+      .sort((a, b) => b[1] - a[1])[0] ?? null;
+    if (nextBellwethers.length === 0 && !topPendingSector) return null;
+    return { bellwethers: nextBellwethers, topSector: topPendingSector };
+  }, [upcoming, filed]);
+
   // Browse-all table sort + pagination.
   const [allSort, setAllSort] = useState<"revenue" | "profit_yoy" | "result_date" | "sector">("revenue");
   const [allPage, setAllPage] = useState(0);
@@ -602,6 +737,39 @@ export default function DashboardPage() {
         bigNamesToday={bigNamesToday}
       />
 
+      {/* ---- EARNINGS NARRATIVE + BREADTH (inline strip) ----
+          Narrative: one evolving sentence from breadth + avg growth + sector.
+          Breadth:   inline % growing / declining / flat — purely text, no chart.
+          Both hide automatically when the data sample is too thin (<10 cos).  */}
+      {(earningsNarrative || earningsBreadth) ? (
+        <div className="mt-4 md:mt-5 space-y-1.5">
+          {earningsNarrative ? (
+            <p className="text-[13px] md:text-[14px] text-core-ink leading-snug max-w-3xl font-medium">
+              {earningsNarrative}
+            </p>
+          ) : null}
+          {earningsBreadth ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
+              <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted font-semibold">
+                Breadth
+              </span>
+              <span className="text-core-teal font-semibold tabular-nums">
+                {earningsBreadth.growingPct}% growing
+              </span>
+              <span className="text-core-negative font-semibold tabular-nums">
+                {earningsBreadth.decliningPct}% declining
+              </span>
+              <span className="text-core-muted tabular-nums">
+                {earningsBreadth.flatPct}% flat
+              </span>
+              <span className="text-core-muted text-[11px]">
+                · {earningsBreadth.total} with profit data
+              </span>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {earningsPulse ? (() => {
         // If the DB sector literal is 'Other', spell it out as 'other
         // sectors' so the sentence reads naturally. Otherwise keep the
@@ -696,6 +864,68 @@ export default function DashboardPage() {
             </p>
           ) : null}
         </div>
+      ) : null}
+
+      {/* ---- OUTLIER DETECTOR ----
+          2–3 unusual results that don't show up in top/bottom lists —
+          margin divergence, revenue-profit mismatches, sharp single-quarter
+          swings. Text-only, no chart, no extra visual weight. */}
+      {outliers.length > 0 ? (
+        <div className="mt-5 pt-4 border-t border-core-line">
+          <div className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold mb-2.5">
+            Outlier detector
+          </div>
+          <div className="space-y-2">
+            {outliers.map((o) => (
+              <div key={o.ticker} className="flex items-baseline gap-2 text-[13px]">
+                <Link
+                  href={`/company/${encodeURIComponent(o.ticker)}`}
+                  className="font-semibold hover:text-core-pink shrink-0"
+                >
+                  {shortName(o.company_name)}
+                </Link>
+                <span className={`leading-snug ${o.tone === "negative" ? "text-core-negative" : "text-core-teal"}`}>
+                  — {o.observation}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ---- WHAT TO WATCH NEXT ----
+          Forward-looking: upcoming bellwethers + sector with most pending.
+          One line, text-only, hides when nothing meaningful is pending. */}
+      {watchNext ? (
+        <p className={`text-[13px] leading-snug ${outliers.length > 0 ? "mt-3" : "mt-5 pt-4 border-t border-core-line"}`}>
+          <span className="text-[10px] uppercase tracking-[0.14em] text-core-ink font-bold mr-2">
+            Watch next
+          </span>
+          {watchNext.bellwethers.map((u, i) => (
+            <span key={u.ticker}>
+              {i > 0 ? <span className="mx-1.5 text-core-line-2">·</span> : null}
+              <Link
+                href={`/company/${encodeURIComponent(u.ticker)}`}
+                className="font-semibold text-core-ink hover:text-core-pink"
+              >
+                {shortName(u.company_name)}
+              </Link>
+              {u.next_result_date ? (
+                <span className="text-core-muted text-[12px] ml-1">
+                  ({formatDate(u.next_result_date)})
+                </span>
+              ) : null}
+            </span>
+          ))}
+          {watchNext.topSector ? (
+            <span className="text-core-muted ml-2">
+              {watchNext.bellwethers.length > 0 ? "·" : ""}
+              {" "}{watchNext.topSector[0]} has{" "}
+              <span className="text-core-ink font-semibold">{watchNext.topSector[1]}</span>
+              {" "}results pending
+            </span>
+          ) : null}
+        </p>
       ) : null}
 
       <DotDashDivider />

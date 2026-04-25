@@ -52,76 +52,39 @@ def sb_client() -> Client:
 
 # -----------------------------------------------------------------------
 # Starter seed quotes
-# These are publicly available quotes from earnings calls / press releases.
-# Replace / extend via the Supabase dashboard as new results land.
+#
+# IMPORTANT: Every quote MUST have a source_url pointing to the specific
+# article, press release, or earnings-call transcript that the quote
+# came from — NOT a generic investor-relations homepage.
+#
+# The SEED_QUOTES list below is intentionally empty after the initial
+# placeholder quotes were deactivated (they used homepage URLs, not
+# specific article links). Add real quotes via:
+#
+#   1. The Supabase Table Editor (expert_quotes → Insert row).
+#   2. Extend this SEED_QUOTES list with verified, specific URLs and
+#      re-run: py scripts/fetch_expert_quotes.py --seed
+#
+# Required fields for every quote:
+#   expert_name, designation, firm, quote (≤40 words),
+#   source_url (specific article/transcript link),
+#   source_name, published_date, is_active=True
 # -----------------------------------------------------------------------
 
 SEED_QUOTES: list[dict] = [
-    {
-        "expert_name":    "Mukesh D. Ambani",
-        "designation":    "Chairman & Managing Director",
-        "firm":           "Reliance Industries",
-        "quote":          "Our consumer businesses delivered another record quarter, "
-                          "with Jio and Retail both crossing significant milestones in "
-                          "revenue and subscriber growth.",
-        "source_name":    "Reliance Industries Q4 FY26 Earnings Call",
-        "source_url":     "https://www.ril.com/investor-relations",
-        "published_date": "2026-04-25",
-        "ticker":         "RELIANCE.NS",
-        "quarter":        "Q4 FY26",
-    },
-    {
-        "expert_name":    "Salil Parekh",
-        "designation":    "CEO & Managing Director",
-        "firm":           "Infosys",
-        "quote":          "We are seeing strong demand for our AI-first offerings and "
-                          "large deal momentum continues. Our revenue growth guidance "
-                          "reflects the confidence we have in execution.",
-        "source_name":    "Infosys Q4 FY26 Earnings Call",
-        "source_url":     "https://www.infosys.com/investors",
-        "published_date": "2026-04-17",
-        "ticker":         "INFY.NS",
-        "quarter":        "Q4 FY26",
-    },
-    {
-        "expert_name":    "K. V. Kamath",
-        "designation":    "Former Chairman",
-        "firm":           "ICICI Bank",
-        "quote":          "The Indian banking sector remains well capitalised. "
-                          "Asset quality improvements across private banks signal "
-                          "a healthy credit cycle heading into FY27.",
-        "source_name":    "Economic Times",
-        "source_url":     "https://economictimes.indiatimes.com/",
-        "published_date": "2026-04-20",
-        "ticker":         None,
-        "quarter":        "Q4 FY26",
-    },
-    {
-        "expert_name":    "Rajnish Kumar",
-        "designation":    "Former Chairman",
-        "firm":           "State Bank of India",
-        "quote":          "PSU banks have come a long way in cleaning up balance sheets. "
-                          "The current quarter's provisioning numbers confirm the "
-                          "stress cycle is largely behind us.",
-        "source_name":    "Mint",
-        "source_url":     "https://www.livemint.com/",
-        "published_date": "2026-04-22",
-        "ticker":         None,
-        "quarter":        "Q4 FY26",
-    },
-    {
-        "expert_name":    "Shashikant Rathi",
-        "designation":    "CFO",
-        "firm":           "Asian Paints",
-        "quote":          "Input cost tailwinds and volume recovery in the decorative "
-                          "segment drove margin expansion this quarter. We remain "
-                          "cautious on the rural demand outlook for Q1 FY27.",
-        "source_name":    "Asian Paints Q4 FY26 Earnings Call",
-        "source_url":     "https://www.asianpaints.com/investors",
-        "published_date": "2026-04-24",
-        "ticker":         "ASIANPAINT.NS",
-        "quarter":        "Q4 FY26",
-    },
+    # Add verified quotes with specific article URLs here.
+    # Example structure:
+    # {
+    #     "expert_name":    "CEO Name",
+    #     "designation":    "CEO & MD",
+    #     "firm":           "Company Name",
+    #     "quote":          "Exact verbatim quote from the source, max 40 words.",
+    #     "source_name":    "Company Q4 FY26 Earnings Call Transcript",
+    #     "source_url":     "https://example.com/specific-transcript-page",
+    #     "published_date": "2026-04-25",
+    #     "ticker":         "TICKER.NS",
+    #     "quarter":        "Q4 FY26",
+    # },
 ]
 
 
