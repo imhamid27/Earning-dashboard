@@ -658,18 +658,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   {rollingLeaders.top.map((r) => (
-                    <div key={r.ticker} className="flex items-baseline justify-between gap-2 text-[13px]">
-                      <Link
-                        href={`/company/${encodeURIComponent(r.ticker)}`}
-                        className="truncate hover:text-core-pink min-w-0"
-                        title={r.company_name}
-                      >
-                        {shortName(r.company_name)}
-                      </Link>
-                      <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
-                        {formatYoY(r.profit_yoy)}
-                      </span>
-                    </div>
+                    <LeaderRow key={r.ticker} r={r} />
                   ))}
                 </div>
               </div>
@@ -680,18 +669,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-2">
                   {rollingLeaders.bottom.map((r) => (
-                    <div key={r.ticker} className="flex items-baseline justify-between gap-2 text-[13px]">
-                      <Link
-                        href={`/company/${encodeURIComponent(r.ticker)}`}
-                        className="truncate hover:text-core-pink min-w-0"
-                        title={r.company_name}
-                      >
-                        {shortName(r.company_name)}
-                      </Link>
-                      <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
-                        {formatYoY(r.profit_yoy)}
-                      </span>
-                    </div>
+                    <LeaderRow key={r.ticker} r={r} />
                   ))}
                 </div>
               </div>
@@ -848,6 +826,45 @@ export default function DashboardPage() {
   );
 }
 
+
+// Single row in the rolling-leaders list.
+// For regular YoY, shows the percentage (▲/▼). For sign-flip sentinels
+// (company went loss→profit or profit→loss), shows the direction label
+// on the first line and the actual net-profit figure below it — so there's
+// always a real number visible, not just a text state.
+function LeaderRow({ r }: { r: LatestQuarterRow }) {
+  const isTurnedProfitable  = r.profit_yoy === TURNED_PROFITABLE;
+  const isTurnedLossMaking  = r.profit_yoy === TURNED_LOSS_MAKING;
+  const isSentinel = isTurnedProfitable || isTurnedLossMaking;
+
+  return (
+    <div className={`flex justify-between gap-2 text-[13px] ${isSentinel ? "items-start" : "items-baseline"}`}>
+      <Link
+        href={`/company/${encodeURIComponent(r.ticker)}`}
+        className="truncate hover:text-core-pink min-w-0"
+        title={r.company_name}
+      >
+        {shortName(r.company_name)}
+      </Link>
+      {isSentinel ? (
+        <span className={`text-right shrink-0 ${isTurnedProfitable ? "text-core-teal" : "text-core-negative"}`}>
+          <span className="block text-[11px] font-semibold leading-tight">
+            {isTurnedProfitable ? "Turned profitable" : "Turned loss-making"}
+          </span>
+          {r.net_profit != null && (
+            <span className="block text-[10px] font-normal tabular-nums opacity-80 mt-0.5">
+              {formatINR(r.net_profit)}
+            </span>
+          )}
+        </span>
+      ) : (
+        <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
+          {formatYoY(r.profit_yoy)}
+        </span>
+      )}
+    </div>
+  );
+}
 
 // Dot-and-dash divider — a nod to The Core's signature pattern.
 // Used between major sections instead of a plain hairline so the
