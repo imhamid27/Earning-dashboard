@@ -1111,41 +1111,38 @@ export default function DashboardPage() {
 
 
 // Single row in the rolling-leaders list.
-// For regular YoY, shows the percentage (▲/▼). For sign-flip sentinels
-// (company went loss→profit or profit→loss), shows the direction label
-// on the first line and the actual net-profit figure below it — so there's
-// always a real number visible, not just a text state.
+// Every row has an IDENTICAL two-line right column:
+//   Line 1 (tone colour, bold): % change OR "Turned profitable/loss-making"
+//   Line 2 (muted):             net profit in ₹ Cr, or "—" when null
+// The second line is unconditional so the row height is always the same.
 function LeaderRow({ r }: { r: LatestQuarterRow }) {
-  const isTurnedProfitable  = r.profit_yoy === TURNED_PROFITABLE;
-  const isTurnedLossMaking  = r.profit_yoy === TURNED_LOSS_MAKING;
-  const isSentinel = isTurnedProfitable || isTurnedLossMaking;
+  const isTurnedProfitable = r.profit_yoy === TURNED_PROFITABLE;
+  const isTurnedLossMaking = r.profit_yoy === TURNED_LOSS_MAKING;
 
-  // Every row: metric label/% on top in tone colour + ₹ amount below in muted.
-  // Same two-line structure for sentinels AND regular % rows — fully consistent.
   const metricLabel = isTurnedProfitable
     ? "Turned profitable"
     : isTurnedLossMaking
     ? "Turned loss-making"
     : formatYoY(r.profit_yoy);
 
+  const amountLabel = r.net_profit != null ? formatINR(r.net_profit) : "—";
+
   return (
-    <div className="flex justify-between items-start gap-3 py-2.5 text-[13px]">
+    <div className="flex justify-between items-start gap-3 py-2.5">
       <Link
         href={`/company/${encodeURIComponent(r.ticker)}`}
-        className="truncate hover:text-core-pink min-w-0 font-medium pt-0.5"
+        className="truncate hover:text-core-pink min-w-0 text-[13px] font-medium pt-px"
         title={r.company_name}
       >
         {shortName(r.company_name)}
       </Link>
       <span className="text-right shrink-0">
-        <span className={`block text-[12px] font-bold whitespace-nowrap tabular-nums ${pctToneClass(r.profit_yoy)}`}>
+        <span className={`block text-[12px] font-bold whitespace-nowrap ${pctToneClass(r.profit_yoy)}`}>
           {metricLabel}
         </span>
-        {r.net_profit != null ? (
-          <span className="block text-[11px] text-core-muted tabular-nums mt-0.5">
-            {formatINR(r.net_profit)}
-          </span>
-        ) : null}
+        <span className="block text-[11px] text-core-muted tabular-nums mt-0.5 whitespace-nowrap">
+          {amountLabel}
+        </span>
       </span>
     </div>
   );
