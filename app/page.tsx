@@ -1142,8 +1142,7 @@ function LeaderRow({ r }: { r: LatestQuarterRow }) {
         </span>
       ) : (
         <span className={`tabular-nums shrink-0 text-[13px] font-bold ${pctToneClass(r.profit_yoy)}`}>
-          {r.profit_yoy != null && r.profit_yoy > 0 ? "▲" : r.profit_yoy != null && r.profit_yoy < 0 ? "▼" : ""}
-          <span className="ml-0.5">{formatYoY(r.profit_yoy)}</span>
+          {formatYoY(r.profit_yoy)}
         </span>
       )}
     </div>
