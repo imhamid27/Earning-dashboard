@@ -235,7 +235,7 @@ export default function CompanyDetail() {
         <section className="card p-5 md:p-6">
           {/* Row 1: label + LIVE/CLOSED badge. Always on its own line — a
               clean header slug that the big price hangs off. */}
-          <div className="text-[10px] uppercase tracking-[0.18em] text-core-muted font-semibold flex items-center gap-2">
+          <div className="text-[11px] uppercase tracking-[0.16em] text-core-ink font-bold flex items-center gap-2">
             Trading price
             {priceStatus === "open" ? (
               <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.15em] text-core-teal">
@@ -341,7 +341,7 @@ export default function CompanyDetail() {
               one-paragraph business summary from yfinance (committed in a
               follow-up migration). */}
           <section className="card p-5">
-            <h3 className="text-sm font-bold tracking-tightest mb-3 text-core-muted uppercase">
+            <h3 className="text-sm font-bold tracking-tightest mb-3 text-core-ink uppercase">
               About
             </h3>
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">

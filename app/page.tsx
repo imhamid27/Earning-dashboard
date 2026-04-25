@@ -653,7 +653,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-core-line gap-y-5">
               {/* Top performers */}
               <div className="sm:pr-8">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2.5">
+                <div className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold mb-2.5">
                   Top performers · {quarter}
                 </div>
                 <div className="space-y-2">
@@ -664,7 +664,7 @@ export default function DashboardPage() {
               </div>
               {/* Weakest performers */}
               <div className="sm:pl-8">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2.5">
+                <div className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold mb-2.5">
                   Weakest performers · {quarter}
                 </div>
                 <div className="space-y-2">
@@ -707,7 +707,7 @@ export default function DashboardPage() {
       <section className="mt-4">
         <header className="flex items-baseline justify-between gap-4 flex-wrap mb-4">
           <div className="flex items-baseline gap-3">
-            <span className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] text-core-muted font-semibold">
+            <span className="text-[12px] md:text-sm uppercase tracking-[0.18em] text-core-ink font-bold">
               Find a company
             </span>
             <span className="text-[12px] text-core-muted">
@@ -745,7 +745,7 @@ export default function DashboardPage() {
                   form. e.g. "Biggest upside: Anand Rathi (+133%)". */}
               {surpriseMovers ? (
                 <div className="mb-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[12px] md:text-[13px]">
-                  <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted font-semibold">Surprise movers</span>
+                  <span className="text-[11px] uppercase tracking-[0.14em] text-core-ink font-bold">Surprise movers</span>
                   <span>
                     <span className="text-core-muted">Biggest upside: </span>
                     <Link href={`/company/${encodeURIComponent(surpriseMovers.up.ticker)}`} className="font-semibold hover:text-core-pink">
@@ -769,7 +769,7 @@ export default function DashboardPage() {
               ) : null}
 
               <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
-                <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted">
+                <span className="text-[11px] uppercase tracking-[0.14em] text-core-ink font-semibold">
                   All {sorted.length} with numbers · {quarter}
                 </span>
                 <label className="text-[10px] uppercase tracking-[0.14em] text-core-muted flex items-center gap-2">

@@ -241,7 +241,7 @@ export default function SectorsPage() {
         <section>
           <header className="flex items-baseline justify-between mb-3 border-b border-core-line pb-2">
             <div>
-              <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted">Companies in sector</div>
+              <div className="text-[11px] uppercase tracking-[0.14em] text-core-ink font-bold">Companies in sector</div>
               <h2 className="text-xl font-bold tracking-tightest mt-0.5">
                 {activeSector}
                 <span className="ml-3 text-sm font-normal text-core-muted">

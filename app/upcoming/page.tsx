@@ -138,7 +138,7 @@ export default function UpcomingPage() {
         <section>
           <header className="flex items-baseline justify-between gap-3 mb-4">
             <div className="flex items-baseline gap-3">
-              <span className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] text-core-muted font-semibold">
+              <span className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold">
                 Big names pending
               </span>
               <span className="text-[12px] text-core-muted">· bellwethers still to report</span>
@@ -175,7 +175,7 @@ export default function UpcomingPage() {
       ) : (
         <section className="space-y-8">
           <header className="flex items-baseline gap-3">
-            <span className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] text-core-muted font-semibold">
+            <span className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold">
               Full schedule
             </span>
             <span className="text-[12px] text-core-muted">· grouped by date</span>
