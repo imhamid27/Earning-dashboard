@@ -39,11 +39,14 @@ from supabase import create_client, Client
 
 load_dotenv()
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 
 
 def sb_client() -> Client:
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY", file=sys.stderr)
+        sys.exit(1)
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
