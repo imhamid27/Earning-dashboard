@@ -196,6 +196,23 @@ def build_sentence(
         )
         return _cap(s)
 
+    # --- Priority 7: absolute numbers only — no prior-year data available ---
+    # Used for first-year filers or when historical quarters aren't in the DB.
+    if net_profit is not None and revenue is not None:
+        s = (
+            f"{name} reported {rev_label} of {fmt_inr(revenue)} "
+            f"and net profit of {fmt_inr(net_profit)} in {quarter}."
+        )
+        return _cap(s)
+
+    if net_profit is not None:
+        s = f"{name} reported net profit of {fmt_inr(net_profit)} in {quarter}."
+        return _cap(s)
+
+    if revenue is not None:
+        s = f"{name} reported {rev_label} of {fmt_inr(revenue)} in {quarter}."
+        return _cap(s)
+
     # Not enough data to generate a useful sentence
     return None
 
@@ -383,6 +400,7 @@ def run(args: argparse.Namespace) -> None:
         text = build_sentence(company, quarter, revenue, profit, revenue_yoy, profit_yoy, industry)
         if not text:
             skipped += 1
+            print(f"  — skipped (no usable data): {ticker} {quarter}", file=sys.stderr)
             continue
 
         # Upsert — unique on (ticker, quarter)
