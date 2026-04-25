@@ -200,44 +200,44 @@ export default function UpcomingPage() {
 
             return (
               <div key={g.date}>
-                <div className="flex items-baseline justify-between pb-2 mb-3 border-b border-core-line flex-wrap gap-2">
-                  <div>
-                    <h2 className="text-lg font-semibold tracking-tightest inline">
-                      {formatDate(g.date)}
-                    </h2>
-                    <span className={`ml-3 text-[11px] uppercase tracking-[0.14em] font-normal ${g.days === 0 ? "text-core-pink font-semibold" : "text-core-muted"}`}>
-                      {g.rel}
-                    </span>
-                    {timingHint ? (
-                      <span className="ml-3 text-[11px] text-core-muted italic">· {timingHint}</span>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {bigNames.length > 0 ? (
-                      <span className="text-[11px] text-core-muted">
-                        Big names:{" "}
-                        {bigNames.slice(0, 3).map((b, i) => (
-                          <span key={b.ticker}>
-                            {i > 0 ? " · " : ""}
-                            <Link href={`/company/${encodeURIComponent(b.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink">
-                              {b.company_name.replace(/ Limited$| Ltd\.?$| Industries$/i, "").trim()}
-                            </Link>
-                          </span>
-                        ))}
+                <div className="pb-2 mb-3 border-b border-core-line">
+                  <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <h2 className="text-lg font-semibold tracking-tightest">
+                        {formatDate(g.date)}
+                      </h2>
+                      <span className={`text-[11px] uppercase tracking-[0.14em] font-normal ${g.days === 0 ? "text-core-pink font-semibold" : "text-core-muted"}`}>
+                        {g.rel}
                       </span>
-                    ) : null}
+                      {timingHint ? (
+                        <span className="hidden sm:inline text-[11px] text-core-muted italic">· {timingHint}</span>
+                      ) : null}
+                    </div>
                     <span className="text-xs text-core-muted tabular-nums shrink-0">
                       {g.items.length} {g.items.length === 1 ? "company" : "companies"}
                     </span>
                   </div>
+                  {bigNames.length > 0 ? (
+                    <div className="mt-1 text-[11px] text-core-muted flex flex-wrap gap-x-2 gap-y-0.5">
+                      <span className="font-semibold text-core-ink/60">Key:</span>
+                      {bigNames.slice(0, 3).map((b, i) => (
+                        <span key={b.ticker}>
+                          {i > 0 ? <span className="text-core-line-2">·</span> : null}
+                          <Link href={`/company/${encodeURIComponent(b.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink ml-1">
+                            {b.company_name.replace(/ Limited$| Ltd\.?$| Industries$/i, "").trim()}
+                          </Link>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="card overflow-x-auto">
-                  <table className="data-table">
+                  <table className="data-table" style={{ minWidth: "520px" }}>
                     <thead>
                       <tr>
                         <th>Company</th>
-                        <th>Ticker</th>
-                        <th>Sector</th>
+                        <th className="hidden sm:table-cell">Ticker</th>
+                        <th className="hidden sm:table-cell">Sector</th>
                         <th>Purpose</th>
                       </tr>
                     </thead>
@@ -253,9 +253,13 @@ export default function UpcomingPage() {
                             {BELLWETHERS.has(r.ticker) ? (
                               <span className="ml-2 text-[9px] uppercase tracking-[0.14em] text-core-pink font-semibold">Key name</span>
                             ) : null}
+                            {/* Show ticker + sector inline on mobile since those columns are hidden */}
+                            <div className="sm:hidden text-[10px] text-core-muted mt-0.5 tabular-nums">
+                              {r.ticker}{r.sector ? ` · ${r.sector}` : ""}
+                            </div>
                           </td>
-                          <td className="text-sm text-core-muted tabular-nums">{r.ticker}</td>
-                          <td className="text-sm text-core-muted">{r.sector ?? "—"}</td>
+                          <td className="hidden sm:table-cell text-sm text-core-muted tabular-nums">{r.ticker}</td>
+                          <td className="hidden sm:table-cell text-sm text-core-muted">{r.sector ?? "—"}</td>
                           <td className="text-sm text-core-ink max-w-[420px]" title={r.purpose ?? undefined}>
                             {simplifyPurpose(r.purpose, r.next_result_date)}
                           </td>

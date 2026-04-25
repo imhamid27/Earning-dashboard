@@ -125,7 +125,7 @@ export default function CompanyTable({
 
   return (
     <div className="card overflow-x-auto">
-      <table className="data-table">
+      <table className="data-table" style={{ minWidth: "720px" }}>
         <thead>
           <tr>
             <Th k="company_name" label="Company" {...{ sortKey, sortDir, onSort }} />

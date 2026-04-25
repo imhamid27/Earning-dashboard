@@ -390,18 +390,18 @@ export default function CompanyDetail() {
               </span>
             </header>
             <div className="card overflow-x-auto">
-              <table className="data-table">
+              <table className="data-table" style={{ minWidth: "780px" }}>
                 <thead>
                   <tr>
                     <th>Quarter</th>
-                    <th>Period end</th>
+                    <th className="hidden sm:table-cell">Period end</th>
                     <th className="text-right">Revenue</th>
-                    <th className="text-right">QoQ</th>
+                    <th className="text-right hidden sm:table-cell">QoQ</th>
                     <th className="text-right">YoY</th>
                     <th className="text-right">Net profit</th>
                     <th className="text-right">Profit YoY</th>
-                    <th className="text-right">Op. profit</th>
-                    <th className="text-right">EPS</th>
+                    <th className="text-right hidden sm:table-cell">Op. profit</th>
+                    <th className="text-right hidden sm:table-cell">EPS</th>
                     <th className="text-right">Filing</th>
                   </tr>
                 </thead>
@@ -409,14 +409,14 @@ export default function CompanyDetail() {
                   {[...data.quarters].reverse().map((q) => (
                     <tr key={q.id}>
                       <td className="font-semibold tabular-nums">{q.quarter_label}</td>
-                      <td className="text-sm text-core-muted tabular-nums">{formatDate(q.quarter_end_date)}</td>
+                      <td className="hidden sm:table-cell text-sm text-core-muted tabular-nums">{formatDate(q.quarter_end_date)}</td>
                       <td className="text-right tabular-nums font-semibold">{formatINR(q.revenue)}</td>
-                      <td className={`text-right tabular-nums whitespace-nowrap ${pctToneClass(q.revenue_qoq)}`}>{formatYoY(q.revenue_qoq)}</td>
+                      <td className={`hidden sm:table-cell text-right tabular-nums whitespace-nowrap ${pctToneClass(q.revenue_qoq)}`}>{formatYoY(q.revenue_qoq)}</td>
                       <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(q.revenue_yoy)}`}>{formatYoY(q.revenue_yoy)}</td>
                       <td className="text-right tabular-nums font-semibold">{formatINR(q.net_profit)}</td>
                       <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(q.profit_yoy)}`}>{formatYoY(q.profit_yoy)}</td>
-                      <td className="text-right tabular-nums">{formatINR(q.operating_profit)}</td>
-                      <td className="text-right tabular-nums">{q.eps != null ? q.eps.toFixed(2) : "—"}</td>
+                      <td className="hidden sm:table-cell text-right tabular-nums">{formatINR(q.operating_profit)}</td>
+                      <td className="hidden sm:table-cell text-right tabular-nums">{q.eps != null ? q.eps.toFixed(2) : "—"}</td>
                       <td className="text-right">
                         <PdfLink
                           url={q.filing_url}

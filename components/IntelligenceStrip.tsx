@@ -87,7 +87,7 @@ export default function IntelligenceStrip(props: IntelligenceStripProps) {
 
       {/* Card 2 · Season revenue growth ------------------------------------- */}
       <Tile
-        label="SEASON · AVG REVENUE"
+        label={<><span className="hidden sm:inline">Season · </span>Avg revenue</>}
         value={
           avg_revenue_yoy != null ? (
             <span
@@ -119,7 +119,7 @@ export default function IntelligenceStrip(props: IntelligenceStripProps) {
 
       {/* Card 3 · Biggest gainer (capped at 500% to filter tiny-base outliers) */}
       <Tile
-        label="TOP GAINER · PROFIT YoY"
+        label={<>Top gainer<span className="hidden sm:inline"> · profit YoY</span></>}
         value={
           biggestGainer && biggestGainer.profit_yoy != null ? (
             <span className="tabular-nums text-core-teal">
@@ -146,7 +146,7 @@ export default function IntelligenceStrip(props: IntelligenceStripProps) {
 
       {/* Card 4 · Biggest decliner -------------------------------------------- */}
       <Tile
-        label="TOP DECLINER · PROFIT YoY"
+        label={<>Top decliner<span className="hidden sm:inline"> · profit YoY</span></>}
         value={
           biggestLoser && biggestLoser.profit_yoy != null ? (
             <span className="tabular-nums text-core-negative">
@@ -183,7 +183,7 @@ function Tile({
   value,
   sub,
 }: {
-  label: string;
+  label: React.ReactNode;
   value: React.ReactNode;
   sub?: React.ReactNode;
 }) {
@@ -196,7 +196,7 @@ function Tile({
         {value}
       </div>
       {sub ? (
-        <div className="mt-1.5 text-[11px] leading-snug min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+        <div className="mt-1.5 text-[11px] leading-snug min-w-0 line-clamp-2">
           {sub}
         </div>
       ) : null}

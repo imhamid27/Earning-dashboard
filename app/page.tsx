@@ -757,27 +757,27 @@ export default function DashboardPage() {
           {/* Big three numbers — the design is the data */}
           {earningsBreadth ? (
             <div className="flex items-stretch gap-0 mb-5">
-              <div className="flex-1 border-r border-core-line pr-5 md:pr-8">
-                <div className="text-[38px] md:text-[46px] font-extrabold text-core-teal tabular-nums leading-none">
+              <div className="flex-1 border-r border-core-line pr-3 sm:pr-5 md:pr-8">
+                <div className="text-[32px] sm:text-[38px] md:text-[46px] font-extrabold text-core-teal tabular-nums leading-none">
                   {earningsBreadth.growingPct}%
                 </div>
-                <div className="text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
-                  Showing growth
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
+                  Growing
                 </div>
               </div>
-              <div className="flex-1 border-r border-core-line px-5 md:px-8">
-                <div className="text-[38px] md:text-[46px] font-extrabold text-core-negative tabular-nums leading-none">
+              <div className="flex-1 border-r border-core-line px-3 sm:px-5 md:px-8">
+                <div className="text-[32px] sm:text-[38px] md:text-[46px] font-extrabold text-core-negative tabular-nums leading-none">
                   {earningsBreadth.decliningPct}%
                 </div>
-                <div className="text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
                   Declining
                 </div>
               </div>
-              <div className="flex-1 pl-5 md:pl-8">
-                <div className="text-[38px] md:text-[46px] font-extrabold text-core-ink/25 tabular-nums leading-none">
+              <div className="flex-1 pl-3 sm:pl-5 md:pl-8">
+                <div className="text-[32px] sm:text-[38px] md:text-[46px] font-extrabold text-core-ink/25 tabular-nums leading-none">
                   {earningsBreadth.flatPct}%
                 </div>
-                <div className="text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
                   Flat
                 </div>
               </div>
@@ -993,7 +993,7 @@ export default function DashboardPage() {
             <span className="text-[12px] md:text-sm uppercase tracking-[0.18em] text-core-ink font-bold">
               Find a company
             </span>
-            <span className="text-[12px] text-core-muted">
+            <span className="hidden sm:inline text-[12px] text-core-muted">
               · Search or browse the full list
             </span>
           </div>

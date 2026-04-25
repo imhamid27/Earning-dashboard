@@ -231,17 +231,17 @@ export default function Q4Page() {
                 </div>
                 {filed.length > 0 ? (
                   <div className="card overflow-x-auto">
-                    <table className="data-table">
+                    <table className="data-table" style={{ minWidth: "680px" }}>
                       <thead>
                         <tr>
                           <th>Company</th>
-                          <th>Sector</th>
+                          <th className="hidden sm:table-cell">Sector</th>
                           <th className="text-right">Revenue</th>
-                          <th className="text-right">Rev YoY</th>
+                          <th className="text-right hidden sm:table-cell">Rev YoY</th>
                           <th className="text-right">Net profit</th>
                           <th className="text-right">Profit YoY</th>
-                          <th className="text-right">Op. profit</th>
-                          <th className="text-right">EPS</th>
+                          <th className="text-right hidden sm:table-cell">Op. profit</th>
+                          <th className="text-right hidden sm:table-cell">EPS</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -257,13 +257,13 @@ export default function Q4Page() {
                                 <PriceChip p={prices[c.ticker]} />
                               </div>
                             </td>
-                            <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
+                            <td className="hidden sm:table-cell text-sm text-core-muted">{c.sector ?? "—"}</td>
                             <td className="text-right tabular-nums font-semibold">{formatINR(c.revenue)}</td>
-                            <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(c.revenue_yoy)}`}>{formatYoY(c.revenue_yoy)}</td>
+                            <td className={`hidden sm:table-cell text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(c.revenue_yoy)}`}>{formatYoY(c.revenue_yoy)}</td>
                             <td className="text-right tabular-nums font-semibold">{formatINR(c.net_profit)}</td>
                             <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(c.profit_yoy)}`}>{formatYoY(c.profit_yoy)}</td>
-                            <td className="text-right tabular-nums">{formatINR(c.operating_profit)}</td>
-                            <td className="text-right tabular-nums">{c.eps != null ? c.eps.toFixed(2) : "—"}</td>
+                            <td className="hidden sm:table-cell text-right tabular-nums">{formatINR(c.operating_profit)}</td>
+                            <td className="hidden sm:table-cell text-right tabular-nums">{c.eps != null ? c.eps.toFixed(2) : "—"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -329,11 +329,11 @@ export default function Q4Page() {
                   </h2>
                 </div>
                 <div className="card overflow-x-auto">
-                  <table className="data-table">
+                  <table className="data-table" style={{ minWidth: "420px" }}>
                     <thead>
                       <tr>
                         <th>Company</th>
-                        <th>Sector</th>
+                        <th className="hidden sm:table-cell">Sector</th>
                         <th>Purpose</th>
                       </tr>
                     </thead>
@@ -349,7 +349,7 @@ export default function Q4Page() {
                               <PriceChip p={prices[c.ticker]} />
                             </div>
                           </td>
-                          <td className="text-sm text-core-muted">{c.sector ?? "—"}</td>
+                          <td className="hidden sm:table-cell text-sm text-core-muted">{c.sector ?? "—"}</td>
                           <td className="text-sm text-core-ink max-w-[480px]" title={c.purpose ?? undefined}>
                             {simplifyPurpose(c.purpose, activeGroup.date)}
                           </td>
