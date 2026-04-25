@@ -1120,8 +1120,17 @@ function LeaderRow({ r }: { r: LatestQuarterRow }) {
   const isTurnedLossMaking  = r.profit_yoy === TURNED_LOSS_MAKING;
   const isSentinel = isTurnedProfitable || isTurnedLossMaking;
 
+  // Unified single-line display for all rows:
+  // sentinels → short label in tone colour
+  // regular   → ▲/▼ percentage, same size
+  const rightLabel = isTurnedProfitable
+    ? "Turned profitable"
+    : isTurnedLossMaking
+    ? "Turned loss-making"
+    : formatYoY(r.profit_yoy);
+
   return (
-    <div className={`flex justify-between gap-3 py-2.5 text-[13px] ${isSentinel ? "items-start" : "items-baseline"}`}>
+    <div className="flex justify-between items-baseline gap-3 py-2.5 text-[13px]">
       <Link
         href={`/company/${encodeURIComponent(r.ticker)}`}
         className="truncate hover:text-core-pink min-w-0 font-medium"
@@ -1129,22 +1138,9 @@ function LeaderRow({ r }: { r: LatestQuarterRow }) {
       >
         {shortName(r.company_name)}
       </Link>
-      {isSentinel ? (
-        <span className={`text-right shrink-0 ${isTurnedProfitable ? "text-core-teal" : "text-core-negative"}`}>
-          <span className="block text-[11px] font-bold leading-tight">
-            {isTurnedProfitable ? "Turned profitable" : "Turned loss-making"}
-          </span>
-          {r.net_profit != null && (
-            <span className="block text-[10px] font-normal tabular-nums opacity-70 mt-0.5">
-              {formatINR(r.net_profit)}
-            </span>
-          )}
-        </span>
-      ) : (
-        <span className={`tabular-nums shrink-0 text-[13px] font-bold ${pctToneClass(r.profit_yoy)}`}>
-          {formatYoY(r.profit_yoy)}
-        </span>
-      )}
+      <span className={`tabular-nums shrink-0 text-[12px] font-bold whitespace-nowrap ${pctToneClass(r.profit_yoy)}`}>
+        {rightLabel}
+      </span>
     </div>
   );
 }
