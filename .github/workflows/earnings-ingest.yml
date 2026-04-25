@@ -1,7 +1,7 @@
 name: earnings-ingest
 
 # ===========================================================================
-# Cloud-scheduled ingestion for India Earnings Tracker.
+# Cloud-scheduled ingestion for the Corporate Earnings Dashboard.
 # ---------------------------------------------------------------------------
 # Runs on GitHub's hosted runners. Cadences:
 #
@@ -11,12 +11,15 @@ name: earnings-ingest
 #               Screener for freshly-announced companies. Indian filings
 #               come in waves (pre-market + post-close + late evening) so
 #               3× coverage catches every window.
+#               Also refreshes expert quotes (seeds + ages out stale ones).
 #
 #   hourly    — top of every hour, 04:00–16:00 UTC (09:30–21:30 IST) weekdays
 #               Pulls XBRL filings for events due today.
+#               Runs generate_commentary.py on any rows updated in the
+#               last 4 hours so Live Commentary is always fresh.
 #
 #   backfill  — Sunday 18:00 UTC (23:30 IST)
-#               Light weekly sweep + gap fill.
+#               Light weekly sweep + gap fill + full commentary refresh.
 #
 # Requires these repository Secrets:
 #   SUPABASE_URL                (usually the NEXT_PUBLIC_SUPABASE_URL value)
@@ -123,6 +126,9 @@ jobs:
               python scripts/nse_calendar.py
               python scripts/bse_calendar.py
               python scripts/moneycontrol_calendar.py
+              # Expert quotes: seed starter set on first run (idempotent),
+              # then age out quotes older than 90 days.
+              python scripts/fetch_expert_quotes.py --seed --deactivate-old 90
               ;;
             hourly)
               # Sweep 1: poll every NIFTY-500 company for fresh NSE XBRL
@@ -150,6 +156,10 @@ jobs:
               # .github/workflows/market-snapshot.yml — runs every
               # 15 min during trading hours on a separate concurrency
               # group so it doesn't queue behind the 16-min NSE sweep.)
+              # Live commentary — generate for any row updated in last 4h.
+              # Runs AFTER the filing sweep so commentary is built from
+              # the freshest available numbers.
+              python scripts/generate_commentary.py --since-hours 4
               ;;
             backfill)
               # Light weekly sweep: only the latest quarter per company +
@@ -158,6 +168,10 @@ jobs:
               # Screener throttled, starving cron.
               python scripts/nse_results.py --all --quarters 1
               python scripts/screener_results.py --missing
+              # Full commentary refresh on Sunday — regenerates all rows
+              # for the current quarter so any data corrections from the
+              # week are reflected in the live commentary block.
+              python scripts/generate_commentary.py --all
               ;;
             *)
               echo "unknown mode: $MODE" >&2; exit 2 ;;

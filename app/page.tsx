@@ -9,6 +9,8 @@ import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
 import IntelligenceStrip from "@/components/IntelligenceStrip";
 import InfoTooltip from "@/components/InfoTooltip";
+import LiveCommentary from "@/components/LiveCommentary";
+import ExpertQuotes from "@/components/ExpertQuotes";
 import { DISCLAIMER_SHORT, DISCLAIMER_MARKETS } from "@/lib/disclaimer";
 import { trackLiveBandTab } from "@/lib/analytics";
 import { formatINR, formatDate, formatPct, formatYoY, pctToneClass } from "@/lib/format";
@@ -698,6 +700,17 @@ export default function DashboardPage() {
 
       <DotDashDivider />
 
+      {/* =================================================================
+          LIVE COMMENTARY + EXPERT SPEAKS — Parts 5 & 6.
+          Two fixed-height (300px desktop / 250px mobile) scrollable cards
+          side-by-side on large screens, stacked on mobile.
+          Both hide themselves when the underlying table is empty so the
+          page never renders blank placeholder boxes.
+          ================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+        <LiveCommentary />
+        <ExpertQuotes />
+      </div>
 
       {/* =================================================================
           3. FIND A COMPANY — search + full table. Primary content

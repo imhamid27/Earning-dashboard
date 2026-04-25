@@ -96,3 +96,54 @@ export function timeAgo(iso: string | null | undefined): string {
   if (diffS < 86400*30) return `${Math.floor(diffS / 86400)}d ago`;
   return `${Math.floor(diffS / (86400 * 30))}mo ago`;
 }
+
+// "Last updated: 3:42 PM" or "Last updated: Yesterday, 11:05 PM" —
+// used on the Live Commentary and Expert Quotes scroll-blocks so readers
+// know how fresh the editorial content is.
+// All times shown in IST (Asia/Kolkata).
+export function formatLastUpdated(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+
+  const ist = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  const dateFmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const todayIST     = dateFmt.format(new Date());
+  const yesterdayIST = dateFmt.format(new Date(Date.now() - 86_400_000));
+  const thenIST      = dateFmt.format(new Date(t));
+  const timeStr      = ist.format(new Date(t));
+
+  if (thenIST === todayIST)     return `Last updated: ${timeStr}`;
+  if (thenIST === yesterdayIST) return `Last updated: Yesterday, ${timeStr}`;
+  // Older — show the short date
+  const shortDate = new Date(t).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  return `Last updated: ${shortDate}, ${timeStr}`;
+}
+
+// Null-safe display for a financial figure in a table cell.
+// Returns "—" (not "null" / "" / "N/A") — consistent across all tables.
+// title attribute carries "Data not available" for screen-readers + hover.
+export function naLabel(): string { return "—"; }
+
+// Revenue note for banks / NBFCs / insurers.
+// When `industry` matches these categories the revenue column is
+// actually Total Income / NII — flag it so readers aren't misled.
+export function revenueFieldLabel(industry: string | null | undefined): string {
+  if (!industry) return "Revenue";
+  const lower = industry.toLowerCase();
+  if (lower.includes("bank") || lower.includes("nbfc") || lower.includes("finance"))
+    return "Total Income";
+  if (lower.includes("insurance")) return "Premium Income";
+  return "Revenue";
+}
