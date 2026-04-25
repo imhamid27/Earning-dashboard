@@ -737,96 +737,113 @@ export default function DashboardPage() {
         bigNamesToday={bigNamesToday}
       />
 
-      {/* ---- EARNINGS NARRATIVE + BREADTH (inline strip) ----
-          Narrative: one evolving sentence from breadth + avg growth + sector.
-          Breadth:   inline % growing / declining / flat — purely text, no chart.
-          Both hide automatically when the data sample is too thin (<10 cos).  */}
-      {(earningsNarrative || earningsBreadth) ? (
-        <div className="mt-4 md:mt-5 space-y-1.5">
-          {earningsNarrative ? (
-            <p className="text-[13px] md:text-[14px] text-core-ink leading-snug max-w-3xl font-medium">
-              {earningsNarrative}
-            </p>
-          ) : null}
+      {/* ══════════════════════════════════════════════════════════════
+          EARNINGS BREADTH — typographic treatment.
+          The three % numbers are the primary visual; narrative and sector
+          signal are subordinate supporting text. Hides when < 10 companies.
+          ══════════════════════════════════════════════════════════════ */}
+      {(earningsBreadth || earningsNarrative) ? (
+        <div className="mt-6 border-t border-core-line pt-5">
+          {/* Label row */}
+          <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-4">
+            Earnings breadth · {quarter}
+            {earningsBreadth ? (
+              <span className="ml-3 normal-case tracking-normal text-core-muted/70">
+                ({earningsBreadth.total} companies with profit data)
+              </span>
+            ) : null}
+          </div>
+
+          {/* Big three numbers — the design is the data */}
           {earningsBreadth ? (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
-              <span className="text-[10px] uppercase tracking-[0.14em] text-core-muted font-semibold">
-                Breadth
-              </span>
-              <span className="text-core-teal font-semibold tabular-nums">
-                {earningsBreadth.growingPct}% growing
-              </span>
-              <span className="text-core-negative font-semibold tabular-nums">
-                {earningsBreadth.decliningPct}% declining
-              </span>
-              <span className="text-core-muted tabular-nums">
-                {earningsBreadth.flatPct}% flat
-              </span>
-              <span className="text-core-muted text-[11px]">
-                · {earningsBreadth.total} with profit data
-              </span>
+            <div className="flex items-stretch gap-0 mb-5">
+              <div className="flex-1 border-r border-core-line pr-5 md:pr-8">
+                <div className="text-[38px] md:text-[46px] font-extrabold text-core-teal tabular-nums leading-none">
+                  {earningsBreadth.growingPct}%
+                </div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
+                  Showing growth
+                </div>
+              </div>
+              <div className="flex-1 border-r border-core-line px-5 md:px-8">
+                <div className="text-[38px] md:text-[46px] font-extrabold text-core-negative tabular-nums leading-none">
+                  {earningsBreadth.decliningPct}%
+                </div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
+                  Declining
+                </div>
+              </div>
+              <div className="flex-1 pl-5 md:pl-8">
+                <div className="text-[38px] md:text-[46px] font-extrabold text-core-ink/25 tabular-nums leading-none">
+                  {earningsBreadth.flatPct}%
+                </div>
+                <div className="text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
+                  Flat
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Narrative + sector signal + weekly summary — supporting row */}
+          {(earningsNarrative || earningsPulse || weeklySummary) ? (
+            <div className={`flex flex-wrap items-start justify-between gap-x-6 gap-y-3 ${earningsBreadth ? "pt-4 border-t border-core-line" : ""}`}>
+              {/* Left: narrative + weekly */}
+              <div className="min-w-0 flex-1 space-y-1.5">
+                {earningsNarrative ? (
+                  <p className="text-[12px] md:text-[13px] text-core-muted leading-snug max-w-2xl">
+                    {earningsNarrative}
+                  </p>
+                ) : null}
+                {weeklySummary ? (
+                  <p className="text-[12px] text-core-muted leading-snug">
+                    <span className="text-[9px] uppercase tracking-[0.2em] font-semibold mr-2">This week</span>
+                    <span className="text-core-ink font-semibold">{weeklySummary.count}</span> companies reported
+                    {weeklySummary.bestSector ? (
+                      <> · <span className="text-core-teal font-semibold">{weeklySummary.bestSector[0]}</span> led on profit</>
+                    ) : null}
+                    {weeklySummary.worstSector ? (
+                      <> · <span className="text-core-negative font-semibold">{weeklySummary.worstSector[0]}</span> lagged</>
+                    ) : null}
+                  </p>
+                ) : null}
+              </div>
+
+              {/* Right: sector leading / lagging chip-pair */}
+              {earningsPulse && !(/^other$/i.test(earningsPulse.top)) && !(/^other$/i.test(earningsPulse.bot)) ? (
+                <div className="shrink-0 flex items-stretch divide-x divide-core-line border border-core-line rounded-lg overflow-hidden">
+                  <div className="px-4 py-3">
+                    <div className="text-[9px] uppercase tracking-[0.2em] text-core-muted font-semibold mb-1.5">Leading</div>
+                    <div className="text-[12px] font-bold text-core-teal leading-tight">{earningsPulse.top}</div>
+                  </div>
+                  <div className="px-4 py-3">
+                    <div className="text-[9px] uppercase tracking-[0.2em] text-core-muted font-semibold mb-1.5">Lagging</div>
+                    <div className="text-[12px] font-bold text-core-negative leading-tight">{earningsPulse.bot}</div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
       ) : null}
 
-      {earningsPulse ? (() => {
-        // If the DB sector literal is 'Other', spell it out as 'other
-        // sectors' so the sentence reads naturally. Otherwise keep the
-        // proper-noun sector name as-is.
-        const isGenericBot = /^other$/i.test(earningsPulse.bot);
-        const isGenericTop = /^other$/i.test(earningsPulse.top);
-        return (
-          <p className="mt-4 md:mt-5 text-[13px] md:text-[14px] text-core-muted italic leading-snug max-w-3xl">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-pink mr-2 align-middle" />
-            {isGenericTop ? (
-              <>Other sectors are driving profit growth; </>
-            ) : (
-              <>
-                <span className="text-core-ink font-semibold not-italic">{earningsPulse.top}</span>
-                {" "}are driving profit growth;{" "}
-              </>
-            )}
-            {isGenericBot ? (
-              <>other sectors are lagging so far.</>
-            ) : (
-              <>
-                <span className="text-core-ink font-semibold not-italic">{earningsPulse.bot}</span>
-                {" "}are lagging so far.
-              </>
-            )}
-          </p>
-        );
-      })() : null}
-
-      {/* Weekly summary — compact sentence about the last 7 days */}
-      {weeklySummary ? (
-        <p className="mt-3 text-[13px] md:text-[14px] text-core-muted italic leading-snug max-w-3xl">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-core-muted/50 mr-2 align-middle" />
-          This week: <span className="text-core-ink font-semibold not-italic">{weeklySummary.count}</span> companies reported
-          {weeklySummary.bestSector ? (
-            <> · <span className="text-core-teal not-italic font-semibold">{weeklySummary.bestSector[0]}</span> led on profit</>
-          ) : null}
-          {weeklySummary.worstSector ? (
-            <> · <span className="text-core-negative not-italic font-semibold">{weeklySummary.worstSector[0]}</span> lagged</>
-          ) : null}
-          {"."}
-        </p>
-      ) : null}
-
-      {/* Rolling leaders + Next big names — rendered as one anchored block
-          with a border-t to separate it from the pulse lines above. The two
-          columns get a vertical divider on desktop; on mobile they stack. */}
+      {/* ══════════════════════════════════════════════════════════════
+          ROLLING LEADERS — top / weakest performers this quarter.
+          Each list gets a colour-dot section marker (teal / red) and
+          proper row dividers. Next big names sits below as a footer strip.
+          ══════════════════════════════════════════════════════════════ */}
       {(rollingLeaders || nextBigNames.length > 0) ? (
-        <div className="mt-5 border-t border-core-line pt-4">
+        <div className="mt-6 border-t border-core-line pt-5">
           {rollingLeaders ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-core-line gap-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-core-line gap-y-6">
               {/* Top performers */}
               <div className="sm:pr-8">
-                <div className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold mb-2.5">
-                  Top performers · {quarter}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-block w-2 h-2 rounded-sm bg-core-teal shrink-0" />
+                  <span className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] text-core-ink font-bold">
+                    Top performers · {quarter}
+                  </span>
                 </div>
-                <div className="space-y-2">
+                <div className="divide-y divide-core-line">
                   {rollingLeaders.top.map((r) => (
                     <LeaderRow key={r.ticker} r={r} />
                   ))}
@@ -834,10 +851,13 @@ export default function DashboardPage() {
               </div>
               {/* Weakest performers */}
               <div className="sm:pl-8">
-                <div className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold mb-2.5">
-                  Weakest performers · {quarter}
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="inline-block w-2 h-2 rounded-sm bg-core-negative shrink-0" />
+                  <span className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] text-core-ink font-bold">
+                    Weakest performers · {quarter}
+                  </span>
                 </div>
-                <div className="space-y-2">
+                <div className="divide-y divide-core-line">
                   {rollingLeaders.bottom.map((r) => (
                     <LeaderRow key={r.ticker} r={r} />
                   ))}
@@ -846,10 +866,10 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
-          {/* Next big names — sits below the leaders, separated by a rule */}
+          {/* Next big names — footer strip below the leaders */}
           {nextBigNames.length > 0 ? (
-            <p className={`text-[13px] text-core-muted ${rollingLeaders ? "mt-4 pt-3 border-t border-core-line" : ""}`}>
-              <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Next:</span>
+            <div className={`flex flex-wrap items-center gap-x-1 gap-y-1 text-[13px] ${rollingLeaders ? "mt-4 pt-4 border-t border-core-line" : ""}`}>
+              <span className="text-[9px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Next:</span>
               {nextBigNames.map((u, i) => (
                 <span key={u.ticker}>
                   {i > 0 ? <span className="mx-1.5 text-core-line-2">·</span> : null}
@@ -861,71 +881,91 @@ export default function DashboardPage() {
                   ) : null}
                 </span>
               ))}
-            </p>
+            </div>
           ) : null}
         </div>
       ) : null}
 
-      {/* ---- OUTLIER DETECTOR ----
-          2–3 unusual results that don't show up in top/bottom lists —
-          margin divergence, revenue-profit mismatches, sharp single-quarter
-          swings. Text-only, no chart, no extra visual weight. */}
+      {/* ══════════════════════════════════════════════════════════════
+          OUTLIER SIGNALS — 2–3 unusual margin divergences.
+          Each signal is a toned pill-card (teal / red background tint)
+          with company name as the headline and observation as body.
+          Excludes companies already shown in top/bottom leaders.
+          ══════════════════════════════════════════════════════════════ */}
       {outliers.length > 0 ? (
-        <div className="mt-5 pt-4 border-t border-core-line">
-          <div className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold mb-2.5">
-            Outlier detector
+        <div className="mt-6 border-t border-core-line pt-5">
+          <div className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] text-core-ink font-bold mb-3">
+            Outlier signals · {quarter}
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {outliers.map((o) => (
-              <div key={o.ticker} className="flex items-baseline gap-2 text-[13px]">
-                <Link
-                  href={`/company/${encodeURIComponent(o.ticker)}`}
-                  className="font-semibold hover:text-core-pink shrink-0"
-                >
+              <Link
+                key={o.ticker}
+                href={`/company/${encodeURIComponent(o.ticker)}`}
+                className={`group block rounded-lg border px-4 py-3 transition-colors ${
+                  o.tone === "positive"
+                    ? "border-core-teal/25 bg-core-teal/[0.04] hover:bg-core-teal/[0.08]"
+                    : "border-core-negative/25 bg-core-negative/[0.04] hover:bg-core-negative/[0.08]"
+                }`}
+              >
+                <div className={`text-[12px] font-bold mb-1 ${o.tone === "positive" ? "text-core-teal" : "text-core-negative"}`}>
                   {shortName(o.company_name)}
-                </Link>
-                <span className={`leading-snug ${o.tone === "negative" ? "text-core-negative" : "text-core-teal"}`}>
-                  — {o.observation}
-                </span>
-              </div>
+                </div>
+                <div className="text-[12px] text-core-muted leading-snug group-hover:text-core-ink transition-colors">
+                  {o.observation}
+                </div>
+              </Link>
             ))}
           </div>
+
+          {/* Watch Next — tucked as a footer strip inside the outlier block */}
+          {watchNext ? (
+            <div className="mt-4 pt-3 border-t border-core-line flex flex-wrap items-center gap-x-1 gap-y-1 text-[13px]">
+              <span className="text-[9px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Watch next</span>
+              {watchNext.bellwethers.map((u, i) => (
+                <span key={u.ticker}>
+                  {i > 0 ? <span className="mx-1.5 text-core-line-2">·</span> : null}
+                  <Link href={`/company/${encodeURIComponent(u.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink">
+                    {shortName(u.company_name)}
+                  </Link>
+                  {u.next_result_date ? (
+                    <span className="text-core-muted text-[12px] ml-1">({formatDate(u.next_result_date)})</span>
+                  ) : null}
+                </span>
+              ))}
+              {watchNext.topSector ? (
+                <span className="text-core-muted ml-1">
+                  {watchNext.bellwethers.length > 0 ? "· " : ""}
+                  Other has <span className="text-core-ink font-semibold">{watchNext.topSector[1]}</span> results pending
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
-      {/* ---- WHAT TO WATCH NEXT ----
-          Forward-looking: upcoming bellwethers + sector with most pending.
-          One line, text-only, hides when nothing meaningful is pending. */}
-      {watchNext ? (
-        <p className={`text-[13px] leading-snug ${outliers.length > 0 ? "mt-3" : "mt-5 pt-4 border-t border-core-line"}`}>
-          <span className="text-[10px] uppercase tracking-[0.14em] text-core-ink font-bold mr-2">
-            Watch next
-          </span>
+      {/* Watch Next standalone — only when there are no outliers to attach it to */}
+      {(!outliers.length && watchNext) ? (
+        <div className="mt-6 border-t border-core-line pt-5 flex flex-wrap items-center gap-x-1 gap-y-1 text-[13px]">
+          <span className="text-[9px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Watch next</span>
           {watchNext.bellwethers.map((u, i) => (
             <span key={u.ticker}>
               {i > 0 ? <span className="mx-1.5 text-core-line-2">·</span> : null}
-              <Link
-                href={`/company/${encodeURIComponent(u.ticker)}`}
-                className="font-semibold text-core-ink hover:text-core-pink"
-              >
+              <Link href={`/company/${encodeURIComponent(u.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink">
                 {shortName(u.company_name)}
               </Link>
               {u.next_result_date ? (
-                <span className="text-core-muted text-[12px] ml-1">
-                  ({formatDate(u.next_result_date)})
-                </span>
+                <span className="text-core-muted text-[12px] ml-1">({formatDate(u.next_result_date)})</span>
               ) : null}
             </span>
           ))}
           {watchNext.topSector ? (
-            <span className="text-core-muted ml-2">
-              {watchNext.bellwethers.length > 0 ? "·" : ""}
-              {" "}{watchNext.topSector[0]} has{" "}
-              <span className="text-core-ink font-semibold">{watchNext.topSector[1]}</span>
-              {" "}results pending
+            <span className="text-core-muted ml-1">
+              {watchNext.bellwethers.length > 0 ? "· " : ""}
+              Other has <span className="text-core-ink font-semibold">{watchNext.topSector[1]}</span> results pending
             </span>
           ) : null}
-        </p>
+        </div>
       ) : null}
 
       <DotDashDivider />
@@ -1081,28 +1121,29 @@ function LeaderRow({ r }: { r: LatestQuarterRow }) {
   const isSentinel = isTurnedProfitable || isTurnedLossMaking;
 
   return (
-    <div className={`flex justify-between gap-2 text-[13px] ${isSentinel ? "items-start" : "items-baseline"}`}>
+    <div className={`flex justify-between gap-3 py-2.5 text-[13px] ${isSentinel ? "items-start" : "items-baseline"}`}>
       <Link
         href={`/company/${encodeURIComponent(r.ticker)}`}
-        className="truncate hover:text-core-pink min-w-0"
+        className="truncate hover:text-core-pink min-w-0 font-medium"
         title={r.company_name}
       >
         {shortName(r.company_name)}
       </Link>
       {isSentinel ? (
         <span className={`text-right shrink-0 ${isTurnedProfitable ? "text-core-teal" : "text-core-negative"}`}>
-          <span className="block text-[11px] font-semibold leading-tight">
+          <span className="block text-[11px] font-bold leading-tight">
             {isTurnedProfitable ? "Turned profitable" : "Turned loss-making"}
           </span>
           {r.net_profit != null && (
-            <span className="block text-[10px] font-normal tabular-nums opacity-80 mt-0.5">
+            <span className="block text-[10px] font-normal tabular-nums opacity-70 mt-0.5">
               {formatINR(r.net_profit)}
             </span>
           )}
         </span>
       ) : (
-        <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
-          {formatYoY(r.profit_yoy)}
+        <span className={`tabular-nums shrink-0 text-[13px] font-bold ${pctToneClass(r.profit_yoy)}`}>
+          {r.profit_yoy != null && r.profit_yoy > 0 ? "▲" : r.profit_yoy != null && r.profit_yoy < 0 ? "▼" : ""}
+          <span className="ml-0.5">{formatYoY(r.profit_yoy)}</span>
         </span>
       )}
     </div>
