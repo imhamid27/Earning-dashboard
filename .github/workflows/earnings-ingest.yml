@@ -12,7 +12,7 @@ name: earnings-ingest
 #               come in waves (pre-market + post-close + late evening) so
 #               3× coverage catches every window.
 #
-#   hourly    — every 30 min, 04:00–16:00 UTC (09:30–21:30 IST) weekdays
+#   hourly    — top of every hour, 04:00–16:00 UTC (09:30–21:30 IST) weekdays
 #               Pulls XBRL filings for events due today.
 #
 #   backfill  — Sunday 18:00 UTC (23:30 IST)
