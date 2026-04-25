@@ -485,7 +485,7 @@ export default function DashboardPage() {
             InfoTooltip is inside a zero-width inline-block that hugs the
             last word. This prevents the icon from being orphaned on its
             own line on narrow viewports. */}
-        <h1 className="font-sans font-bold tracking-tightest leading-[1.02] md:leading-[0.95] text-[clamp(1.75rem,4.5vw,3.25rem)]">
+        <h1 className="font-sans font-extrabold tracking-tightest leading-[1.02] md:leading-[0.95] text-[clamp(1.85rem,4.5vw,3.5rem)]">
           India Inc. Reporting
           <span className="inline-block align-middle ml-2 -translate-y-0.5">
             <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
@@ -1156,7 +1156,7 @@ function TodayTableDark({ reported, pending, nextUp, todayIso }: {
   }
   return (
     <div className="divide-y divide-white/10 border-t border-white/10">
-      <div className="grid grid-cols-12 gap-3 py-2 text-[9px] uppercase tracking-[0.14em] text-white/40 font-semibold">
+      <div className="grid grid-cols-12 gap-2 md:gap-3 py-2 text-[9px] uppercase tracking-[0.14em] text-white/40 font-semibold">
         <div className="col-span-12 md:col-span-5">Company</div>
         <div className="hidden md:block md:col-span-3">Revenue · YoY</div>
         <div className="hidden md:block md:col-span-3">Net profit · YoY</div>
@@ -1168,12 +1168,13 @@ function TodayTableDark({ reported, pending, nextUp, todayIso }: {
         <Link
           key={r.ticker}
           href={`/company/${encodeURIComponent(r.ticker)}`}
-          className="grid grid-cols-12 gap-3 py-2 hover:bg-white/5 transition-colors text-[13px]"
+          className="grid grid-cols-12 gap-2 md:gap-3 py-2.5 hover:bg-white/5 transition-colors"
         >
+          {/* Company — full width on mobile; 5 cols on desktop */}
           <div className="col-span-12 md:col-span-5 min-w-0">
             <div className="flex items-baseline gap-2 min-w-0">
-              <span className="font-semibold truncate tracking-tightest">{r.company_name}</span>
-              <span className="text-[10px] text-white/40 tabular-nums hidden lg:inline">{r.ticker}</span>
+              <span className="font-semibold text-[13px] truncate tracking-tightest">{r.company_name}</span>
+              <span className="text-[10px] text-white/40 tabular-nums hidden lg:inline shrink-0">{r.ticker}</span>
             </div>
             {r.sector ? (
               <div className="text-[10px] text-white/40 uppercase tracking-[0.14em] mt-0.5 md:hidden">
@@ -1181,12 +1182,14 @@ function TodayTableDark({ reported, pending, nextUp, todayIso }: {
               </div>
             ) : null}
           </div>
-          <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
-            <span className="font-semibold tabular-nums truncate">{formatINR(r.revenue)}</span>
+          {/* Revenue — 6/12 on mobile (left half), 3/12 on desktop */}
+          <div className="col-span-6 md:col-span-3 flex items-baseline gap-1 min-w-0">
+            <span className="font-semibold text-[12px] md:text-[13px] tabular-nums truncate">{formatINR(r.revenue)}</span>
             <DeltaChipDark value={r.revenue_yoy} />
           </div>
-          <div className="col-span-6 md:col-span-3 flex items-baseline gap-1.5 min-w-0">
-            <span className="font-semibold tabular-nums truncate">{formatINR(r.net_profit)}</span>
+          {/* Net profit — 6/12 on mobile (right half), 3/12 on desktop */}
+          <div className="col-span-6 md:col-span-3 flex items-baseline gap-1 min-w-0">
+            <span className="font-semibold text-[12px] md:text-[13px] tabular-nums truncate">{formatINR(r.net_profit)}</span>
             <DeltaChipDark value={r.profit_yoy} />
           </div>
           <div className="hidden md:flex md:col-span-1 items-center justify-end">
@@ -1195,17 +1198,17 @@ function TodayTableDark({ reported, pending, nextUp, todayIso }: {
         </Link>
       ))}
 
-      {/* Pending — same shape, muted metrics */}
+      {/* Pending — company full-width on mobile; hint below name */}
       {pending.map((p) => (
         <Link
           key={p.ticker + "_pending"}
           href={`/company/${encodeURIComponent(p.ticker)}`}
-          className="grid grid-cols-12 gap-3 py-2 hover:bg-white/5 transition-colors text-[13px]"
+          className="grid grid-cols-12 gap-2 md:gap-3 py-2.5 hover:bg-white/5 transition-colors"
         >
           <div className="col-span-12 md:col-span-5 min-w-0">
             <div className="flex items-baseline gap-2 min-w-0">
-              <span className="font-semibold truncate tracking-tightest text-white/70">{p.company_name}</span>
-              <span className="text-[10px] text-white/40 tabular-nums hidden lg:inline">{p.ticker}</span>
+              <span className="font-semibold text-[13px] truncate tracking-tightest text-white/70">{p.company_name}</span>
+              <span className="text-[10px] text-white/40 tabular-nums hidden lg:inline shrink-0">{p.ticker}</span>
             </div>
             {p.sector ? (
               <div className="text-[10px] text-white/40 uppercase tracking-[0.14em] mt-0.5 md:hidden">

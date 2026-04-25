@@ -136,11 +136,11 @@ export default function Q4Page() {
           </p>
         </div>
         <div className="flex items-baseline gap-6">
-          <div className="serif text-3xl font-bold tabular-nums tracking-tightest">
+          <div className="text-3xl font-extrabold tabular-nums tracking-tightest">
             {data ? data.total_reported : "—"}
             <span className="block text-[10px] uppercase tracking-[0.14em] text-core-muted font-normal">reported</span>
           </div>
-          <div className="serif text-3xl font-bold tabular-nums tracking-tightest text-core-muted">
+          <div className="text-3xl font-extrabold tabular-nums tracking-tightest text-core-muted">
             {data ? (data.total_scheduled ?? 0) : "—"}
             <span className="block text-[10px] uppercase tracking-[0.14em] text-core-muted font-normal">scheduled</span>
           </div>

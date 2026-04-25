@@ -181,18 +181,22 @@ export default function CompanyDetail() {
           see the structured data without needing to execute additional JS. */}
       {companyJsonLd && <JsonLd data={companyJsonLd} />}
 
-      {/* Breadcrumb */}
-      <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted flex items-center gap-2">
-        <Link href="/" className="hover:text-core-pink">Dashboard</Link>
-        <span className="text-core-line-2">/</span>
-        <span>{data.company.sector ?? "—"}</span>
-        {data.company.industry ? (<><span className="text-core-line-2">/</span><span>{data.company.industry}</span></>) : null}
+      {/* Breadcrumb — flex-wrap prevents long sector/industry names from
+          causing horizontal overflow on narrow mobile viewports. */}
+      <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Link href="/" className="hover:text-core-pink shrink-0">Dashboard</Link>
+        <span className="text-core-line-2 shrink-0">/</span>
+        <span className="truncate max-w-[180px] sm:max-w-none">{data.company.sector ?? "—"}</span>
+        {data.company.industry ? (
+          <><span className="text-core-line-2 shrink-0">/</span>
+          <span className="truncate max-w-[180px] sm:max-w-none">{data.company.industry}</span></>
+        ) : null}
       </div>
 
       {/* Editorial header */}
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div className="min-w-0">
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tightest leading-[1.05]">
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tightest leading-[1.05]">
             {data.company.company_name}
             <span className="inline-block align-middle ml-2 -translate-y-0.5">
               <InfoTooltip text={DISCLAIMER_SHORT} size="md" />

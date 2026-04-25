@@ -68,21 +68,23 @@ html, body {
 
 /* Typographic scale — big, confident, editorial.
    All measured against a 16px base; we lean on Mona Sans's excellent
-   display-weight performance so headings can be tightly tracked. */
+   display-weight performance so headings can be tightly tracked.
+   Weights: h1=800 (extrabold), h2=700 (bold), h3=700 (bold).
+   h1 uses the tightest tracking; h2/h3 use the normal tight track. */
 h1, h2, h3, .serif, .display {
   font-family: "Mona Sans", Inter, sans-serif;
   letter-spacing: -0.022em;
   color: var(--core-ink);
 }
-h1 { font-weight: 700; }
+h1 { font-weight: 800; letter-spacing: -0.028em; }
 h2 { font-weight: 700; }
-h3 { font-weight: 600; }
+h3 { font-weight: 700; }
 
-/* The old `.serif` class is used throughout the app for editorial display
-   text. Redefining it in terms of Mona Sans display weight keeps the feel
-   cohesive while inheriting the brand font. */
-.serif      { font-family: "Mona Sans", Inter, sans-serif; letter-spacing: -0.022em; font-weight: 700; }
-.serif-arvo { font-family: "Arvo", Georgia, serif; letter-spacing: -0.01em; }
+/* .serif — Arvo serif for editorial display text (page titles, big numbers).
+   Gives a clear typographic distinction from Mona Sans body copy.
+   .serif-display — Mona Sans extrabold display variant (kept for compat). */
+.serif         { font-family: "Arvo", Georgia, serif; letter-spacing: -0.01em; font-weight: 700; }
+.serif-display { font-family: "Mona Sans", Inter, sans-serif; letter-spacing: -0.022em; font-weight: 800; }
 
 /* ---------------------------------------------------------------------
    Layout primitives
@@ -93,8 +95,15 @@ h3 { font-weight: 600; }
    scroll, small cards get single-column. */
 @media (max-width: 640px) {
   .card { border-radius: 10px; }
-  table.data-table th, table.data-table td { @apply py-2.5 px-3; }
+  /* Slightly tighter cell padding on small screens so tables breathe
+     without needing horizontal scroll as early. */
+  table.data-table th, table.data-table td { @apply py-2 px-3; }
   .container-core { @apply px-4; }
+}
+
+/* Prevent 16px-min iOS zoom on select/input focus */
+@media (max-width: 768px) {
+  input, select, textarea { font-size: 16px !important; }
 }
 
 /* Section that wants some presence — slight surface, full-bleed feel */

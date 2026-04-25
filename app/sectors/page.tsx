@@ -122,7 +122,7 @@ export default function SectorsPage() {
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
         <div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted">Earnings Tracker</div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tightest mt-1">
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tightest mt-1">
             Sector view
             <span className="inline-block align-middle ml-2 -translate-y-0.5">
               <InfoTooltip text={DISCLAIMER_SHORT} size="md" />

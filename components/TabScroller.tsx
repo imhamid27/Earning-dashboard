@@ -53,7 +53,7 @@ export default function TabScroller({ children }: { children: ReactNode }) {
             type="button"
             aria-label="Scroll dates left"
             onClick={() => nudge("left")}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white border border-core-line shadow-sm flex items-center justify-center text-core-ink hover:border-core-pink hover:text-core-pink transition-colors"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white border border-core-line shadow-sm flex items-center justify-center text-core-ink hover:border-core-pink hover:text-core-pink transition-colors"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -70,7 +70,7 @@ export default function TabScroller({ children }: { children: ReactNode }) {
             type="button"
             aria-label="Scroll dates right"
             onClick={() => nudge("right")}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white border border-core-line shadow-sm flex items-center justify-center text-core-ink hover:border-core-pink hover:text-core-pink transition-colors"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white border border-core-line shadow-sm flex items-center justify-center text-core-ink hover:border-core-pink hover:text-core-pink transition-colors"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M5 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
