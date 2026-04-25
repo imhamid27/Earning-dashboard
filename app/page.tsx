@@ -371,10 +371,18 @@ export default function DashboardPage() {
   }, [filed]);
 
   // Rolling leaders — top/bottom 5 by profit_yoy this quarter.
-  // Excludes sign-flip sentinels from ranking (9999/-9999 would always dominate).
+  // Sentinels (TURNED_PROFITABLE=9999 / TURNED_LOSS_MAKING=-9999) ARE included
+  // — they display as "Turned profitable" / "Turned loss-making" which is
+  // informative in this context. Regular values > 9.99 (> 999% growth) are
+  // excluded because they would render as "n/m" and are usually tiny-base
+  // noise, not meaningful outperformers.
   const rollingLeaders = useMemo(() => {
     const withGrowth = filed
-      .filter((r) => r.profit_yoy != null && Math.abs(r.profit_yoy) < 9000)
+      .filter((r) => {
+        if (r.profit_yoy == null) return false;
+        if (r.profit_yoy === TURNED_PROFITABLE || r.profit_yoy === TURNED_LOSS_MAKING) return true;
+        return Math.abs(r.profit_yoy) <= 9.99;
+      })
       .sort((a, b) => (b.profit_yoy ?? 0) - (a.profit_yoy ?? 0));
     if (withGrowth.length < 4) return null;
     return {
@@ -636,70 +644,78 @@ export default function DashboardPage() {
         </p>
       ) : null}
 
-      {/* Rolling leaders — top / bottom performers this quarter */}
-      {rollingLeaders ? (
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 max-w-3xl">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2.5">
-              Top performers · {quarter}
-            </div>
-            <div className="space-y-1.5">
-              {rollingLeaders.top.map((r) => (
-                <div key={r.ticker} className="flex items-baseline justify-between gap-3 text-[13px]">
-                  <Link
-                    href={`/company/${encodeURIComponent(r.ticker)}`}
-                    className="truncate font-medium hover:text-core-pink min-w-0"
-                    title={r.company_name}
-                  >
-                    {shortName(r.company_name)}
-                  </Link>
-                  <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
-                    {formatYoY(r.profit_yoy)}
-                  </span>
+      {/* Rolling leaders + Next big names — rendered as one anchored block
+          with a border-t to separate it from the pulse lines above. The two
+          columns get a vertical divider on desktop; on mobile they stack. */}
+      {(rollingLeaders || nextBigNames.length > 0) ? (
+        <div className="mt-5 border-t border-core-line pt-4">
+          {rollingLeaders ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-core-line gap-y-5">
+              {/* Top performers */}
+              <div className="sm:pr-8">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2.5">
+                  Top performers · {quarter}
                 </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2.5">
-              Weakest performers · {quarter}
-            </div>
-            <div className="space-y-1.5">
-              {rollingLeaders.bottom.map((r) => (
-                <div key={r.ticker} className="flex items-baseline justify-between gap-3 text-[13px]">
-                  <Link
-                    href={`/company/${encodeURIComponent(r.ticker)}`}
-                    className="truncate font-medium hover:text-core-pink min-w-0"
-                    title={r.company_name}
-                  >
-                    {shortName(r.company_name)}
-                  </Link>
-                  <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
-                    {formatYoY(r.profit_yoy)}
-                  </span>
+                <div className="space-y-2">
+                  {rollingLeaders.top.map((r) => (
+                    <div key={r.ticker} className="flex items-baseline justify-between gap-2 text-[13px]">
+                      <Link
+                        href={`/company/${encodeURIComponent(r.ticker)}`}
+                        className="truncate hover:text-core-pink min-w-0"
+                        title={r.company_name}
+                      >
+                        {shortName(r.company_name)}
+                      </Link>
+                      <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
+                        {formatYoY(r.profit_yoy)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              {/* Weakest performers */}
+              <div className="sm:pl-8">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2.5">
+                  Weakest performers · {quarter}
+                </div>
+                <div className="space-y-2">
+                  {rollingLeaders.bottom.map((r) => (
+                    <div key={r.ticker} className="flex items-baseline justify-between gap-2 text-[13px]">
+                      <Link
+                        href={`/company/${encodeURIComponent(r.ticker)}`}
+                        className="truncate hover:text-core-pink min-w-0"
+                        title={r.company_name}
+                      >
+                        {shortName(r.company_name)}
+                      </Link>
+                      <span className={`tabular-nums shrink-0 text-[12px] font-semibold ${pctToneClass(r.profit_yoy)}`}>
+                        {formatYoY(r.profit_yoy)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      ) : null}
+          ) : null}
 
-      {/* Next big names — upcoming bellwethers, shown as a tight one-liner */}
-      {nextBigNames.length > 0 ? (
-        <p className="mt-4 text-[13px] text-core-muted">
-          <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Next:</span>
-          {nextBigNames.map((u, i) => (
-            <span key={u.ticker}>
-              {i > 0 ? <span className="mx-1.5 text-core-line-2">·</span> : null}
-              <Link href={`/company/${encodeURIComponent(u.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink">
-                {shortName(u.company_name)}
-              </Link>
-              {u.next_result_date ? (
-                <span className="text-core-muted text-[12px] ml-1">({formatDate(u.next_result_date)})</span>
-              ) : null}
-            </span>
-          ))}
-        </p>
+          {/* Next big names — sits below the leaders, separated by a rule */}
+          {nextBigNames.length > 0 ? (
+            <p className={`text-[13px] text-core-muted ${rollingLeaders ? "mt-4 pt-3 border-t border-core-line" : ""}`}>
+              <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Next:</span>
+              {nextBigNames.map((u, i) => (
+                <span key={u.ticker}>
+                  {i > 0 ? <span className="mx-1.5 text-core-line-2">·</span> : null}
+                  <Link href={`/company/${encodeURIComponent(u.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink">
+                    {shortName(u.company_name)}
+                  </Link>
+                  {u.next_result_date ? (
+                    <span className="text-core-muted text-[12px] ml-1">({formatDate(u.next_result_date)})</span>
+                  ) : null}
+                </span>
+              ))}
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <DotDashDivider />
