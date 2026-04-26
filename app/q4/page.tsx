@@ -248,7 +248,7 @@ export default function Q4Page() {
                         {filed.map((c) => (
                           <tr key={c.ticker}>
                             <td>
-                              <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
+                              <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink whitespace-nowrap">
                                 {c.company_name}
                               </Link>
                               <div className="text-[11px] text-core-muted flex items-center gap-2 flex-wrap">
@@ -341,7 +341,7 @@ export default function Q4Page() {
                       {(activeGroup.companies as ScheduledCompany[]).map((c) => (
                         <tr key={c.ticker}>
                           <td>
-                            <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink">
+                            <Link href={`/company/${encodeURIComponent(c.ticker)}`} className="font-semibold hover:text-core-pink whitespace-nowrap">
                               {c.company_name}
                             </Link>
                             <div className="text-[11px] text-core-muted flex items-center gap-2 flex-wrap">

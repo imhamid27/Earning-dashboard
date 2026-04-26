@@ -92,12 +92,9 @@ export default function CompanySearch({
           value={q}
           onChange={(e) => { setQ(e.target.value); setSelected(null); setRefreshMsg(null); }}
           placeholder={placeholder}
-          className={`w-full bg-white border border-core-line pl-11 pr-4 md:pr-32 rounded-md focus:outline-none focus:border-core-ink focus:ring-2 focus:ring-core-pink/20 transition
+          className={`w-full bg-white border border-core-line pl-11 pr-4 rounded-md focus:outline-none focus:border-core-ink focus:ring-2 focus:ring-core-pink/20 transition
             ${compact ? "py-2.5 text-sm" : "py-3.5 text-[15px]"}`}
         />
-        <kbd className="hidden md:inline-flex absolute right-4 top-1/2 -translate-y-1/2 chip chip-ink text-[10px] pointer-events-none">
-          Type to search
-        </kbd>
       </div>
 
       {/* Autocomplete dropdown */}

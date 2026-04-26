@@ -9,8 +9,6 @@ import FreshnessIndicator from "@/components/FreshnessIndicator";
 import EmptyState from "@/components/EmptyState";
 import IntelligenceStrip from "@/components/IntelligenceStrip";
 import InfoTooltip from "@/components/InfoTooltip";
-import LiveCommentary from "@/components/LiveCommentary";
-import ExpertQuotes from "@/components/ExpertQuotes";
 import { DISCLAIMER_SHORT, DISCLAIMER_MARKETS } from "@/lib/disclaimer";
 import { trackLiveBandTab } from "@/lib/analytics";
 import { formatINR, formatDate, formatPct, formatYoY, pctToneClass } from "@/lib/format";
@@ -748,7 +746,7 @@ export default function DashboardPage() {
           <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-4">
             Earnings breadth · {quarter}
             {earningsBreadth ? (
-              <span className="ml-3 normal-case tracking-normal text-core-muted/70">
+              <span className="hidden sm:inline ml-3 normal-case tracking-normal text-core-muted/70">
                 ({earningsBreadth.total} companies with profit data)
               </span>
             ) : null}
@@ -786,9 +784,9 @@ export default function DashboardPage() {
 
           {/* Narrative + sector signal + weekly summary — supporting row */}
           {(earningsNarrative || earningsPulse || weeklySummary) ? (
-            <div className={`flex flex-wrap items-start justify-between gap-x-6 gap-y-3 ${earningsBreadth ? "pt-4 border-t border-core-line" : ""}`}>
+            <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 ${earningsBreadth ? "pt-4 border-t border-core-line" : ""}`}>
               {/* Left: narrative + weekly */}
-              <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 {earningsNarrative ? (
                   <p className="text-[12px] md:text-[13px] text-core-muted leading-snug max-w-2xl">
                     {earningsNarrative}
@@ -971,18 +969,6 @@ export default function DashboardPage() {
       <DotDashDivider />
 
       {/* =================================================================
-          LIVE COMMENTARY + EXPERT SPEAKS — Parts 5 & 6.
-          Two fixed-height (300px desktop / 250px mobile) scrollable cards
-          side-by-side on large screens, stacked on mobile.
-          Both hide themselves when the underlying table is empty so the
-          page never renders blank placeholder boxes.
-          ================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-        <LiveCommentary />
-        <ExpertQuotes />
-      </div>
-
-      {/* =================================================================
           3. FIND A COMPANY — search + full table. Primary content
           after the live band. Quarter selector lives here (only place
           readers browse historical data).
@@ -1062,10 +1048,10 @@ export default function DashboardPage() {
                     onChange={(e) => setAllSort(e.target.value as typeof allSort)}
                     className="border border-core-line bg-white text-xs px-2.5 py-1.5 rounded-md normal-case text-core-ink font-semibold focus:outline-none focus:border-core-pink"
                   >
-                    <option value="revenue">Revenue (high → low)</option>
-                    <option value="profit_yoy">Profit growth (best first)</option>
-                    <option value="result_date">Announcement date (recent first)</option>
-                    <option value="sector">Sector (A → Z)</option>
+                    <option value="revenue">Revenue ↓</option>
+                    <option value="profit_yoy">Profit YoY ↓</option>
+                    <option value="result_date">Date (recent first)</option>
+                    <option value="sector">Sector A–Z</option>
                   </select>
                 </label>
               </div>

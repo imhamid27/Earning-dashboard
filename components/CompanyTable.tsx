@@ -170,7 +170,7 @@ export default function CompanyTable({
                 <td>
                   <Link
                     href={`/company/${encodeURIComponent(r.ticker)}`}
-                    className="font-semibold text-core-ink hover:text-core-pink tracking-tight"
+                    className="font-semibold text-core-ink hover:text-core-pink tracking-tight whitespace-nowrap"
                   >
                     {r.company_name}
                   </Link>

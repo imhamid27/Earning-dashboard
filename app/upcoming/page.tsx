@@ -247,7 +247,7 @@ export default function UpcomingPage() {
                           className={BELLWETHERS.has(r.ticker) ? "bg-core-surface" : undefined}
                         >
                           <td>
-                            <Link href={`/company/${encodeURIComponent(r.ticker)}`} className="font-semibold hover:text-core-pink">
+                            <Link href={`/company/${encodeURIComponent(r.ticker)}`} className="font-semibold hover:text-core-pink whitespace-nowrap">
                               {r.company_name}
                             </Link>
                             {BELLWETHERS.has(r.ticker) ? (
