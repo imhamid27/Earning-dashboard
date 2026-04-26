@@ -47,7 +47,7 @@ on:
         required: true
         default: 'hourly'
         type: choice
-        options: [daily, hourly, backfill]
+        options: [daily, hourly, backfill, commentary]
 
 # Serialise runs of this workflow — queued, not dropped. Previously a
 # long-running schedule tick would cause GitHub Actions to skip any
@@ -171,6 +171,13 @@ jobs:
               # Full commentary refresh on Sunday — regenerates all rows
               # for the current quarter so any data corrections from the
               # week are reflected in the live commentary block.
+              python scripts/generate_commentary.py --all
+              ;;
+            commentary)
+              # Lightweight commentary-only pass. Use this when you want
+              # to regenerate all commentary without running the full
+              # ingestion sweep. Completes in ~5-8 minutes; safe to run
+              # alongside the hourly schedule.
               python scripts/generate_commentary.py --all
               ;;
             *)
