@@ -281,10 +281,17 @@ def run(args: argparse.Namespace) -> None:
             "ticker, quarter_label, revenue, net_profit, "
             "data_quality_status, fetched_at, updated_at, source"
         )
-        .in_("data_quality_status", ["ok", "partial"])
         .order("updated_at", desc=True)
         .limit(200)
     )
+
+    # In windowed mode (--since-hours) only process quality rows so we
+    # don't burn commentary slots on rows with no numbers. In --all mode
+    # we trust build_sentence() to return None when data is truly absent —
+    # this ensures rows whose status was downgraded to "missing" by a later
+    # re-fetch still get commentary if they have revenue/profit values.
+    if cutoff:
+        q = q.in_("data_quality_status", ["ok", "partial"])
 
     if args.quarter:
         q = q.eq("quarter_label", args.quarter)
