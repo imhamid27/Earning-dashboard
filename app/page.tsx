@@ -216,18 +216,23 @@ export default function DashboardPage() {
     [filed, todayIso]
   );
 
-  // ALL PAST REPORTERS — every filed company whose result_date is before today,
-  // sorted newest-date first then revenue-desc within the same date. This is
-  // what the "Recent" tab shows so readers can scroll through ALL previous
-  // filings, not just a single calendar day.
+  // MOST RECENT PAST FILING DATE — the last calendar day with actual results.
+  // On weekends / holidays this looks back further than literal yesterday so
+  // Monday readers see Friday's companies, not an empty Sunday.
+  const recentFilingDate = useMemo(() => {
+    const past = filed
+      .map((r) => r.result_date)
+      .filter((d): d is string => !!d && d < todayIso);
+    if (past.length === 0) return yesterdayIso;
+    return past.reduce((a, b) => (a > b ? a : b));
+  }, [filed, todayIso, yesterdayIso]);
+
+  // Companies that filed on that most-recent past date, revenue-desc.
   const yesterdayReporters = useMemo(
     () => filed
-      .filter((r) => r.result_date && r.result_date < todayIso)
-      .sort((a, b) => {
-        const dc = (b.result_date ?? "").localeCompare(a.result_date ?? "");
-        return dc !== 0 ? dc : (b.revenue ?? 0) - (a.revenue ?? 0);
-      }),
-    [filed, todayIso]
+      .filter((r) => r.result_date === recentFilingDate)
+      .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0)),
+    [filed, recentFilingDate]
   );
 
   // Pending today = has an event today but no numbers. Pulled from
@@ -732,7 +737,7 @@ export default function DashboardPage() {
         restOfWeek={restOfWeek}
         bellwethers={bellwethers}
         todayIso={todayIso}
-        yesterdayIso={yesterdayIso}
+        yesterdayIso={recentFilingDate}
         nextUp={tomorrowReporters[0]}
         todayChange={todayChange}
         bigNamesToday={bigNamesToday}
@@ -1208,6 +1213,11 @@ function TodayBand({
   const dayDate = new Date(yy, (mm ?? 1) - 1, dd ?? 1);
   const dayOfWeek = dayDate.toLocaleDateString("en-US", { weekday: "long" });
   const dayShort  = dayDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  // Format the recent date for display (e.g. "25 Apr")
+  const [yy2, mm2, dd2] = yesterdayIso.split("-").map(Number);
+  const recentDate = new Date(yy2, (mm2 ?? 1) - 1, dd2 ?? 1);
+  const recentShort = recentDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
   const hasActivity = filedCount > 0 || pending.length > 0;
 
   const counts = {
@@ -1269,7 +1279,7 @@ function TodayBand({
                 keeps the nav clean mid-quarter when we're deep into
                 today's reporting. */}
             {counts.yesterday > 0 ? (
-              <TabButton active={tab === "yesterday"} onClick={() => setTab("yesterday")} label="Recent" count={counts.yesterday} />
+              <TabButton active={tab === "yesterday"} onClick={() => setTab("yesterday")} label={recentShort} count={counts.yesterday} />
             ) : null}
             <TabButton active={tab === "today"}       onClick={() => setTab("today")}       label="Today"       count={counts.today} />
             <TabButton active={tab === "tomorrow"}    onClick={() => setTab("tomorrow")}    label="Tomorrow"    count={counts.tomorrow} />
@@ -1326,11 +1336,11 @@ function TodayBand({
           <>
             <div className="mb-4 pb-3 border-b border-white/10 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-[12px]">
               <span className="text-[9px] uppercase tracking-[0.22em] text-white/50 font-semibold">
-                Previously filed
+                {recentShort}
               </span>
               <span className="text-white">
                 <span className="font-semibold tabular-nums">{yesterday.length}</span>
-                {" "}{yesterday.length === 1 ? "company" : "companies"} reported this quarter
+                {" "}{yesterday.length === 1 ? "company" : "companies"} reported
               </span>
               {filedCount === 0 ? (
                 <span className="ml-auto text-white/50 italic">
