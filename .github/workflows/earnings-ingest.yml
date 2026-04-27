@@ -7,16 +7,25 @@ name: earnings-ingest
 #
 #   daily     — 3× weekdays at 08:00 / 15:00 / 21:00 IST
 #               (02:30 / 09:30 / 15:30 UTC)
-#               Scrapes NSE + BSE + Moneycontrol calendars and triggers
-#               Screener for freshly-announced companies. Indian filings
-#               come in waves (pre-market + post-close + late evening) so
-#               3× coverage catches every window.
+#               Scrapes NSE + BSE + Moneycontrol calendars and triggers a
+#               quick results sweep immediately after — so announcements
+#               discovered by the calendar are fetched in the same run
+#               rather than waiting for the next hourly slot.
+#               The 21:00 IST slot is especially important: it fires right
+#               as post-market board meetings start publishing filings.
 #               Also refreshes expert quotes (seeds + ages out stale ones).
 #
-#   hourly    — top of every hour, 04:00–16:00 UTC (09:30–21:30 IST) weekdays
-#               Pulls XBRL filings for events due today.
-#               Runs generate_commentary.py on any rows updated in the
-#               last 4 hours so Live Commentary is always fresh.
+#   hourly    — top of every hour, 04:00–19:00 UTC (09:30 IST – 00:30 IST)
+#               weekdays. Extended from the previous 16:00 UTC cutoff to
+#               cover the late-evening Indian filing window (companies
+#               regularly file between 17:00–19:00 UTC / 22:30–00:30 IST).
+#               Pulls XBRL filings for events due today/recently.
+#               Runs generate_commentary.py on rows updated in last 4h.
+#
+#   morning   — 02:00 UTC (07:30 IST) weekdays
+#               Early catch-up before morning viewers arrive. Picks up
+#               any filings that landed between 19:00 UTC yesterday and
+#               now (overnight + very-late filers, ~8h window).
 #
 #   backfill  — Sunday 18:00 UTC (23:30 IST)
 #               Light weekly sweep + gap fill + full commentary refresh.
@@ -28,18 +37,17 @@ name: earnings-ingest
 
 on:
   schedule:
-    # daily calendar refresh × 3 (IST 08:00, 15:00, 21:00)
-    - cron:  '30 2,9,15 * * 1-5'
-    # hourly sweeps (top of every hour, 04:00–16:00 UTC weekdays). The
-    # previous every-30-min cadence caused GitHub Actions to skip slots
-    # whenever a run exceeded 30 min — which is common now that the
-    # universe is ~1,080 companies and an hourly pass averages ~16 min.
-    # Top-of-hour gives a comfortable buffer while keeping freshness
-    # acceptable (results drop in bursts around 09:00 / 15:30 / 18:00
-    # IST, all of which are covered by the daily calendar slots above).
-    - cron:  '0 4-16 * * 1-5'
-    # weekly backfill
-    - cron:  '0 18 * * 0'
+    # Calendar refresh × 3 (IST 08:00, 15:00, 21:00 = 02:30, 09:30, 15:30 UTC)
+    # Each daily run also does a quick results sweep after the calendar scripts.
+    - cron: '30 2,9,15 * * 1-5'
+    # Hourly result sweeps — extended to 19:00 UTC (00:30 IST) to cover
+    # late-evening Indian filings (was 16:00 UTC / 21:30 IST).
+    - cron: '0 4-19 * * 1-5'
+    # Early-morning catch-up: 02:00 UTC (07:30 IST) weekdays — processes
+    # anything that filed overnight before morning readers open the dashboard.
+    - cron: '0 2 * * 1-5'
+    # Weekly backfill: Sunday 18:00 UTC (23:30 IST)
+    - cron: '0 18 * * 0'
   workflow_dispatch:
     inputs:
       mode:
@@ -106,7 +114,8 @@ jobs:
           fi
           case "${{ github.event.schedule }}" in
             '30 2,9,15 * * 1-5')  echo "mode=daily"    >> "$GITHUB_OUTPUT" ;;
-            '0 4-16 * * 1-5')     echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
+            '0 4-19 * * 1-5')     echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
+            '0 2 * * 1-5')        echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
             '0 18 * * 0')         echo "mode=backfill" >> "$GITHUB_OUTPUT" ;;
             *)                    echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
           esac
@@ -118,17 +127,22 @@ jobs:
           set -e
           case "$MODE" in
             daily)
-              # Scope: NIFTY 500 only. --include-untracked was removed
-              # on 2026-04-20 after confirming that BSE small-cap shells
-              # had no usable data source (no NSE XBRL, not on Screener)
-              # and were tripping the hourly cron with empty-result
-              # failures. Calendars silently skip untracked scrips.
+              # Phase 1 — Calendar refresh. Scrape NSE + BSE + Moneycontrol
+              # for today's board meetings and seed announcement_events.
+              # --include-untracked removed on 2026-04-20 (BSE small-cap
+              # shells had no usable XBRL/Screener source).
               python scripts/nse_calendar.py
               python scripts/bse_calendar.py
               python scripts/moneycontrol_calendar.py
-              # Expert quotes: seed starter set on first run (idempotent),
-              # then age out quotes older than 90 days.
+              # Expert quotes: seed starter set (idempotent) + age out >90d.
               python scripts/fetch_expert_quotes.py --seed --deactivate-old 90
+              # Phase 2 — Immediate result sweep. Fetch numbers for any
+              # announcements discovered in Phase 1 WITHOUT waiting for the
+              # next hourly slot. Critical for the 21:00 IST daily run which
+              # fires right as post-market board meetings start publishing.
+              python scripts/nse_results.py
+              python scripts/bse_results.py
+              python scripts/fetch_results.py
               ;;
             hourly)
               # Sweep 1: poll every NIFTY-500 company for fresh NSE XBRL
