@@ -216,15 +216,25 @@ export default function DashboardPage() {
     [filed, todayIso]
   );
 
-  // YESTERDAY — companies whose result landed yesterday. Used as a fallback
-  // default tab in the LIVE band so the reader lands on filled content
-  // first thing in the morning, before today's filings have started
-  // coming in.
+  // RECENT FILING DATE — the most recent past day with actual filed results.
+  // On weekends and holidays this looks back further than the literal calendar
+  // yesterday, so Monday readers see Friday's filings instead of an empty
+  // Sunday tab. Falls back to yesterdayIso only when no past filings exist yet.
+  const recentFilingDate = useMemo(() => {
+    const past = filed
+      .map((r) => r.result_date)
+      .filter((d): d is string => !!d && d < todayIso);
+    if (past.length === 0) return yesterdayIso;
+    return past.reduce((a, b) => (a > b ? a : b));
+  }, [filed, todayIso, yesterdayIso]);
+
+  // RECENT REPORTERS — companies whose result landed on the most recent
+  // past filing day (not necessarily calendar yesterday).
   const yesterdayReporters = useMemo(
     () => filed
-      .filter((r) => r.result_date === yesterdayIso)
+      .filter((r) => r.result_date === recentFilingDate)
       .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0)),
-    [filed, yesterdayIso]
+    [filed, recentFilingDate]
   );
 
   // Pending today = has an event today but no numbers. Pulled from
@@ -729,7 +739,7 @@ export default function DashboardPage() {
         restOfWeek={restOfWeek}
         bellwethers={bellwethers}
         todayIso={todayIso}
-        yesterdayIso={yesterdayIso}
+        yesterdayIso={recentFilingDate}
         nextUp={tomorrowReporters[0]}
         todayChange={todayChange}
         bigNamesToday={bigNamesToday}
@@ -1208,6 +1218,16 @@ function TodayBand({
   const [yy2, mm2, dd2] = yesterdayIso.split("-").map(Number);
   const yesterdayDate = new Date(yy2, (mm2 ?? 1) - 1, dd2 ?? 1);
   const yesterdayShort = yesterdayDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  // Tab label: "Yesterday" when it's the literal calendar day before today,
+  // otherwise show the weekday name so readers know exactly which day they're viewing.
+  const recentTabLabel = (() => {
+    const [ty, tm, td] = todayIso.split("-").map(Number);
+    const diffDays = Math.round(
+      (new Date(ty, (tm ?? 1) - 1, td ?? 1).getTime() - yesterdayDate.getTime()) / 86_400_000
+    );
+    if (diffDays === 1) return "Yesterday";
+    return yesterdayDate.toLocaleDateString("en-US", { weekday: "long" }); // e.g. "Friday"
+  })();
   const hasActivity = filedCount > 0 || pending.length > 0;
 
   const counts = {
@@ -1269,7 +1289,7 @@ function TodayBand({
                 keeps the nav clean mid-quarter when we're deep into
                 today's reporting. */}
             {counts.yesterday > 0 ? (
-              <TabButton active={tab === "yesterday"}    onClick={() => setTab("yesterday")}    label="Yesterday"   count={counts.yesterday} />
+              <TabButton active={tab === "yesterday"}    onClick={() => setTab("yesterday")}    label={recentTabLabel}   count={counts.yesterday} />
             ) : null}
             <TabButton active={tab === "today"}       onClick={() => setTab("today")}       label="Today"       count={counts.today} />
             <TabButton active={tab === "tomorrow"}    onClick={() => setTab("tomorrow")}    label="Tomorrow"    count={counts.tomorrow} />
