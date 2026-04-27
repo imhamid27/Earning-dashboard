@@ -84,7 +84,9 @@ create index if not exists idx_logs_status on public.fetch_logs(fetch_status);
 -- Triggers: keep updated_at fresh
 -- ---------------------------------------------------------------------
 create or replace function public.touch_updated_at() returns trigger
-language plpgsql as $$
+language plpgsql
+set search_path = ''   -- pin search_path; prevents search-path injection attacks
+as $$
 begin
   new.updated_at := now();
   return new;
@@ -161,7 +163,12 @@ drop policy if exists "public read quarterly" on public.quarterly_financials;
 create policy "public read quarterly"
   on public.quarterly_financials for select using (true);
 
--- fetch_logs intentionally has no SELECT policy — not exposed to the client.
+-- fetch_logs is internal-only. Explicit deny-all policy silences the
+-- "RLS Enabled No Policy" advisor suggestion and documents the intent.
+-- The service role key (used by Python scripts) bypasses RLS so writes work.
+drop policy if exists "no public access" on public.fetch_logs;
+create policy "no public access"
+  on public.fetch_logs for all using (false);
 
 -- ---------------------------------------------------------------------
 -- Seed: top-50 starter companies (expand via lib/tickers.ts)
