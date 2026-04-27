@@ -436,11 +436,11 @@ export default function DashboardPage() {
   // Factual only; never speculates; hides when data is thin.
   const earningsNarrative = useMemo((): string | null => {
     if (!summary || filed.length < 10) return null;
-    const { companies_reported: rep, companies_tracked: tracked, avg_profit_yoy: avg } = summary;
+    const { companies_tracked: tracked, avg_profit_yoy: avg } = summary;
     const parts: string[] = [];
 
-    if (rep > 0 && tracked > 0)
-      parts.push(`${rep} of ${tracked} companies in ${quarter}`);
+    if (filed.length > 0 && tracked > 0)
+      parts.push(`${filed.length} of ${tracked} companies in ${quarter}`);
 
     if (avg != null && Math.abs(avg) <= 9.99) {
       const absStr = `${Math.abs(avg * 100).toFixed(1)}%`;
@@ -707,7 +707,7 @@ export default function DashboardPage() {
       <IntelligenceStrip
         quarter={summary?.quarter ?? quarter}
         companies_tracked={summary?.companies_tracked ?? 0}
-        companies_reported={summary?.companies_reported ?? 0}
+        companies_reported={filed.length}
         avg_revenue_yoy={summary?.avg_revenue_yoy ?? null}
         avg_profit_yoy={summary?.avg_profit_yoy ?? null}
         biggestGainer={surpriseMovers?.up ?? null}
