@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
-import { jsonOk, jsonError, cleanQuarterLabel } from "@/lib/api";
+import { jsonOk, jsonError, cleanQuarterLabel, todayIST, daysAgoIST } from "@/lib/api";
 import { pctChange, TURNED_PROFITABLE, TURNED_LOSS_MAKING } from "@/lib/growth";
 
 // GET /api/summary?quarter=Q4 FY26
@@ -37,8 +37,8 @@ export async function GET(req: NextRequest) {
   // used rows.length from quarterly_financials — that only counts companies
   // whose NUMBERS have landed, undercounting by a factor of 3–4× during the
   // first wave of a reporting season.
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  const todayIso = todayIST();
+  const ninetyDaysAgo = daysAgoIST(90);
   const { data: announcedEvents } = await sb
     .from("announcement_events")
     .select("ticker,companies!inner(is_active)")

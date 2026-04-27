@@ -29,6 +29,24 @@ export function jsonError(message: string, status = 400) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// IST date helpers — all date comparisons in API routes must use IST so that
+// "today" on the server matches "today" in India (UTC+5:30). Without this,
+// from 00:00–05:29 IST the server thinks it's still the previous day, and
+// filings that landed after midnight IST won't appear in the Today band.
+// ---------------------------------------------------------------------------
+
+/** Current date in IST as a YYYY-MM-DD string. */
+export function todayIST(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
+/** A date N calendar days before today (IST) as YYYY-MM-DD. */
+export function daysAgoIST(days: number): string {
+  const d = new Date(Date.now() - days * 86_400_000);
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
 // Validate a ticker string. Accepts letters, digits, dot, dash, ampersand.
 // Rejects anything else — prevents path-traversal into Supabase filter
 // expressions + shell metacharacters into spawned Python scripts.

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
-import { jsonOk, jsonError, cleanQuarterLabel } from "@/lib/api";
+import { jsonOk, jsonError, cleanQuarterLabel, todayIST, daysAgoIST } from "@/lib/api";
 import { pctChange } from "@/lib/growth";
 
 // GET /api/q4-announcements?quarter=Q4 FY26
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
   // (with blank figures — the StatusBadge then reads "Announced, numbers
   // to follow" in the UI).
   // ---------------------------------------------------------------------
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayIST();
 
   // Key the quarterly rows by ticker so we can look up numbers in O(1).
   const numbersByTicker = new Map<string, Row>();
@@ -144,7 +144,7 @@ export async function GET(req: NextRequest) {
   // belong to the target quarter's reporting season. For Q4 FY26 (Mar-end)
   // the filing window runs mid-April through June, so 90 days back from
   // today is a safe upper bound.
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  const ninetyDaysAgo = daysAgoIST(90);
   const { data: pastEvents } = await sb
     .from("announcement_events")
     .select("ticker,announcement_date,raw_json,companies!inner(company_name,sector,industry,is_active)")

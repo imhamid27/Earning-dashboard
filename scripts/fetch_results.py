@@ -53,7 +53,7 @@ from nse_results import (
     write_quarter as nse_write_quarter,
     log_fetch as nse_log_fetch,
 )
-from nse_common import nse_get_text
+from nse_common import nse_get_text, today_ist
 from screener_results import (
     screener_session,
     fetch_company_html,
@@ -88,8 +88,8 @@ def find_gap_tickers(sb, quarter_label: str, window_days: int = 90) -> list[dict
     if not qe:
         return []
 
-    today = date.today()
-    since = (today - timedelta(days=window_days)).isoformat()
+    today_str = today_ist()
+    since = (date.fromisoformat(today_str) - timedelta(days=window_days)).isoformat()
 
     # 1. Every ticker whose announcement has been CONFIRMED in the window.
     # Include both 'fetched' and 'missed' — nse_results.py marks an event
@@ -100,7 +100,7 @@ def find_gap_tickers(sb, quarter_label: str, window_days: int = 90) -> list[dict
         .select("ticker,announcement_date") \
         .in_("status", ["fetched", "missed"]) \
         .gte("announcement_date", since) \
-        .lte("announcement_date", today.isoformat()) \
+        .lte("announcement_date", today_str) \
         .execute()
     announced = {e["ticker"] for e in (events.data or [])}
     if not announced:

@@ -17,7 +17,11 @@ import argparse
 import os
 import sys
 import traceback
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+def _today_ist() -> str:
+    return datetime.now(_IST).date().isoformat()
 from typing import Any
 
 try:
@@ -155,7 +159,7 @@ def main() -> int:
             ).execute()
 
     # Refresh companies.next_result_date to the nearest upcoming pending event.
-    today_iso = date.today().isoformat()
+    today_iso = _today_ist()
     nearest = sb.table("announcement_events") \
         .select("ticker,announcement_date") \
         .gte("announcement_date", today_iso) \

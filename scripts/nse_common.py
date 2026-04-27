@@ -31,7 +31,25 @@ from __future__ import annotations
 
 import os
 import time
+from datetime import datetime, timezone, timedelta
 from typing import Any
+
+# ---------------------------------------------------------------------------
+# IST date helpers — GitHub Actions runners are UTC, but all Indian exchange
+# calendars store dates in IST (UTC+5:30). Use these instead of date.today()
+# so comparisons against announcement_date work correctly across the midnight
+# IST boundary (18:30–19:00 UTC = 00:00–00:30 IST next day).
+# ---------------------------------------------------------------------------
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+def today_ist() -> str:
+    """Return today's date in IST as a YYYY-MM-DD string."""
+    return datetime.now(_IST).date().isoformat()
+
+def days_ago_ist(days: int) -> str:
+    """Return the date N days ago (IST) as YYYY-MM-DD."""
+    return (datetime.now(_IST) - timedelta(days=days)).date().isoformat()
 
 try:
     from curl_cffi import requests as cffi_requests

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
-import { jsonOk, jsonError } from "@/lib/api";
+import { jsonOk, jsonError, todayIST } from "@/lib/api";
 
 // GET /api/upcoming
 // Scheduled earnings announcements within the next 60 days.
@@ -8,7 +8,7 @@ import { jsonOk, jsonError } from "@/lib/api";
 // legacy `companies.next_result_date` column for companies without a feed.
 export async function GET(_req: NextRequest) {
   const sb = supabaseServer();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIST();
 
   // Pull pending announcement events (announcement_events is populated from
   // exchange calendars; the internal `source` field is not surfaced in the

@@ -30,7 +30,11 @@ import re
 import subprocess
 import sys
 import traceback
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+def _today_ist() -> date:
+    return datetime.now(_IST).date()
 from pathlib import Path
 from typing import Any
 
@@ -141,7 +145,7 @@ def main() -> int:
     # day only* — the fromDate/toDate in the JSON response is just the UI's
     # filter window. So we iterate every calendar day in our range.
     session = mc_session()
-    today = date.today()
+    today = _today_ist()
     anchor_dates = [
         (today - timedelta(days=i)).isoformat()
         for i in range(args.back, -args.days - 1, -1)
@@ -210,7 +214,7 @@ def main() -> int:
           f"(not in our NIFTY-500 universe); {created_shells} shell rows created.")
 
     # Build announcement_events rows.
-    today = date.today()
+    today = _today_ist()
     upserts: list[dict[str, Any]] = []
     fresh_tickers: set[str] = set()
     for m in matched:

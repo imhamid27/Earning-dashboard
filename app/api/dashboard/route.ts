@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
-import { jsonOk, jsonError, cleanQuarterLabel, cleanSector, cleanBucket, cleanSearch } from "@/lib/api";
+import { jsonOk, jsonError, cleanQuarterLabel, cleanSector, cleanBucket, cleanSearch, todayIST } from "@/lib/api";
 import { pctChange, withGrowth } from "@/lib/growth";
 import type { LatestQuarterRow } from "@/lib/types";
 
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
     byTicker.set(row.ticker, arr);
   }
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayIST();
 
   // Per-ticker upcoming announcement date (nearest pending event). Used on
   // "Not reported yet" rows so the reader knows when to check back.

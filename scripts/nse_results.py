@@ -41,7 +41,7 @@ except Exception:
 
 from supabase import create_client
 
-from nse_common import nse_get, nse_get_text
+from nse_common import nse_get, nse_get_text, today_ist, days_ago_ist
 
 
 SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
@@ -263,7 +263,7 @@ def mark_events(sb, ticker: str, status: str) -> None:
         sb.table("announcement_events") \
           .update({"status": status, "processed_at": datetime.utcnow().isoformat() + "Z"}) \
           .eq("ticker", ticker).eq("status", "pending") \
-          .lte("announcement_date", date.today().isoformat()) \
+          .lte("announcement_date", today_ist()) \
           .execute()
     except Exception as e:
         print(f"[warn] status update for {ticker} failed: {e}", file=sys.stderr)
@@ -281,8 +281,8 @@ def resolve_companies(sb, args) -> list[dict]:
 
     # Default: process companies whose announcement_date was today or very
     # recently and which still have 'pending' events.
-    today = date.today().isoformat()
-    cutoff = (date.today() - timedelta(days=args.grace)).isoformat()
+    today = today_ist()
+    cutoff = days_ago_ist(args.grace)
     events = sb.table("announcement_events") \
         .select("ticker") \
         .eq("status", "pending") \

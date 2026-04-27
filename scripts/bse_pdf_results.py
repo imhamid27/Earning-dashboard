@@ -54,7 +54,7 @@ import os
 import re
 import sys
 import traceback
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 try:
@@ -76,6 +76,14 @@ try:
     _OCR_AVAILABLE = True
 except ImportError:
     _OCR_AVAILABLE = False
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+def _today_ist() -> str:
+    return datetime.now(_IST).date().isoformat()
+
+def _days_ago_ist(days: int) -> str:
+    return (datetime.now(_IST) - timedelta(days=days)).date().isoformat()
 
 
 def _try_ocr_fallback(pdf_bytes: bytes) -> str:
@@ -785,12 +793,12 @@ def resolve_targets(sb, args) -> list[dict]:
             .limit(5) \
             .execute().data or []
     else:
-        cutoff = (date.today() - timedelta(days=args.days)).isoformat()
+        cutoff = _days_ago_ist(args.days)
         events = sb.table("announcement_events") \
             .select("id,ticker,announcement_date,raw_json,companies!inner(id,company_name,is_active)") \
             .eq("status", "fetched") \
             .gte("announcement_date", cutoff) \
-            .lte("announcement_date", date.today().isoformat()) \
+            .lte("announcement_date", _today_ist()) \
             .eq("companies.is_active", True) \
             .order("announcement_date", desc=True) \
             .execute().data or []

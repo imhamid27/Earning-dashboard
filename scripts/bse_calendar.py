@@ -31,7 +31,11 @@ import argparse
 import os
 import sys
 import traceback
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+def _today_ist() -> str:
+    return datetime.now(_IST).date().isoformat()
 from typing import Any
 
 try:
@@ -197,7 +201,7 @@ def main() -> int:
 
     # Refresh companies.next_result_date using the nearest pending event from
     # ANY source (BSE + NSE). Keeps the two scrapers cooperating cleanly.
-    today = date.today().isoformat()
+    today = _today_ist()
     future = sb.table("announcement_events") \
         .select("ticker,announcement_date") \
         .gte("announcement_date", today) \
