@@ -60,7 +60,7 @@ export default function RelatedCoverage() {
     <div className="mt-6 border-t border-core-line pt-5">
       {/* Section label — matches "Outlier signals" style */}
       <div className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] text-core-ink font-bold mb-3">
-        Related Coverage
+        In Context
       </div>
 
       {/* Fixed-height card with internal scroll */}
