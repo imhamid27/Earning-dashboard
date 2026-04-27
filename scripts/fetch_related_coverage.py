@@ -4,23 +4,17 @@ Related Coverage fetcher ("In Context" section).
 Strategy — two complementary sources:
 
   1. Direct RSS feeds from credible Indian business news outlets (primary).
-     These give us real article URLs, a known source name per feed, and
-     India-focused financial news without geo-blocking or rate limits.
-
   2. Google News RSS queries per leading/lagging sector (supplementary).
-     Adds sector-targeted articles that the broad feeds may miss.
-     Falls back gracefully if Google blocks the request from CI IPs.
 
-After collecting articles, the script:
-  - Filters titles by sector/company keywords (relevance gate)
-  - Deduplicates by source_url
-  - Upserts to related_coverage (unique on source_url)
-  - Deactivates articles older than 7 days
+For each article we call Claude Haiku to write a 2-sentence investor brief
+(stored in `commentary`) so the card shows an Inshorts-style digest rather
+than just repeating the headline.
 
 Run:
     py scripts/fetch_related_coverage.py
     py scripts/fetch_related_coverage.py --quarter "Q4 FY26"
     py scripts/fetch_related_coverage.py --dry-run
+    py scripts/fetch_related_coverage.py --no-briefs   # skip Claude, use title
 """
 
 from __future__ import annotations
@@ -44,6 +38,12 @@ try:
 except ImportError:
     raise ImportError("feedparser is required: pip install feedparser")
 
+try:
+    import anthropic as _anthropic
+    _HAS_ANTHROPIC = True
+except ImportError:
+    _HAS_ANTHROPIC = False
+
 from supabase import create_client
 
 SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
@@ -51,6 +51,7 @@ SUPABASE_KEY = (
     os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
     or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 )
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 _IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -60,37 +61,20 @@ _IST = timezone(timedelta(hours=5, minutes=30))
 # Each entry: (feed_url, display_name, max_items)
 # ---------------------------------------------------------------------------
 DIRECT_FEEDS: list[tuple[str, str, int]] = [
-    # Economic Times — earnings & results beat
-    (
-        "https://economictimes.indiatimes.com/markets/earnings/rss.cms",
-        "Economic Times", 10,
-    ),
-    # Economic Times — broad markets
-    (
-        "https://economictimes.indiatimes.com/markets/rss.cms",
-        "Economic Times", 6,
-    ),
-    # Business Standard — markets
-    (
-        "https://www.business-standard.com/rss/markets-106.rss",
-        "Business Standard", 8,
-    ),
-    # Mint — markets
-    (
-        "https://www.livemint.com/rss/markets",
-        "Mint", 8,
-    ),
-    # Moneycontrol — top news
-    (
-        "https://www.moneycontrol.com/rss/MCtopnews.xml",
-        "Moneycontrol", 6,
-    ),
+    ("https://economictimes.indiatimes.com/markets/earnings/rss.cms",
+     "Economic Times", 10),
+    ("https://economictimes.indiatimes.com/markets/rss.cms",
+     "Economic Times", 6),
+    ("https://www.business-standard.com/rss/markets-106.rss",
+     "Business Standard", 8),
+    ("https://www.livemint.com/rss/markets",
+     "Mint", 8),
+    ("https://www.moneycontrol.com/rss/MCtopnews.xml",
+     "Moneycontrol", 6),
 ]
 
-# Google News RSS — supplementary, sector-targeted.
 GNEWS_BASE = "https://news.google.com/rss/search"
 
-# Credible source whitelist for Google News (direct feeds don't need this).
 CREDIBLE_SOURCES: list[tuple[str, str]] = [
     ("the core",           "The Core"),
     ("thecore",            "The Core"),
@@ -124,29 +108,38 @@ SECTOR_INFO: dict[str, dict] = {
                         "kw": ["bank", "nbfc", "financial", "lending", "credit", "insurance", "npa"]},
     "Technology":      {"q": "india IT software technology quarterly results earnings",
                         "kw": ["it ", "software", "tech", "infosys", "tcs", "wipro", "hcl"]},
+    "Information Technology": {"q": "india IT software technology quarterly results earnings",
+                        "kw": ["it ", "software", "tech", "infosys", "tcs", "wipro", "hcl"]},
     "Energy":          {"q": "india oil gas energy refinery quarterly results earnings",
                         "kw": ["oil", "gas", "energy", "refin", "petrol", "ongc", "reliance"]},
     "Consumer Goods":  {"q": "india FMCG consumer goods quarterly results earnings",
                         "kw": ["fmcg", "consumer", "hul", "nestle", "dabur", "marico"]},
+    "Consumer Staples":{"q": "india FMCG consumer goods quarterly results earnings",
+                        "kw": ["fmcg", "consumer", "hul", "nestle", "dabur", "marico"]},
     "Pharmaceuticals": {"q": "india pharma pharmaceutical quarterly results earnings",
                         "kw": ["pharma", "drug", "medicine", "api", "cipla", "sun pharma"]},
-    "Metals":          {"q": "india steel metals mining quarterly results earnings",
-                        "kw": ["steel", "metal", "alumin", "copper", "mining", "tata steel", "jsw"]},
+    "Healthcare":      {"q": "india pharma healthcare quarterly results earnings",
+                        "kw": ["pharma", "drug", "hospital", "healthcare", "cipla", "sun pharma"]},
+    "Materials":       {"q": "india steel metals materials quarterly results earnings",
+                        "kw": ["steel", "metal", "alumin", "copper", "mining", "cement"]},
     "Automobiles":     {"q": "india automobile auto quarterly results earnings",
                         "kw": ["auto", "car", "vehicle", "ev", "maruti", "tata motors", "m&m"]},
+    "Consumer Discretionary": {"q": "india consumer discretionary auto retail quarterly results",
+                        "kw": ["auto", "car", "retail", "jewel", "titan", "maruti"]},
     "Real Estate":     {"q": "india real estate realty housing quarterly results",
-                        "kw": ["real estate", "realty", "housing", "property", "dlf", "prestige"]},
-    "Telecom":         {"q": "india telecom quarterly results earnings",
-                        "kw": ["telecom", "jio", "airtel", "vi ", "vodafone", "bsnl"]},
+                        "kw": ["real estate", "realty", "housing", "property", "dlf"]},
+    "Communication Services": {"q": "india telecom quarterly results earnings",
+                        "kw": ["telecom", "jio", "airtel", "vi ", "vodafone"]},
     "Infrastructure":  {"q": "india infrastructure construction EPC quarterly results",
                         "kw": ["infra", "construction", "epc", "road", "highway", "l&t"]},
-    "Cement":          {"q": "india cement quarterly results earnings",
-                        "kw": ["cement", "ultratech", "ambuja", "acc", "shree cement"]},
-    "Power":           {"q": "india power electricity utilities quarterly results",
+    "Utilities":       {"q": "india power electricity utilities quarterly results",
                         "kw": ["power", "electricity", "ntpc", "tata power", "adani power"]},
+    "Industrials":     {"q": "india industrials capital goods quarterly results",
+                        "kw": ["industrial", "capital goods", "engineering", "defence", "l&t"]},
+    "Capital Goods":   {"q": "india capital goods engineering quarterly results earnings",
+                        "kw": ["capital goods", "engineering", "defence", "bhel", "siemens"]},
 }
 
-# Generic earnings keywords — used to filter direct-feed articles.
 EARNINGS_KEYWORDS = [
     "quarterly", "results", "q4", "q3", "q2", "q1", "earnings", "profit",
     "revenue", "net profit", "ebitda", "margin", "fy26", "fy25", "fy2026",
@@ -155,8 +148,15 @@ EARNINGS_KEYWORDS = [
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Text helpers
 # ---------------------------------------------------------------------------
+def strip_html(text: str) -> str:
+    """Remove HTML tags and normalise whitespace."""
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
 def truncate(text: str, max_words: int = 20) -> str:
     words = text.split()
     if len(words) <= max_words:
@@ -182,18 +182,91 @@ def parse_pub_date(entry) -> str | None:
     return None
 
 
+def extract_description(entry) -> str:
+    """Pull the best available description text from a feedparser entry."""
+    for attr in ("summary", "description", "content"):
+        val = getattr(entry, attr, None)
+        if not val:
+            continue
+        if isinstance(val, list) and val:
+            val = val[0].get("value", "") if hasattr(val[0], "get") else str(val[0])
+        text = strip_html(str(val))
+        if len(text) > 40:          # meaningful, not just a date or tag
+            return text[:800]       # cap to avoid huge prompts
+    return ""
+
+
 def is_earnings_relevant(title: str) -> bool:
-    """True if the title contains at least one earnings-related keyword."""
     t = title.lower()
     return any(kw in t for kw in EARNINGS_KEYWORDS)
 
 
 def sector_matches(title: str, sector: str) -> bool:
-    """True if the title contains a sector keyword."""
     info = SECTOR_INFO.get(sector, {})
     keywords = info.get("kw", [sector.lower()])
     t = title.lower()
     return any(kw in t for kw in keywords)
+
+
+# ---------------------------------------------------------------------------
+# Claude brief generator
+# ---------------------------------------------------------------------------
+_BRIEF_PROMPT = """\
+You are writing 2-sentence investor briefs for an Indian corporate earnings dashboard.
+
+Given a news headline (and optional article description), write exactly 2 sentences:
+1. The core fact — include specific figures (profit up/down X%, revenue ₹Y cr, etc.)
+2. What it means for investors or the sector outlook.
+
+Rules: Under 50 words total. Plain English, no bullet points, no markdown. \
+Use ₹ for rupee amounts. Do not start with "The company" or repeat the source name.
+
+Headline: {title}
+{desc_block}"""
+
+
+def make_brief_client():
+    """Return an Anthropic client if the API key is available, else None."""
+    if not _HAS_ANTHROPIC:
+        print("  [info] anthropic package not installed — skipping AI briefs", file=sys.stderr)
+        return None
+    if not ANTHROPIC_API_KEY:
+        print("  [info] ANTHROPIC_API_KEY not set — skipping AI briefs", file=sys.stderr)
+        return None
+    return _anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+
+def generate_briefs(client, items: list[dict]) -> None:
+    """
+    For each item that has a non-empty `_raw_desc`, call Claude Haiku and
+    store the result in `commentary`.  Mutates items in-place.
+    Falls back to a truncated title if the API call fails.
+    """
+    if not client:
+        for item in items:
+            item["commentary"] = truncate(item["title"], 30)
+        return
+
+    print(f"  Generating AI briefs for {len(items)} articles…")
+    for i, item in enumerate(items, 1):
+        title = item["title"]
+        desc  = item.get("_raw_desc", "")
+        desc_block = f"Description: {desc}" if desc else ""
+        prompt = _BRIEF_PROMPT.format(title=title, desc_block=desc_block)
+        try:
+            resp = client.messages.create(
+                model="claude-haiku-4-5",
+                max_tokens=120,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            brief = resp.content[0].text.strip()
+            item["commentary"] = brief
+        except Exception as e:
+            print(f"  [warn] brief {i}/{len(items)} failed: {e}", file=sys.stderr)
+            item["commentary"] = truncate(title, 30)
+        # Small pause to respect rate limits
+        if i % 10 == 0:
+            time.sleep(1)
 
 
 # ---------------------------------------------------------------------------
@@ -205,10 +278,6 @@ def fetch_direct_feed(
     max_items: int = 10,
     sector_filter: str | None = None,
 ) -> list[dict]:
-    """
-    Fetch a direct RSS feed and return earnings-relevant articles.
-    If sector_filter is given, also require a sector keyword match.
-    """
     try:
         feed = feedparser.parse(
             feed_url,
@@ -234,8 +303,6 @@ def fetch_direct_feed(
         title = strip_source_suffix(raw_title, source_name)
         if not title:
             continue
-
-        # Relevance gates
         if not is_earnings_relevant(title):
             continue
         if sector_filter and not sector_matches(title, sector_filter):
@@ -243,7 +310,8 @@ def fetch_direct_feed(
 
         results.append({
             "title":        title,
-            "commentary":   truncate(title, 20),
+            "commentary":   "",             # filled later by generate_briefs()
+            "_raw_desc":    extract_description(entry),
             "source_name":  source_name,
             "source_url":   link,
             "published_at": parse_pub_date(entry),
@@ -253,10 +321,6 @@ def fetch_direct_feed(
 
 
 def fetch_gnews(query: str, max_items: int = 6) -> list[dict]:
-    """
-    Fetch Google News RSS for a query — supplementary, sector-targeted.
-    Returns only articles from CREDIBLE_SOURCES whitelist.
-    """
     url = (
         f"{GNEWS_BASE}?q={urllib.parse.quote(query)}"
         "&hl=en-IN&gl=IN&ceid=IN:en"
@@ -280,7 +344,6 @@ def fetch_gnews(query: str, max_items: int = 6) -> list[dict]:
         if not raw_title or not link:
             continue
 
-        # Extract source — Google News puts it in entry.source
         raw_src = ""
         src_obj = getattr(entry, "source", None)
         if src_obj is not None:
@@ -290,7 +353,6 @@ def fetch_gnews(query: str, max_items: int = 6) -> list[dict]:
                 else getattr(src_obj, "title", "")
             ) or ""
 
-        # Fallback: parse from title suffix
         if not raw_src:
             for sep in (" — ", " – ", " - "):
                 if sep in raw_title:
@@ -307,7 +369,8 @@ def fetch_gnews(query: str, max_items: int = 6) -> list[dict]:
 
         results.append({
             "title":        title,
-            "commentary":   truncate(title, 20),
+            "commentary":   "",
+            "_raw_desc":    extract_description(entry),
             "source_name":  source_name,
             "source_url":   link,
             "published_at": parse_pub_date(entry),
@@ -328,21 +391,17 @@ def get_sector_performance(sb, quarter: str) -> dict[str, dict]:
     prior_label = f"Q{fq} FY{str(fy - 1)[-2:]}"
 
     try:
-        curr = (
-            sb.table("quarterly_financials")
-            .select("ticker,revenue,companies!inner(sector,is_active)")
-            .eq("quarter_label", quarter)
-            .eq("companies.is_active", True)
-            .not_.is_("revenue", "null")
-            .execute()
-        )
-        prior = (
-            sb.table("quarterly_financials")
-            .select("ticker,revenue")
-            .eq("quarter_label", prior_label)
-            .not_.is_("revenue", "null")
-            .execute()
-        )
+        curr  = (sb.table("quarterly_financials")
+                   .select("ticker,revenue,companies!inner(sector,is_active)")
+                   .eq("quarter_label", quarter)
+                   .eq("companies.is_active", True)
+                   .not_.is_("revenue", "null")
+                   .execute())
+        prior = (sb.table("quarterly_financials")
+                   .select("ticker,revenue")
+                   .eq("quarter_label", prior_label)
+                   .not_.is_("revenue", "null")
+                   .execute())
     except Exception as e:
         print(f"  [warn] sector query failed: {e}", file=sys.stderr)
         return {}
@@ -363,7 +422,7 @@ def get_sector_performance(sb, quarter: str) -> dict[str, dict]:
 
     out: dict[str, dict] = {}
     for sector, yoys in sector_yoys.items():
-        if len(yoys) < 2:   # lower threshold than before
+        if len(yoys) < 2:
             continue
         avg = sum(yoys) / len(yoys)
         out[sector] = {
@@ -383,21 +442,17 @@ def get_outlier_companies(sb, quarter: str, top_n: int = 3) -> list[dict]:
     prior_label = f"Q{fq} FY{str(fy - 1)[-2:]}"
 
     try:
-        curr = (
-            sb.table("quarterly_financials")
-            .select("ticker,net_profit,companies!inner(company_name,sector,is_active)")
-            .eq("quarter_label", quarter)
-            .eq("companies.is_active", True)
-            .not_.is_("net_profit", "null")
-            .execute()
-        )
-        prior = (
-            sb.table("quarterly_financials")
-            .select("ticker,net_profit")
-            .eq("quarter_label", prior_label)
-            .not_.is_("net_profit", "null")
-            .execute()
-        )
+        curr  = (sb.table("quarterly_financials")
+                   .select("ticker,net_profit,companies!inner(company_name,sector,is_active)")
+                   .eq("quarter_label", quarter)
+                   .eq("companies.is_active", True)
+                   .not_.is_("net_profit", "null")
+                   .execute())
+        prior = (sb.table("quarterly_financials")
+                   .select("ticker,net_profit")
+                   .eq("quarter_label", prior_label)
+                   .not_.is_("net_profit", "null")
+                   .execute())
     except Exception as e:
         print(f"  [warn] outlier query failed: {e}", file=sys.stderr)
         return []
@@ -435,9 +490,18 @@ def upsert_items(sb, items: list[dict], dry_run: bool = False) -> int:
     for item in items:
         if not item.get("source_url") or not item.get("source_name") or not item.get("title"):
             continue
-        row = {**item, "is_active": True, "updated_at": now_iso}
+        # Strip private fields before sending to Supabase
+        row = {
+            k: v for k, v in item.items()
+            if not k.startswith("_")
+        }
+        row["is_active"] = True
+        row["updated_at"] = now_iso
         if dry_run:
-            print(f"  [dry] {item['source_name']:22s} | {item['title'][:70]}")
+            brief = item.get("commentary", "")[:80]
+            print(f"  [dry] {item['source_name']:20s} | {item['title'][:55]}")
+            if brief:
+                print(f"         brief: {brief}")
             written += 1
             continue
         try:
@@ -463,37 +527,44 @@ def deactivate_old(sb, days: int = 7) -> None:
 # ---------------------------------------------------------------------------
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--quarter", default=os.environ.get("FETCH_QUARTER", "Q4 FY26"))
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--max-direct", type=int, default=8,
-                    help="max items per direct RSS feed")
-    ap.add_argument("--max-gnews", type=int, default=5,
-                    help="max items per Google News query")
+    ap.add_argument("--quarter",    default=os.environ.get("FETCH_QUARTER", "Q4 FY26"))
+    ap.add_argument("--dry-run",    action="store_true")
+    ap.add_argument("--no-briefs",  action="store_true",
+                    help="Skip Claude AI briefs (uses truncated title instead)")
+    ap.add_argument("--max-direct", type=int, default=8)
+    ap.add_argument("--max-gnews",  type=int, default=5)
     args = ap.parse_args()
 
     if not args.dry_run and (not SUPABASE_URL or not SUPABASE_KEY):
         print("Missing SUPABASE credentials", file=sys.stderr)
         return 2
 
-    sb = create_client(SUPABASE_URL, SUPABASE_KEY) if not args.dry_run else None
+    sb     = create_client(SUPABASE_URL, SUPABASE_KEY) if not args.dry_run else None
+    claude = None if args.no_briefs else make_brief_client()
+
     print(f"In Context fetch — {args.quarter}")
 
-    # 1. Context: sector performance + outliers
+    # 1. Context from DB
     sectors: dict[str, dict] = {}
     outliers: list[dict] = []
     active_sectors: list[str] = []
     if sb:
         print("  Loading sector performance…")
         sectors = get_sector_performance(sb, args.quarter)
-        active_sectors = [s for s in sectors]
-        print(f"  Active sectors: {active_sectors or '(none — will use broad feeds)'}")
+        active_sectors = list(sectors.keys())
+        print(f"  Active sectors: {active_sectors or '(none)'}")
         outliers = get_outlier_companies(sb, args.quarter)
         print(f"  Outlier companies: {[o['company_name'] for o in outliers]}")
 
     all_items: list[dict] = []
     seen_urls: set[str] = set()
 
-    def add_items(items: list[dict], sector: str | None, company: str | None, reason: str) -> None:
+    def add_items(
+        items: list[dict],
+        sector: str | None,
+        company: str | None,
+        reason: str | None,
+    ) -> None:
         for art in items:
             url = art.get("source_url", "")
             if not url or url in seen_urls:
@@ -501,29 +572,31 @@ def main() -> int:
             seen_urls.add(url)
             art["matched_sector"]  = sector
             art["matched_company"] = company
-            art["match_reason"]    = reason
+            art["match_reason"]    = reason     # clean label, no "Direct feed" leak
             all_items.append(art)
 
-    # 2. Direct feeds — broad earnings coverage
+    # 2. Direct RSS feeds
     print(f"\n  -- Direct RSS feeds --")
     for feed_url, source_name, max_n in DIRECT_FEEDS:
-        print(f"  {source_name}: {feed_url[:60]}")
+        print(f"  {source_name}: {feed_url[:65]}")
         items = fetch_direct_feed(feed_url, source_name, max_items=max_n)
         print(f"    → {len(items)} earnings articles")
-        # Tag items with the most-relevant sector from our active list
         for art in items:
-            best_sector = None
-            for s in active_sectors:
-                if sector_matches(art["title"], s):
-                    best_sector = s
-                    break
-            add_items(
-                [art], best_sector, None,
-                f"Direct feed — {source_name}"
+            # Tag with best matching sector from our active list
+            best_sector = next(
+                (s for s in active_sectors if sector_matches(art["title"], s)),
+                None,
             )
+            # match_reason: describe sector direction, not the feed source
+            reason = None
+            if best_sector and best_sector in sectors:
+                d = sectors[best_sector]
+                direction = "up" if d["direction"] == "up" else "down" if d["direction"] == "down" else "stable"
+                reason = f"{best_sector} revenue {direction} {d['avg_yoy']:+.1f}% YoY"
+            add_items([art], best_sector, None, reason)
         time.sleep(0.5)
 
-    # 3. Google News — sector-targeted supplement
+    # 3. Google News — sector supplement
     sorted_sectors = sorted(
         sectors.items(), key=lambda kv: abs(kv[1]["avg_yoy"]), reverse=True
     )
@@ -531,29 +604,32 @@ def main() -> int:
         print(f"\n  -- Google News (top sectors) --")
     for sector, data in sorted_sectors[:3]:
         info = SECTOR_INFO.get(sector, {})
-        q = info.get("q", f"india {sector.lower()} quarterly results earnings")
-        verb = "leading" if data["direction"] == "up" else "lagging" if data["direction"] == "down" else "flat"
-        reason = f"{sector} {verb} ({data['avg_yoy']:+.1f}% avg rev YoY)"
-        print(f"  {sector} ({verb}): {q[:50]}")
+        q    = info.get("q", f"india {sector.lower()} quarterly results earnings")
+        direction = "up" if data["direction"] == "up" else "down" if data["direction"] == "down" else "stable"
+        reason = f"{sector} revenue {direction} {data['avg_yoy']:+.1f}% YoY"
+        print(f"  {sector} ({direction}): {q[:55]}")
         items = fetch_gnews(q, max_items=args.max_gnews)
         print(f"    → {len(items)} articles from credible sources")
         add_items(items, sector, None, reason)
         time.sleep(0.8)
 
-    # Outlier-targeted Google News
+    # Outlier-targeted
     for o in outliers[:2]:
         first_word = o["company_name"].split()[0]
-        q = f"india {first_word} quarterly results earnings profit"
-        reason = f"{o['company_name']} profit outlier ({o['profit_yoy']:.0f}% YoY)"
-        print(f"  Outlier {o['company_name']}: {q[:50]}")
-        items = fetch_gnews(q, max_items=3)
+        q      = f"india {first_word} quarterly results earnings profit"
+        reason = f"{o['company_name']} profit {o['profit_yoy']:.0f}% YoY"
+        print(f"  Outlier {o['company_name']}: {q[:55]}")
+        items  = fetch_gnews(q, max_items=3)
         print(f"    → {len(items)} articles")
         add_items(items, o.get("sector"), o["company_name"], reason)
         time.sleep(0.8)
 
     print(f"\n  Total unique articles: {len(all_items)}")
 
-    # 4. Save
+    # 4. Generate AI briefs (in-place, before saving)
+    generate_briefs(claude, all_items)
+
+    # 5. Save
     written = upsert_items(sb, all_items, dry_run=args.dry_run)
     if sb:
         deactivate_old(sb, days=7)
