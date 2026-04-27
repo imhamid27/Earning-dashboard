@@ -177,24 +177,21 @@ const SECTORS_LD = {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
+
 export default function SectorsPage() {
   const [quarters, setQuarters]     = useState<string[]>([]);
-  const [quarter,  setQuarter]      = useState<string | null>(null);
+  const [quarter,  setQuarter]      = useState<string>(DEFAULT_QUARTER);
   const [rawSectors, setRawSectors] = useState<ApiSector[]>([]);
   const [dashRows,   setDashRows]   = useState<DashRow[]>([]);
   const [sort,    setSort]          = useState<SortKey>("profit");
   const [openDive, setOpenDive]     = useState<string | null>(null);
   const [loading,  setLoading]      = useState(true);
 
-  // Quarter list + smart default
+  // Quarter list — default is always the current active quarter (DEFAULT_QUARTER)
   useEffect(() => {
-    Promise.all([
-      fetch("/api/quarters").then((r) => r.json()),
-      fetch("/api/best-quarter?min=100").then((r) => r.json()),
-    ]).then(([qs, best]) => {
-      if (qs.ok) setQuarters(qs.data ?? []);
-      const pick = best?.ok ? best.data?.best?.quarter_label : null;
-      setQuarter(pick ?? qs.data?.[0] ?? null);
+    fetch("/api/quarters").then((r) => r.json()).then((qs) => {
+      if (qs.ok && qs.data?.length) setQuarters(qs.data);
     });
   }, []);
 
@@ -349,8 +346,8 @@ export default function SectorsPage() {
         <label className="flex items-center gap-2.5 text-[10px] uppercase tracking-[0.14em] text-core-muted shrink-0">
           Quarter
           <select
-            value={quarter ?? ""}
-            onChange={(e) => setQuarter(e.target.value || null)}
+            value={quarter}
+            onChange={(e) => setQuarter(e.target.value || DEFAULT_QUARTER)}
             className="border border-core-line bg-white text-xs px-3 py-2 rounded-md normal-case text-core-ink font-semibold focus:outline-none focus:border-core-pink"
           >
             {quarters.map((q) => <option key={q} value={q}>{q}</option>)}
