@@ -81,7 +81,9 @@ create policy "public read announcements"
 -- ---------------------------------------------------------------------
 -- 4. Helper view — upcoming events joined with company info
 -- ---------------------------------------------------------------------
-create or replace view public.v_upcoming_events as
+create or replace view public.v_upcoming_events
+  with (security_invoker = true)
+as
 select
   e.id,
   c.company_name,

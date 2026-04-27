@@ -103,7 +103,9 @@ create trigger trg_qf_touch before update on public.quarterly_financials
 -- ---------------------------------------------------------------------
 
 -- Latest quarter per company (used by the main table + summary cards).
-create or replace view public.v_latest_quarter as
+create or replace view public.v_latest_quarter
+  with (security_invoker = true)
+as
 select distinct on (qf.ticker)
   c.id            as company_id,
   c.company_name,
@@ -124,7 +126,9 @@ join public.companies c on c.id = qf.company_id
 order by qf.ticker, qf.quarter_end_date desc;
 
 -- Sector aggregates for the current max quarter.
-create or replace view public.v_sector_current as
+create or replace view public.v_sector_current
+  with (security_invoker = true)
+as
 with latest as (
   select max(quarter_end_date) as d from public.quarterly_financials
 )
