@@ -333,7 +333,7 @@ export default function SectorsPage() {
             Corporate Earnings Dashboard
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tightest mt-1">
-            Sector snapshot
+            Sector Snapshot
             <span className="inline-block align-middle ml-2 -translate-y-0.5">
               <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
             </span>

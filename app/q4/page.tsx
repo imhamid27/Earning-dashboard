@@ -125,7 +125,7 @@ export default function Q4Page() {
         <div>
           <div className="text-xs uppercase tracking-wide text-core-muted">Earnings tracker</div>
           <h1 className="serif text-4xl md:text-5xl leading-tight tracking-tight mt-1">
-            {quarter} announcements
+            {quarter} Announcements
             <span className="inline-block align-middle ml-2 -translate-y-1">
               <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
             </span>

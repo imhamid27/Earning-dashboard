@@ -384,7 +384,7 @@ export default function CompanyDetail() {
           {/* Quarterly table */}
           <section>
             <header className="flex items-baseline justify-between mb-3">
-              <h2 className="text-xl font-bold tracking-tightest">Quarter-by-quarter</h2>
+              <h2 className="text-xl font-bold tracking-tightest">Quarter-by-Quarter</h2>
               <span className="text-[11px] uppercase tracking-wide text-core-muted">
                 {data.quarters.length} quarters
               </span>

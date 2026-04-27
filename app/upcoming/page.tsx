@@ -115,7 +115,7 @@ export default function UpcomingPage() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6">
           <div className="flex-1 min-w-0">
             <h1 className="text-[clamp(1.85rem,4vw,2.85rem)] font-extrabold tracking-tightest leading-[1.05]">
-              Upcoming results
+              Upcoming Results
               <span className="inline-block align-middle ml-2 -translate-y-0.5">
                 <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
               </span>
