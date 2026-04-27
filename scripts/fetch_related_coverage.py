@@ -1,10 +1,21 @@
 """
-Related Coverage fetcher.
+Related Coverage fetcher ("In Context" section).
 
-Finds the leading/lagging sectors and top outlier companies from
-quarterly_financials, builds targeted Google News RSS queries for each,
-filters results to credible Indian business news sources, and saves to
-the related_coverage table.
+Strategy — two complementary sources:
+
+  1. Direct RSS feeds from credible Indian business news outlets (primary).
+     These give us real article URLs, a known source name per feed, and
+     India-focused financial news without geo-blocking or rate limits.
+
+  2. Google News RSS queries per leading/lagging sector (supplementary).
+     Adds sector-targeted articles that the broad feeds may miss.
+     Falls back gracefully if Google blocks the request from CI IPs.
+
+After collecting articles, the script:
+  - Filters titles by sector/company keywords (relevance gate)
+  - Deduplicates by source_url
+  - Upserts to related_coverage (unique on source_url)
+  - Deactivates articles older than 7 days
 
 Run:
     py scripts/fetch_related_coverage.py
@@ -31,9 +42,7 @@ except Exception:
 try:
     import feedparser
 except ImportError:
-    raise ImportError(
-        "feedparser is required: pip install feedparser"
-    )
+    raise ImportError("feedparser is required: pip install feedparser")
 
 from supabase import create_client
 
@@ -47,9 +56,41 @@ _IST = timezone(timedelta(hours=5, minutes=30))
 
 
 # ---------------------------------------------------------------------------
-# Credible source whitelist.
-# Order matters: first keyword match wins.
+# Direct RSS feeds — primary source.
+# Each entry: (feed_url, display_name, max_items)
 # ---------------------------------------------------------------------------
+DIRECT_FEEDS: list[tuple[str, str, int]] = [
+    # Economic Times — earnings & results beat
+    (
+        "https://economictimes.indiatimes.com/markets/earnings/rss.cms",
+        "Economic Times", 10,
+    ),
+    # Economic Times — broad markets
+    (
+        "https://economictimes.indiatimes.com/markets/rss.cms",
+        "Economic Times", 6,
+    ),
+    # Business Standard — markets
+    (
+        "https://www.business-standard.com/rss/markets-106.rss",
+        "Business Standard", 8,
+    ),
+    # Mint — markets
+    (
+        "https://www.livemint.com/rss/markets",
+        "Mint", 8,
+    ),
+    # Moneycontrol — top news
+    (
+        "https://www.moneycontrol.com/rss/MCtopnews.xml",
+        "Moneycontrol", 6,
+    ),
+]
+
+# Google News RSS — supplementary, sector-targeted.
+GNEWS_BASE = "https://news.google.com/rss/search"
+
+# Credible source whitelist for Google News (direct feeds don't need this).
 CREDIBLE_SOURCES: list[tuple[str, str]] = [
     ("the core",           "The Core"),
     ("thecore",            "The Core"),
@@ -68,7 +109,6 @@ CREDIBLE_SOURCES: list[tuple[str, str]] = [
 
 
 def match_source(raw: str) -> str | None:
-    """Return canonical display name, or None if not on the whitelist."""
     s = raw.lower()
     for keyword, display in CREDIBLE_SOURCES:
         if keyword in s:
@@ -77,51 +117,46 @@ def match_source(raw: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Sector → Google News search query
+# Sector → Google News query + relevance keywords
 # ---------------------------------------------------------------------------
-SECTOR_QUERIES: dict[str, str] = {
-    "Financials":       "india banking NBFC finance quarterly results earnings",
-    "Technology":       "india IT software technology quarterly results earnings",
-    "Energy":           "india oil gas energy refinery quarterly results earnings",
-    "Consumer Goods":   "india FMCG consumer goods quarterly results earnings",
-    "Pharmaceuticals":  "india pharma pharmaceutical quarterly results earnings",
-    "Metals":           "india steel metals mining quarterly results earnings",
-    "Automobiles":      "india automobile auto quarterly results earnings",
-    "Real Estate":      "india real estate realty housing quarterly results",
-    "Telecom":          "india telecom quarterly results earnings",
-    "Infrastructure":   "india infrastructure construction EPC quarterly results",
-    "Cement":           "india cement quarterly results earnings",
-    "Aviation":         "india aviation airline quarterly results earnings",
-    "Insurance":        "india insurance sector quarterly results earnings",
-    "Media":            "india media entertainment OTT quarterly results",
-    "Power":            "india power electricity utilities quarterly results",
-    "Chemicals":        "india chemicals specialty pharma quarterly results",
+SECTOR_INFO: dict[str, dict] = {
+    "Financials":      {"q": "india banking NBFC finance quarterly results earnings",
+                        "kw": ["bank", "nbfc", "financial", "lending", "credit", "insurance", "npa"]},
+    "Technology":      {"q": "india IT software technology quarterly results earnings",
+                        "kw": ["it ", "software", "tech", "infosys", "tcs", "wipro", "hcl"]},
+    "Energy":          {"q": "india oil gas energy refinery quarterly results earnings",
+                        "kw": ["oil", "gas", "energy", "refin", "petrol", "ongc", "reliance"]},
+    "Consumer Goods":  {"q": "india FMCG consumer goods quarterly results earnings",
+                        "kw": ["fmcg", "consumer", "hul", "nestle", "dabur", "marico"]},
+    "Pharmaceuticals": {"q": "india pharma pharmaceutical quarterly results earnings",
+                        "kw": ["pharma", "drug", "medicine", "api", "cipla", "sun pharma"]},
+    "Metals":          {"q": "india steel metals mining quarterly results earnings",
+                        "kw": ["steel", "metal", "alumin", "copper", "mining", "tata steel", "jsw"]},
+    "Automobiles":     {"q": "india automobile auto quarterly results earnings",
+                        "kw": ["auto", "car", "vehicle", "ev", "maruti", "tata motors", "m&m"]},
+    "Real Estate":     {"q": "india real estate realty housing quarterly results",
+                        "kw": ["real estate", "realty", "housing", "property", "dlf", "prestige"]},
+    "Telecom":         {"q": "india telecom quarterly results earnings",
+                        "kw": ["telecom", "jio", "airtel", "vi ", "vodafone", "bsnl"]},
+    "Infrastructure":  {"q": "india infrastructure construction EPC quarterly results",
+                        "kw": ["infra", "construction", "epc", "road", "highway", "l&t"]},
+    "Cement":          {"q": "india cement quarterly results earnings",
+                        "kw": ["cement", "ultratech", "ambuja", "acc", "shree cement"]},
+    "Power":           {"q": "india power electricity utilities quarterly results",
+                        "kw": ["power", "electricity", "ntpc", "tata power", "adani power"]},
 }
-GENERAL_QUERY = "india Q4 FY26 corporate quarterly earnings results"
 
-GNEWS_BASE = "https://news.google.com/rss/search"
+# Generic earnings keywords — used to filter direct-feed articles.
+EARNINGS_KEYWORDS = [
+    "quarterly", "results", "q4", "q3", "q2", "q1", "earnings", "profit",
+    "revenue", "net profit", "ebitda", "margin", "fy26", "fy25", "fy2026",
+    "annual", "turnover", "beats", "misses", "inline", "crore", "lakh",
+]
 
 
 # ---------------------------------------------------------------------------
-# Title helpers
+# Helpers
 # ---------------------------------------------------------------------------
-def clean_title(raw: str, source_name: str) -> str:
-    """
-    Remove the ' — Source' suffix Google News appends to titles.
-    Handles em-dash, en-dash, and hyphen separators.
-    """
-    for sep in (" — ", " – ", " - "):
-        suffix = sep + source_name
-        if raw.endswith(suffix):
-            return raw[: -len(suffix)].strip()
-    # Also try all credible display names in case source_name is slightly off.
-    for _, display in CREDIBLE_SOURCES:
-        for sep in (" — ", " – ", " - "):
-            if raw.endswith(sep + display):
-                return raw[: -(len(sep) + len(display))].strip()
-    return raw.strip()
-
-
 def truncate(text: str, max_words: int = 20) -> str:
     words = text.split()
     if len(words) <= max_words:
@@ -129,27 +164,113 @@ def truncate(text: str, max_words: int = 20) -> str:
     return " ".join(words[:max_words]) + "…"
 
 
+def strip_source_suffix(title: str, source_name: str) -> str:
+    """Remove ' - Source Name' suffix that some feeds append."""
+    for sep in (" — ", " – ", " - "):
+        if title.endswith(sep + source_name):
+            return title[: -(len(sep) + len(source_name))].strip()
+    return title.strip()
+
+
+def parse_pub_date(entry) -> str | None:
+    pp = getattr(entry, "published_parsed", None)
+    if pp:
+        try:
+            return datetime(*pp[:6], tzinfo=timezone.utc).isoformat()
+        except Exception:
+            pass
+    return None
+
+
+def is_earnings_relevant(title: str) -> bool:
+    """True if the title contains at least one earnings-related keyword."""
+    t = title.lower()
+    return any(kw in t for kw in EARNINGS_KEYWORDS)
+
+
+def sector_matches(title: str, sector: str) -> bool:
+    """True if the title contains a sector keyword."""
+    info = SECTOR_INFO.get(sector, {})
+    keywords = info.get("kw", [sector.lower()])
+    t = title.lower()
+    return any(kw in t for kw in keywords)
+
+
 # ---------------------------------------------------------------------------
-# Google News RSS fetch + filter
+# Feed parsers
 # ---------------------------------------------------------------------------
-def fetch_gnews(query: str, max_items: int = 8) -> list[dict]:
+def fetch_direct_feed(
+    feed_url: str,
+    source_name: str,
+    max_items: int = 10,
+    sector_filter: str | None = None,
+) -> list[dict]:
     """
-    Fetch Google News RSS for a search query.
-    Returns only items from CREDIBLE_SOURCES.
-    Each item: {title, commentary, source_name, source_url, published_at}
+    Fetch a direct RSS feed and return earnings-relevant articles.
+    If sector_filter is given, also require a sector keyword match.
+    """
+    try:
+        feed = feedparser.parse(
+            feed_url,
+            request_headers={"User-Agent": "EarningsDashboard/1.0"},
+        )
+    except Exception as e:
+        print(f"  [warn] direct feed error ({source_name}): {e}", file=sys.stderr)
+        return []
+
+    if getattr(feed, "bozo", False) and not feed.entries:
+        print(f"  [warn] malformed feed from {source_name}", file=sys.stderr)
+        return []
+
+    results: list[dict] = []
+    for entry in feed.entries:
+        if len(results) >= max_items:
+            break
+        raw_title = getattr(entry, "title", "") or ""
+        link = getattr(entry, "link", "") or ""
+        if not raw_title or not link:
+            continue
+
+        title = strip_source_suffix(raw_title, source_name)
+        if not title:
+            continue
+
+        # Relevance gates
+        if not is_earnings_relevant(title):
+            continue
+        if sector_filter and not sector_matches(title, sector_filter):
+            continue
+
+        results.append({
+            "title":        title,
+            "commentary":   truncate(title, 20),
+            "source_name":  source_name,
+            "source_url":   link,
+            "published_at": parse_pub_date(entry),
+        })
+
+    return results
+
+
+def fetch_gnews(query: str, max_items: int = 6) -> list[dict]:
+    """
+    Fetch Google News RSS for a query — supplementary, sector-targeted.
+    Returns only articles from CREDIBLE_SOURCES whitelist.
     """
     url = (
         f"{GNEWS_BASE}?q={urllib.parse.quote(query)}"
         "&hl=en-IN&gl=IN&ceid=IN:en"
     )
     try:
-        feed = feedparser.parse(url, agent="EarningsDashboard/1.0")
+        feed = feedparser.parse(
+            url,
+            request_headers={"User-Agent": "EarningsDashboard/1.0"},
+        )
     except Exception as e:
-        print(f"  [warn] feed error for '{query[:40]}': {e}", file=sys.stderr)
+        print(f"  [warn] gnews error for '{query[:40]}': {e}", file=sys.stderr)
         return []
 
     results: list[dict] = []
-
     for entry in getattr(feed, "entries", []):
         if len(results) >= max_items:
             break
@@ -159,13 +280,15 @@ def fetch_gnews(query: str, max_items: int = 8) -> list[dict]:
         if not raw_title or not link:
             continue
 
-        # Source name — Google News puts it in entry.source.title
+        # Extract source — Google News puts it in entry.source
         raw_src = ""
         src_obj = getattr(entry, "source", None)
-        if isinstance(src_obj, dict):
-            raw_src = src_obj.get("title", "")
-        elif hasattr(src_obj, "title"):
-            raw_src = src_obj.title or ""
+        if src_obj is not None:
+            raw_src = (
+                src_obj.get("title", "")
+                if hasattr(src_obj, "get")
+                else getattr(src_obj, "title", "")
+            ) or ""
 
         # Fallback: parse from title suffix
         if not raw_src:
@@ -178,40 +301,25 @@ def fetch_gnews(query: str, max_items: int = 8) -> list[dict]:
         if not source_name:
             continue
 
-        title = clean_title(raw_title, source_name)
+        title = strip_source_suffix(raw_title, source_name)
         if not title:
             continue
 
-        # Published date
-        pub_parsed = getattr(entry, "published_parsed", None)
-        published_at: str | None = None
-        if pub_parsed:
-            try:
-                published_at = datetime(*pub_parsed[:6], tzinfo=timezone.utc).isoformat()
-            except Exception:
-                pass
-
-        results.append(
-            {
-                "title":        title,
-                "commentary":   truncate(title, 20),
-                "source_name":  source_name,
-                "source_url":   link,
-                "published_at": published_at,
-            }
-        )
+        results.append({
+            "title":        title,
+            "commentary":   truncate(title, 20),
+            "source_name":  source_name,
+            "source_url":   link,
+            "published_at": parse_pub_date(entry),
+        })
 
     return results
 
 
 # ---------------------------------------------------------------------------
-# DB context: sector performance + outlier companies
+# DB context
 # ---------------------------------------------------------------------------
 def get_sector_performance(sb, quarter: str) -> dict[str, dict]:
-    """
-    Per-sector avg revenue YoY for the given quarter.
-    Only includes sectors with ≥ 3 companies having both periods.
-    """
     m = re.match(r"^Q([1-4])\s*FY(\d{2})$", quarter.strip())
     if not m:
         return {}
@@ -255,19 +363,18 @@ def get_sector_performance(sb, quarter: str) -> dict[str, dict]:
 
     out: dict[str, dict] = {}
     for sector, yoys in sector_yoys.items():
-        if len(yoys) < 3:
+        if len(yoys) < 2:   # lower threshold than before
             continue
         avg = sum(yoys) / len(yoys)
         out[sector] = {
             "avg_yoy":   avg,
             "count":     len(yoys),
-            "direction": "up" if avg > 5 else ("down" if avg < -5 else "flat"),
+            "direction": "up" if avg > 3 else ("down" if avg < -3 else "flat"),
         }
     return out
 
 
 def get_outlier_companies(sb, quarter: str, top_n: int = 3) -> list[dict]:
-    """Biggest absolute profit movers for the quarter."""
     m = re.match(r"^Q([1-4])\s*FY(\d{2})$", quarter.strip())
     if not m:
         return []
@@ -305,16 +412,13 @@ def get_outlier_companies(sb, quarter: str, top_n: int = 3) -> list[dict]:
         np_ = r.get("net_profit")
         pnp = prior_by.get(r["ticker"])
         if np_ and pnp and pnp != 0:
-            yoy_pct = abs((np_ - pnp) / abs(pnp)) * 100
             c = r.get("companies") or {}
-            movers.append(
-                {
-                    "ticker":       r["ticker"],
-                    "company_name": c.get("company_name", r["ticker"]),
-                    "sector":       c.get("sector"),
-                    "profit_yoy":   yoy_pct,
-                }
-            )
+            movers.append({
+                "ticker":       r["ticker"],
+                "company_name": c.get("company_name", r["ticker"]),
+                "sector":       c.get("sector"),
+                "profit_yoy":   abs((np_ - pnp) / abs(pnp)) * 100,
+            })
 
     movers.sort(key=lambda x: x["profit_yoy"], reverse=True)
     return movers[:top_n]
@@ -329,42 +433,29 @@ def upsert_items(sb, items: list[dict], dry_run: bool = False) -> int:
     now_iso = datetime.now(timezone.utc).isoformat()
     written = 0
     for item in items:
-        if (
-            not item.get("source_url")
-            or not item.get("source_name")
-            or not item.get("title")
-        ):
+        if not item.get("source_url") or not item.get("source_name") or not item.get("title"):
             continue
         row = {**item, "is_active": True, "updated_at": now_iso}
         if dry_run:
-            print(f"  [dry] {item['source_name']:20s} | {item['title'][:60]}")
+            print(f"  [dry] {item['source_name']:22s} | {item['title'][:70]}")
             written += 1
             continue
         try:
-            sb.table("related_coverage").upsert(
-                row, on_conflict="source_url"
-            ).execute()
+            sb.table("related_coverage").upsert(row, on_conflict="source_url").execute()
             written += 1
         except Exception as e:
-            print(
-                f"  [warn] upsert failed for {item.get('source_url','?')[:60]}: {e}",
-                file=sys.stderr,
-            )
+            print(f"  [warn] upsert failed: {e}", file=sys.stderr)
     return written
 
 
 def deactivate_old(sb, days: int = 7) -> None:
-    """Mark articles older than `days` as inactive so they don't appear in the feed."""
     try:
         cutoff = (datetime.now(_IST) - timedelta(days=days)).isoformat()
         sb.table("related_coverage").update(
-            {
-                "is_active":  False,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
+            {"is_active": False, "updated_at": datetime.now(timezone.utc).isoformat()}
         ).lt("published_at", cutoff).execute()
     except Exception as e:
-        print(f"  [warn] deactivate old failed: {e}", file=sys.stderr)
+        print(f"  [warn] deactivate old: {e}", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------
@@ -372,78 +463,38 @@ def deactivate_old(sb, days: int = 7) -> None:
 # ---------------------------------------------------------------------------
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--quarter",
-        default=os.environ.get("FETCH_QUARTER", "Q4 FY26"),
-    )
-    ap.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="print fetched items without saving to DB",
-    )
-    ap.add_argument("--max-per-query", type=int, default=6)
+    ap.add_argument("--quarter", default=os.environ.get("FETCH_QUARTER", "Q4 FY26"))
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--max-direct", type=int, default=8,
+                    help="max items per direct RSS feed")
+    ap.add_argument("--max-gnews", type=int, default=5,
+                    help="max items per Google News query")
     args = ap.parse_args()
 
     if not args.dry_run and (not SUPABASE_URL or not SUPABASE_KEY):
-        print(
-            "Missing NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY",
-            file=sys.stderr,
-        )
+        print("Missing SUPABASE credentials", file=sys.stderr)
         return 2
 
-    sb = (
-        create_client(SUPABASE_URL, SUPABASE_KEY)
-        if not args.dry_run
-        else None
-    )
-    print(f"Related Coverage fetch — {args.quarter}")
+    sb = create_client(SUPABASE_URL, SUPABASE_KEY) if not args.dry_run else None
+    print(f"In Context fetch — {args.quarter}")
 
-    # 1. Context from DB
+    # 1. Context: sector performance + outliers
     sectors: dict[str, dict] = {}
     outliers: list[dict] = []
+    active_sectors: list[str] = []
     if sb:
-        print("  Fetching sector performance…")
+        print("  Loading sector performance…")
         sectors = get_sector_performance(sb, args.quarter)
-        print(f"  Sectors with data: {len(sectors)}")
+        active_sectors = [s for s in sectors]
+        print(f"  Active sectors: {active_sectors or '(none — will use broad feeds)'}")
         outliers = get_outlier_companies(sb, args.quarter)
-        print(f"  Outlier companies: {len(outliers)}")
+        print(f"  Outlier companies: {[o['company_name'] for o in outliers]}")
 
-    # 2. Build query list — significant sectors first, then outliers, then general
-    Rec = tuple[str, str | None, str | None, str]
-    queries: list[Rec] = []
-
-    sorted_sectors = sorted(
-        sectors.items(), key=lambda kv: abs(kv[1]["avg_yoy"]), reverse=True
-    )
-    for sector, data in sorted_sectors[:4]:
-        q = SECTOR_QUERIES.get(
-            sector, f"india {sector.lower()} quarterly results earnings"
-        )
-        verb = (
-            "leading"  if data["direction"] == "up"   else
-            "lagging"  if data["direction"] == "down" else
-            "flat"
-        )
-        reason = f"{sector} {verb} ({data['avg_yoy']:+.1f}% avg rev YoY, {data['count']} cos)"
-        queries.append((q, sector, None, reason))
-
-    for o in outliers:
-        first_word = o["company_name"].split()[0]
-        q = f"india {first_word} quarterly results earnings"
-        reason = f"{o['company_name']} profit outlier ({o['profit_yoy']:.0f}% YoY)"
-        queries.append((q, o.get("sector"), o["company_name"], reason))
-
-    queries.append((GENERAL_QUERY, None, None, "General India Q4 FY26 earnings coverage"))
-
-    # 3. Fetch articles and deduplicate by URL
     all_items: list[dict] = []
     seen_urls: set[str] = set()
 
-    for q, sector, company, reason in queries:
-        print(f"  Query: {q[:60]}")
-        articles = fetch_gnews(q, max_items=args.max_per_query)
-        time.sleep(0.8)  # polite pause between Google RSS requests
-        for art in articles:
+    def add_items(items: list[dict], sector: str | None, company: str | None, reason: str) -> None:
+        for art in items:
             url = art.get("source_url", "")
             if not url or url in seen_urls:
                 continue
@@ -453,14 +504,60 @@ def main() -> int:
             art["match_reason"]    = reason
             all_items.append(art)
 
-    print(f"  Unique articles found: {len(all_items)}")
+    # 2. Direct feeds — broad earnings coverage
+    print(f"\n  -- Direct RSS feeds --")
+    for feed_url, source_name, max_n in DIRECT_FEEDS:
+        print(f"  {source_name}: {feed_url[:60]}")
+        items = fetch_direct_feed(feed_url, source_name, max_items=max_n)
+        print(f"    → {len(items)} earnings articles")
+        # Tag items with the most-relevant sector from our active list
+        for art in items:
+            best_sector = None
+            for s in active_sectors:
+                if sector_matches(art["title"], s):
+                    best_sector = s
+                    break
+            add_items(
+                [art], best_sector, None,
+                f"Direct feed — {source_name}"
+            )
+        time.sleep(0.5)
 
-    # 4. Save to DB (or print for --dry-run)
+    # 3. Google News — sector-targeted supplement
+    sorted_sectors = sorted(
+        sectors.items(), key=lambda kv: abs(kv[1]["avg_yoy"]), reverse=True
+    )
+    if sorted_sectors:
+        print(f"\n  -- Google News (top sectors) --")
+    for sector, data in sorted_sectors[:3]:
+        info = SECTOR_INFO.get(sector, {})
+        q = info.get("q", f"india {sector.lower()} quarterly results earnings")
+        verb = "leading" if data["direction"] == "up" else "lagging" if data["direction"] == "down" else "flat"
+        reason = f"{sector} {verb} ({data['avg_yoy']:+.1f}% avg rev YoY)"
+        print(f"  {sector} ({verb}): {q[:50]}")
+        items = fetch_gnews(q, max_items=args.max_gnews)
+        print(f"    → {len(items)} articles from credible sources")
+        add_items(items, sector, None, reason)
+        time.sleep(0.8)
+
+    # Outlier-targeted Google News
+    for o in outliers[:2]:
+        first_word = o["company_name"].split()[0]
+        q = f"india {first_word} quarterly results earnings profit"
+        reason = f"{o['company_name']} profit outlier ({o['profit_yoy']:.0f}% YoY)"
+        print(f"  Outlier {o['company_name']}: {q[:50]}")
+        items = fetch_gnews(q, max_items=3)
+        print(f"    → {len(items)} articles")
+        add_items(items, o.get("sector"), o["company_name"], reason)
+        time.sleep(0.8)
+
+    print(f"\n  Total unique articles: {len(all_items)}")
+
+    # 4. Save
     written = upsert_items(sb, all_items, dry_run=args.dry_run)
     if sb:
         deactivate_old(sb, days=7)
-
-    print(f"Done. {written} articles {'would be ' if args.dry_run else ''}saved/updated.")
+    print(f"Done. {written} articles {'printed' if args.dry_run else 'saved/updated'}.")
     return 0
 
 
