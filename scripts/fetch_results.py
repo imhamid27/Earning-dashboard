@@ -92,9 +92,13 @@ def find_gap_tickers(sb, quarter_label: str, window_days: int = 90) -> list[dict
     since = (today - timedelta(days=window_days)).isoformat()
 
     # 1. Every ticker whose announcement has been CONFIRMED in the window.
+    # Include both 'fetched' and 'missed' — nse_results.py marks an event
+    # 'missed' when XBRL is unavailable, but Screener may still have the
+    # numbers (common for same-day filings where XBRL lags by hours).
+    # fetch_results will retry Screener for all of them.
     events = sb.table("announcement_events") \
         .select("ticker,announcement_date") \
-        .eq("status", "fetched") \
+        .in_("status", ["fetched", "missed"]) \
         .gte("announcement_date", since) \
         .lte("announcement_date", today.isoformat()) \
         .execute()
