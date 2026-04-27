@@ -114,7 +114,7 @@ def find_gap_tickers(sb, quarter_label: str, window_days: int = 90) -> list[dict
         .execute()
     already_numbered = {
         r["ticker"] for r in (have.data or [])
-        if r.get("revenue") is not None or r.get("net_profit") is not None
+        if r.get("revenue") is not None and r.get("net_profit") is not None
     }
 
     gap = sorted(announced - already_numbered)
