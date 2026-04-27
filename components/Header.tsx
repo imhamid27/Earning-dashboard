@@ -38,7 +38,7 @@ export default function Header() {
               Earnings Tracker
             </span>
             <span className="text-[14px] md:text-[15px] font-semibold tracking-tightest text-core-ink truncate">
-              India · Quarterly results
+              India · Quarterly Results
             </span>
           </span>
         </Link>
