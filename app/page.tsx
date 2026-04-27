@@ -13,6 +13,7 @@ import { DISCLAIMER_SHORT, DISCLAIMER_MARKETS } from "@/lib/disclaimer";
 import { trackLiveBandTab } from "@/lib/analytics";
 import { formatINR, formatDate, formatPct, formatYoY, pctToneClass } from "@/lib/format";
 import { TURNED_PROFITABLE, TURNED_LOSS_MAKING } from "@/lib/growth";
+import RelatedCoverage from "@/components/RelatedCoverage";
 import type { LatestQuarterRow } from "@/lib/types";
 
 const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
@@ -924,35 +925,20 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Watch Next — tucked as a footer strip inside the outlier block */}
-          {watchNext ? (
-            <div className="mt-4 pt-3 border-t border-core-line flex flex-wrap items-center gap-x-1 gap-y-1 text-[13px]">
-              <span className="text-[9px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Watch next</span>
-              {watchNext.bellwethers.map((u, i) => (
-                <span key={u.ticker}>
-                  {i > 0 ? <span className="mx-1.5 text-core-line-2">·</span> : null}
-                  <Link href={`/company/${encodeURIComponent(u.ticker)}`} className="font-semibold text-core-ink hover:text-core-pink">
-                    {shortName(u.company_name)}
-                  </Link>
-                  {u.next_result_date ? (
-                    <span className="text-core-muted text-[12px] ml-1">({formatDate(u.next_result_date)})</span>
-                  ) : null}
-                </span>
-              ))}
-              {watchNext.topSector ? (
-                <span className="text-core-muted ml-1">
-                  {watchNext.bellwethers.length > 0 ? "· " : ""}
-                  Other has <span className="text-core-ink font-semibold">{watchNext.topSector[1]}</span> results pending
-                </span>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       ) : null}
 
-      {/* Watch Next standalone — only when there are no outliers to attach it to */}
-      {(!outliers.length && watchNext) ? (
-        <div className="mt-6 border-t border-core-line pt-5 flex flex-wrap items-center gap-x-1 gap-y-1 text-[13px]">
+      {/* ══════════════════════════════════════════════════════════════
+          RELATED COVERAGE — contextual stories matching the sectors
+          and companies moving most this quarter. Fixed-height card
+          with internal vertical scroll; populated 3× daily by
+          scripts/fetch_related_coverage.py.
+          ══════════════════════════════════════════════════════════════ */}
+      <RelatedCoverage />
+
+      {/* Watch Next — always below Related Coverage */}
+      {watchNext ? (
+        <div className="mt-4 pt-3 border-t border-core-line flex flex-wrap items-center gap-x-1 gap-y-1 text-[13px]">
           <span className="text-[9px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Watch next</span>
           {watchNext.bellwethers.map((u, i) => (
             <span key={u.ticker}>

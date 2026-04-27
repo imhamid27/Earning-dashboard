@@ -143,6 +143,11 @@ jobs:
               python scripts/nse_results.py
               python scripts/bse_results.py
               python scripts/fetch_results.py
+              # Phase 3 — Related Coverage. Fetch contextual news for the
+              # leading/lagging sectors and outlier companies discovered in
+              # Phase 1 & 2. Runs 3× daily (08:00, 15:00, 21:00 IST) so the
+              # timeline card always has fresh, relevant stories.
+              python scripts/fetch_related_coverage.py
               ;;
             hourly)
               # Sweep 1: poll every NIFTY-500 company for fresh NSE XBRL

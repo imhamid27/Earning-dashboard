@@ -1,4 +1,7 @@
 yfinance>=0.2.40
+# RSS feed parser — used by fetch_related_coverage.py to consume Google News
+# RSS without needing API keys. Handles RSS 2.0/Atom + date parsing edge cases.
+feedparser>=6.0.0
 supabase>=2.5.0
 python-dotenv>=1.0.1
 pandas>=2.2.0
