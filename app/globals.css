@@ -181,6 +181,13 @@ table.data-table tbody tr:last-child td { border-bottom: 0; }
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
+/* Thin, styled scrollbar for content cards */
+.thin-scrollbar { scrollbar-width: thin; scrollbar-color: #e2e2e2 transparent; }
+.thin-scrollbar::-webkit-scrollbar { width: 4px; }
+.thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.thin-scrollbar::-webkit-scrollbar-thumb { background: #e2e2e2; border-radius: 99px; }
+.thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #c8c8c8; }
+
 @keyframes pulse-soft {
   0%, 100% { opacity: 0.55; }
   50%      { opacity: 0.25; }
