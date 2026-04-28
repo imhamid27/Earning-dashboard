@@ -277,7 +277,9 @@ def main() -> int:
                     .eq("quarter_end_date", qe.isoformat()) \
                     .maybe_single() \
                     .execute()
-                existing_src = (existing.data or {}).get("source", "")
+                # .maybe_single().execute() returns None (not an object) when
+                # no row exists in some Supabase client versions — guard it.
+                existing_src = (existing.data or {}).get("source", "") if existing else ""
                 if existing_src in AUTHORITATIVE_SOURCES:
                     path.append(f"screener=skipped (authoritative {existing_src} already present)")
                 else:
