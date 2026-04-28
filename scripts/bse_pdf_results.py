@@ -922,6 +922,65 @@ def resolve_targets(sb, args) -> list[dict]:
     return pruned
 
 
+def sanity_check_net_profit(sb, ticker: str, parsed_np: float | None) -> tuple[bool, str]:
+    """Compare parsed NP against historical median to catch wrong-row matches.
+
+    Returns (ok, reason).
+
+    Two failure modes we guard against:
+      Near-zero : parser matched a tax/adjustment line instead of PAT.
+                  Threshold: parsed NP < 4% of historical positive median.
+                  (4% allows for genuinely bad quarters — e.g. a cyclical co
+                   with exceptional impairment — while still blocking OCR picks
+                   of the ₹0-₹10 Cr adjustment-line type.)
+      Enormous  : parser matched a balance-sheet or annual-disclosure line.
+                  Threshold: parsed NP > 100× historical positive median.
+
+    If the company has no positive-NP history we skip (new listings, turnaround
+    companies). Negative or zero NP is allowed — loss-making companies are real.
+    """
+    if parsed_np is None:
+        return True, ""
+
+    historical = sb.table("quarterly_financials") \
+        .select("net_profit") \
+        .eq("ticker", ticker) \
+        .not_.is_("net_profit", "null") \
+        .gt("net_profit", 0) \
+        .order("quarter_end_date", desc=True) \
+        .limit(8) \
+        .execute().data or []
+
+    nps = [r["net_profit"] for r in historical
+           if r.get("net_profit") is not None and r["net_profit"] > 0]
+    if len(nps) < 2:
+        return True, ""          # Insufficient history
+
+    nps.sort()
+    n = len(nps)
+    median = nps[n // 2] if n % 2 else (nps[n // 2 - 1] + nps[n // 2]) / 2
+    if median <= 0:
+        return True, ""
+
+    if parsed_np <= 0:
+        return True, ""          # Losses are allowed — only check positive NP
+
+    ratio = parsed_np / median
+    if ratio < 0.04:
+        return (
+            False,
+            f"parsed NP {parsed_np/1e7:.1f} Cr is only {ratio*100:.1f}% of "
+            f"historical median {median/1e7:.1f} Cr — likely tax/adjustment row",
+        )
+    if ratio > 100:
+        return (
+            False,
+            f"parsed NP {parsed_np/1e7:.0f} Cr is {ratio:.0f}× "
+            f"historical median {median/1e7:.0f} Cr — likely balance-sheet or annual figure",
+        )
+    return True, ""
+
+
 def sanity_check_revenue(sb, ticker: str, parsed_revenue: float | None) -> tuple[bool, str]:
     """Compare parsed revenue against historical median to catch OCR errors.
 
@@ -988,9 +1047,14 @@ def upsert_row(sb, company: dict, ticker: str, ann_date: date, parsed: dict,
     if parsed.get("revenue") is None and parsed.get("net_profit") is None:
         return {"written": False, "reason": "no rev/np extracted"}
 
-    # Sanity-check revenue against historical median — catches OCR misreads
-    # (e.g. Union Bank where OCR read ₹31.85 L instead of ₹24 000 Cr).
+    # Sanity-check revenue and net profit against historical medians.
+    # Revenue check: catches OCR misreads (Union Bank ₹31.85 L → ₹24,000 Cr).
+    # NP check: catches tax/adjustment rows parsed as PAT (near-zero NP when
+    # historical median is positive) and balance-sheet/annual figures (huge NP).
     sane, why = sanity_check_revenue(sb, ticker, parsed.get("revenue"))
+    if not sane:
+        return {"written": False, "reason": f"sanity check failed: {why}"}
+    sane, why = sanity_check_net_profit(sb, ticker, parsed.get("net_profit"))
     if not sane:
         return {"written": False, "reason": f"sanity check failed: {why}"}
 
