@@ -35,16 +35,22 @@ function relativeTime(iso: string | null | undefined): string {
   return days === 1 ? "Yesterday" : `${days}d ago`;
 }
 
+// Tier 1 → solid/vivid   Tier 2 → medium   Tier 3 → muted
 function sourceDot(name: string): string {
   const n = name.toLowerCase();
-  if (n.includes("business standard")) return "bg-blue-500";
-  if (n.includes("mint"))              return "bg-emerald-500";
-  if (n.includes("moneycontrol"))      return "bg-orange-500";
-  if (n.includes("economic times"))    return "bg-red-500";
-  if (n.includes("reuters"))           return "bg-orange-400";
-  if (n.includes("bloomberg"))         return "bg-purple-500";
+  // Tier 1
+  if (n.includes("the core"))          return "bg-violet-600";   // credibility 100
+  // Tier 2
+  if (n.includes("reuters"))           return "bg-orange-500";   // credibility 95
+  if (n.includes("bloomberg"))         return "bg-purple-600";   // credibility 90
+  if (n.includes("business standard")) return "bg-blue-600";     // credibility 88
+  if (n.includes("mint"))              return "bg-emerald-500";  // credibility 85
+  if (n.includes("economic times"))    return "bg-red-500";      // credibility 82
+  // Tier 3
+  if (n.includes("cnbc"))              return "bg-sky-500";      // credibility 78
+  if (n.includes("moneycontrol"))      return "bg-amber-500";    // credibility 75
+  // Fallback
   if (n.includes("ndtv"))              return "bg-red-600";
-  if (n.includes("cnbc"))              return "bg-blue-400";
   return "bg-gray-400";
 }
 

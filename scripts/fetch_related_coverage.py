@@ -1,14 +1,16 @@
 """
 Related Coverage fetcher ("In Context" section).
 
-Strategy — two complementary sources:
+Source priority (tier | credibility):
+  Tier 1 (100): The Core, NSE*, BSE*           (* no editorial RSS — skipped)
+  Tier 2 (82–95): Reuters, Bloomberg, Business Standard, Mint, Economic Times
+  Tier 3 (75–78): CNBC-TV18, Moneycontrol
 
-  1. Direct RSS feeds from credible Indian business news outlets (primary).
-  2. Google News RSS queries per leading/lagging sector (supplementary).
-
-For each article we call Claude Haiku to write a 2-sentence investor brief
-(stored in `commentary`) so the card shows an Inshorts-style digest rather
-than just repeating the headline.
+Strategy:
+  1. Direct RSS feeds for sources that publish them (BS, Mint, ET, MC, CNBC-TV18).
+  2. Google News site: queries for sources without public RSS or with blocked feeds
+     (The Core, Reuters, Bloomberg). Same engine also handles sector-targeted queries.
+  3. Claude Haiku writes a 2-sentence investor brief per article (commentary field).
 
 Run:
     py scripts/fetch_related_coverage.py
@@ -57,38 +59,63 @@ _IST = timezone(timedelta(hours=5, minutes=30))
 
 
 # ---------------------------------------------------------------------------
-# Direct RSS feeds — primary source.
-# Each entry: (feed_url, display_name, max_items)
+# Source registry
+#
+# DIRECT_FEEDS  — sources with public RSS feeds we can pull directly.
+#                 (feed_url, display_name, max_items)
+#
+# SOURCE_GNEWS  — sources without reliable public RSS; we search Google News
+#                 with a site: filter so we still get their articles.
+#                 (site_domain, display_name, max_items)
+#                 These run once as broad earnings queries, not per-sector.
 # ---------------------------------------------------------------------------
+
 DIRECT_FEEDS: list[tuple[str, str, int]] = [
-    ("https://economictimes.indiatimes.com/markets/earnings/rss.cms",
-     "Economic Times", 10),
-    ("https://economictimes.indiatimes.com/markets/rss.cms",
-     "Economic Times", 6),
-    ("https://www.business-standard.com/rss/markets-106.rss",
-     "Business Standard", 8),
-    ("https://www.livemint.com/rss/markets",
-     "Mint", 8),
-    ("https://www.moneycontrol.com/rss/MCtopnews.xml",
-     "Moneycontrol", 6),
+    # ── Tier 2 ──────────────────────────────────────────────────────────
+    # Business Standard — markets + companies (credibility 88)
+    ("https://www.business-standard.com/rss/markets-106.rss",   "Business Standard", 8),
+    ("https://www.business-standard.com/rss/companies-101.rss", "Business Standard", 6),
+    # Mint (credibility 85)
+    ("https://www.livemint.com/rss/markets",                    "Mint",              8),
+    ("https://www.livemint.com/rss/companies",                  "Mint",              5),
+    # Economic Times — earnings beat + broad markets (credibility 82)
+    ("https://economictimes.indiatimes.com/markets/earnings/rss.cms", "Economic Times", 10),
+    ("https://economictimes.indiatimes.com/rssfeedstopstories.cms",   "Economic Times",  6),
+    # ── Tier 3 ──────────────────────────────────────────────────────────
+    # CNBC-TV18 (credibility 78)
+    ("https://www.cnbctv18.com/commonfeeds/v1/eng/rss/market.xml", "CNBC TV18",      6),
+    # Moneycontrol — top news + dedicated results feed (credibility 75)
+    ("https://www.moneycontrol.com/rss/results.xml",            "Moneycontrol",     8),
+    ("https://www.moneycontrol.com/rss/MCtopnews.xml",          "Moneycontrol",     5),
+]
+
+# Sources without public RSS — fetched via Google News site: queries.
+# Ordered by credibility: The Core (100) > Reuters (95) > Bloomberg (90).
+SOURCE_GNEWS: list[tuple[str, str, int]] = [
+    ("thecore.in",      "The Core",  6),   # tier 1, credibility 100
+    ("reuters.com",     "Reuters",   6),   # tier 2, credibility 95
+    ("bloomberg.com",   "Bloomberg", 5),   # tier 2, credibility 90
+    ("cnbctv18.com",    "CNBC TV18", 4),   # fallback if direct feed fails
 ]
 
 GNEWS_BASE = "https://news.google.com/rss/search"
 
+# Credible sources accepted when parsing Google News sector/company queries.
+# Order matters — first match wins.
 CREDIBLE_SOURCES: list[tuple[str, str]] = [
-    ("the core",           "The Core"),
-    ("thecore",            "The Core"),
-    ("reuters",            "Reuters"),
-    ("business standard",  "Business Standard"),
-    ("livemint",           "Mint"),
-    ("mint",               "Mint"),
-    ("bloomberg",          "Bloomberg"),
-    ("economic times",     "Economic Times"),
-    ("moneycontrol",       "Moneycontrol"),
-    ("financial express",  "Financial Express"),
-    ("cnbc tv18",          "CNBC TV18"),
-    ("cnbctv18",           "CNBC TV18"),
-    ("ndtv profit",        "NDTV Profit"),
+    ("thecore",           "The Core"),
+    ("the core",          "The Core"),
+    ("reuters",           "Reuters"),
+    ("bloomberg",         "Bloomberg"),
+    ("business standard", "Business Standard"),
+    ("livemint",          "Mint"),
+    ("mint",              "Mint"),
+    ("economic times",    "Economic Times"),
+    ("cnbctv18",          "CNBC TV18"),
+    ("cnbc tv18",         "CNBC TV18"),
+    ("moneycontrol",      "Moneycontrol"),
+    ("ndtv profit",       "NDTV Profit"),
+    ("financial express", "Financial Express"),
 ]
 
 
@@ -321,6 +348,7 @@ def fetch_direct_feed(
 
 
 def fetch_gnews(query: str, max_items: int = 6) -> list[dict]:
+    """Sector/company-targeted Google News query; filters by CREDIBLE_SOURCES."""
     url = (
         f"{GNEWS_BASE}?q={urllib.parse.quote(query)}"
         "&hl=en-IN&gl=IN&ceid=IN:en"
@@ -372,6 +400,49 @@ def fetch_gnews(query: str, max_items: int = 6) -> list[dict]:
             "commentary":   "",
             "_raw_desc":    extract_description(entry),
             "source_name":  source_name,
+            "source_url":   link,
+            "published_at": parse_pub_date(entry),
+        })
+
+    return results
+
+
+def fetch_source_gnews(site: str, display_name: str, max_items: int = 6) -> list[dict]:
+    """
+    Pull the latest earnings/results articles from a specific source via
+    Google News site: query.  Used for sources without public RSS (The Core,
+    Reuters, Bloomberg) and as a fallback for others.
+    """
+    query = f"site:{site} india quarterly results earnings profit"
+    url = (
+        f"{GNEWS_BASE}?q={urllib.parse.quote(query)}"
+        "&hl=en-IN&gl=IN&ceid=IN:en"
+    )
+    try:
+        feed = feedparser.parse(
+            url,
+            request_headers={"User-Agent": "EarningsDashboard/1.0"},
+        )
+    except Exception as e:
+        print(f"  [warn] source gnews error ({display_name}): {e}", file=sys.stderr)
+        return []
+
+    results: list[dict] = []
+    for entry in getattr(feed, "entries", []):
+        if len(results) >= max_items:
+            break
+        raw_title = getattr(entry, "title", "") or ""
+        link = getattr(entry, "link", "") or ""
+        if not raw_title or not link:
+            continue
+        title = strip_source_suffix(raw_title, display_name)
+        if not title or not is_earnings_relevant(title):
+            continue
+        results.append({
+            "title":        title,
+            "commentary":   "",
+            "_raw_desc":    extract_description(entry),
+            "source_name":  display_name,
             "source_url":   link,
             "published_at": parse_pub_date(entry),
         })
@@ -596,7 +667,27 @@ def main() -> int:
             add_items([art], best_sector, None, reason)
         time.sleep(0.5)
 
-    # 3. Google News — sector supplement
+    # 3. Source-specific Google News — Tier 1 & 2 sources without public RSS
+    #    (The Core, Reuters, Bloomberg) + CNBC-TV18 fallback
+    print(f"\n  -- Source Google News (no-RSS sources) --")
+    for site, display_name, max_n in SOURCE_GNEWS:
+        print(f"  {display_name} ({site})")
+        items = fetch_source_gnews(site, display_name, max_items=max_n)
+        print(f"    → {len(items)} articles")
+        for art in items:
+            best_sector = next(
+                (s for s in active_sectors if sector_matches(art["title"], s)),
+                None,
+            )
+            reason = None
+            if best_sector and best_sector in sectors:
+                d = sectors[best_sector]
+                direction = "up" if d["direction"] == "up" else "down" if d["direction"] == "down" else "stable"
+                reason = f"{best_sector} revenue {direction} {d['avg_yoy']:+.1f}% YoY"
+            add_items([art], best_sector, None, reason)
+        time.sleep(0.8)
+
+    # 4. Google News — sector-targeted supplement
     sorted_sectors = sorted(
         sectors.items(), key=lambda kv: abs(kv[1]["avg_yoy"]), reverse=True
     )
@@ -626,10 +717,10 @@ def main() -> int:
 
     print(f"\n  Total unique articles: {len(all_items)}")
 
-    # 4. Generate AI briefs (in-place, before saving)
+    # 5. Generate AI briefs (in-place, before saving)
     generate_briefs(claude, all_items)
 
-    # 5. Save
+    # 6. Save
     written = upsert_items(sb, all_items, dry_run=args.dry_run)
     if sb:
         deactivate_old(sb, days=7)
