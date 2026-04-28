@@ -81,9 +81,23 @@ def quarter_end_for(label: str) -> date | None:
     return date(y_, m_, d_)
 
 
+# Sources considered authoritative — NSE/BSE official filings.
+# Rows from these sources are treated as final and won't be re-fetched.
+# Screener/yahoo rows are treated as provisional and remain eligible
+# for an NSE XBRL upgrade whenever XBRL becomes available.
+AUTHORITATIVE_SOURCES = {"nse", "bse", "bse_pdf"}
+
+
 def find_gap_tickers(sb, quarter_label: str, window_days: int = 90) -> list[dict]:
-    """Companies that announced within the window but have no numbered
-    quarterly_financials row for the target quarter."""
+    """
+    Returns companies that announced within the window and either:
+      (a) have no quarterly_financials row at all, OR
+      (b) have data only from a non-authoritative source (screener / yahoo).
+
+    Case (b) keeps NSE/BSE tickers eligible for an official XBRL upgrade
+    even after Screener has already written provisional numbers.  If XBRL
+    is still unavailable the Screener row is left untouched.
+    """
     qe = quarter_end_for(quarter_label)
     if not qe:
         return []
@@ -95,7 +109,6 @@ def find_gap_tickers(sb, quarter_label: str, window_days: int = 90) -> list[dict
     # Include both 'fetched' and 'missed' — nse_results.py marks an event
     # 'missed' when XBRL is unavailable, but Screener may still have the
     # numbers (common for same-day filings where XBRL lags by hours).
-    # fetch_results will retry Screener for all of them.
     events = sb.table("announcement_events") \
         .select("ticker,announcement_date") \
         .in_("status", ["fetched", "missed"]) \
@@ -106,18 +119,23 @@ def find_gap_tickers(sb, quarter_label: str, window_days: int = 90) -> list[dict
     if not announced:
         return []
 
-    # 2. Tickers that already have numbers for the target quarter.
+    # 2. Tickers that already have numbers from an AUTHORITATIVE source.
+    #    - nse / bse / bse_pdf  → final, skip entirely.
+    #    - screener / yahoo     → provisional, keep in the gap list so NSE
+    #      XBRL can overwrite when it becomes available.
     have = sb.table("quarterly_financials") \
-        .select("ticker,revenue,net_profit") \
+        .select("ticker,revenue,net_profit,source") \
         .eq("quarter_end_date", qe.isoformat()) \
         .in_("ticker", list(announced)) \
         .execute()
-    already_numbered = {
+    already_authoritative = {
         r["ticker"] for r in (have.data or [])
-        if r.get("revenue") is not None and r.get("net_profit") is not None
+        if (r.get("revenue") is not None
+            and r.get("net_profit") is not None
+            and r.get("source", "") in AUTHORITATIVE_SOURCES)
     }
 
-    gap = sorted(announced - already_numbered)
+    gap = sorted(announced - already_authoritative)
     if not gap:
         return []
 
@@ -249,14 +267,27 @@ def main() -> int:
                 nse_log_fetch(sb, ticker, "failed", msg)
 
             # Source 2: Screener fallback (covers both NS and many BO).
+            # Skip if NSE already wrote this run, or if the row in DB is
+            # already from an authoritative source (defensive guard — the
+            # gap query should have excluded such tickers, but belt+braces).
             if written == 0:
-                w, msg = try_screener(sb, c, session)
-                written += w
-                path.append(f"screener={msg}")
-                if w > 0:
-                    screener_log_fetch(sb, ticker, "success", msg)
+                existing = sb.table("quarterly_financials") \
+                    .select("source") \
+                    .eq("ticker", ticker) \
+                    .eq("quarter_end_date", qe.isoformat()) \
+                    .maybe_single() \
+                    .execute()
+                existing_src = (existing.data or {}).get("source", "")
+                if existing_src in AUTHORITATIVE_SOURCES:
+                    path.append(f"screener=skipped (authoritative {existing_src} already present)")
                 else:
-                    screener_log_fetch(sb, ticker, "failed", msg)
+                    w, msg = try_screener(sb, c, session)
+                    written += w
+                    path.append(f"screener={msg}")
+                    if w > 0:
+                        screener_log_fetch(sb, ticker, "success", msg)
+                    else:
+                        screener_log_fetch(sb, ticker, "failed", msg)
 
             if written > 0:
                 mark_fetched(sb, ticker)
