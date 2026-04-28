@@ -55,7 +55,7 @@ on:
         required: true
         default: 'hourly'
         type: choice
-        options: [daily, hourly, backfill, commentary]
+        options: [daily, hourly, backfill, commentary, coverage]
 
 # Serialise runs of this workflow — queued, not dropped. Previously a
 # long-running schedule tick would cause GitHub Actions to skip any
@@ -199,6 +199,13 @@ jobs:
               # ingestion sweep. Completes in ~5-8 minutes; safe to run
               # alongside the hourly schedule.
               python scripts/generate_commentary.py --all
+              ;;
+            coverage)
+              # "In Context" news refresh only — fetches latest articles
+              # from all 10 sources (BS, Mint, ET, CNBC-TV18, Moneycontrol
+              # via direct RSS; The Core, Reuters, Bloomberg via Google News)
+              # and generates AI briefs. Completes in ~2-3 minutes.
+              python scripts/fetch_related_coverage.py
               ;;
             *)
               echo "unknown mode: $MODE" >&2; exit 2 ;;
