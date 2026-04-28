@@ -172,6 +172,14 @@ LABEL_ALIASES: dict[str, list[str]] = {
         "total income from operations",
     ],
     "net_profit": [
+        # Most specific first: profit attributable to equity shareholders
+        # (= total PAT minus minority/non-controlling interest). This is the
+        # figure used to compute EPS and is what news agencies report.
+        # Appears in consolidated filings of companies with subsidiaries
+        # (e.g. Coal India, TCS, Reliance). Preferred over total PAT which
+        # includes minority interest and can overstate by 0.5-5%.
+        "owners of the company",
+        # Standard SEBI template labels (tried in specificity order)
         "profit for the period / year",
         "profit for the period/ year",
         "profit for the period/year",
@@ -360,14 +368,58 @@ NUM_RE = re.compile(
 # pattern (Indian number formatting) vs. column-separated integers.
 BROKEN_SEP_RE = re.compile(r"(?<!\d)(\d{1,3})\s+(\d{3}\.\d+)(?!\d)")
 
+# OCR substitutions — scan-to-PDF sometimes replaces digits with visually
+# similar letters.  We only heal inside tokens that look like Indian numbers
+# (digit run, optional comma, etc.) so real words are untouched.
+# Patterns:  lo,go7.7g → 10,907.79   |   7,L65.98 → 7,165.98
+#            9,740.L5  → 9,740.15    |   L7.0'.l,6.56 → ignored (too garbled)
+_OCR_HEAL_RE = re.compile(
+    r"""
+    (?<!\w)          # not preceded by a word character
+    (                # capture the token to heal
+      [0-9loIgS\']+  # digits OR common OCR-misread letters
+      (?:[,\.][0-9loIgS\']+)*  # optional decimal / thousand parts
+    )
+    (?!\w)           # not followed by a word character
+    """,
+    re.VERBOSE,
+)
+_OCR_DIGIT_MAP = str.maketrans("loIgS'", "101950")
+
+
+def _heal_ocr_digits(line: str) -> str:
+    """Fix common OCR letter-for-digit substitutions in numeric tokens.
+
+    Applied only to tokens that are plausibly numbers (mixed digits+letters).
+    Pure alpha tokens (e.g. 'Income') are left untouched because the regex
+    requires at least one real digit in the token.
+
+    Examples:
+        'lo,go7.7g'  → '10,907.79'  (l=1, o=0, g=9)
+        '7,L65.98'   → '7,165.98'   (L=1 / I=1)
+        '9,740.L5'   → '9,740.15'
+    """
+    def _fix_tok(m: re.Match) -> str:
+        tok = m.group(1)
+        # Only heal tokens that contain at least one digit AND at least one
+        # OCR-suspect letter — otherwise we'd mangle real text.
+        if not any(c.isdigit() for c in tok):
+            return tok
+        if not any(c in "loIgS'" for c in tok):
+            return tok
+        return tok.translate(_OCR_DIGIT_MAP)
+
+    return _OCR_HEAL_RE.sub(_fix_tok, line)
+
 
 def _fix_broken_thousand_separators(line: str) -> str:
     """Collapse space-as-thousand-separator ONLY when the second chunk
     has a decimal point — that's the signal the whole thing is one real
     number (e.g. '5 292.60' → '5,292.60'). Applied up to 3× per line so
-    two-level separators like '18 651.20' and '1 234 567.89' all heal."""
+    two-level separators like '18 651.20' and '1 234 567.89' all heal.
+    Also applies OCR digit healing for l/o/I/g→digit substitutions."""
     prev = None
-    cur = line
+    cur = _heal_ocr_digits(line)
     for _ in range(3):
         if cur == prev:
             break
@@ -916,15 +968,22 @@ def upsert_row(sb, company: dict, ticker: str, ann_date: date, parsed: dict,
     if not sane:
         return {"written": False, "reason": f"sanity check failed: {why}"}
 
-    # Don't clobber a better source. If Screener or NSE has already written
-    # THIS quarter, respect it — their reconciliation is more reliable than
-    # our template-matching.
+    # Source hierarchy: nse > bse_pdf > screener.
+    # bse_pdf CAN overwrite a screener row (official filing vs scraped web
+    # page), but MUST NOT overwrite an nse row (XBRL is ground-truth).
     existing = sb.table("quarterly_financials").select("source,data_quality_status") \
         .eq("ticker", ticker).eq("quarter_end_date", quarter_end.isoformat()) \
         .limit(1).execute().data or []
-    if existing and existing[0].get("source") in ("screener", "nse"):
-        if existing[0].get("data_quality_status") == "ok":
-            return {"written": False, "reason": f"already have {existing[0]['source']} row"}
+    if existing:
+        src = existing[0].get("source", "")
+        qual = existing[0].get("data_quality_status", "")
+        # nse is always more authoritative than bse_pdf — never overwrite.
+        if src == "nse":
+            return {"written": False, "reason": "already have nse row"}
+        # bse (calendar grid, not PDF) is also authoritative — skip.
+        if src == "bse" and qual == "ok":
+            return {"written": False, "reason": "already have bse row"}
+        # screener is provisional — bse_pdf may overwrite it.
 
     row = {
         "company_id": company["id"],
