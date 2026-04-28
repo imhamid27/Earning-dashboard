@@ -172,23 +172,32 @@ LABEL_ALIASES: dict[str, list[str]] = {
         "total income from operations",
     ],
     "net_profit": [
-        # Most specific first: profit attributable to equity shareholders
-        # (= total PAT minus minority/non-controlling interest). This is the
-        # figure used to compute EPS and is what news agencies report.
-        # Appears in consolidated filings of companies with subsidiaries
-        # (e.g. Coal India, TCS, Reliance). Preferred over total PAT which
-        # includes minority interest and can overstate by 0.5-5%.
+        # Priority 1: attribution sub-line for consolidated filings.
+        # "Profit attributable to: / Owners of the Company 10,839.18 ..."
+        # This is what EPS is calculated on and what news agencies report.
+        # Context-guarded: only matched when previous line says "profit
+        # attributable", so it won't confuse balance-sheet equity lines.
         "owners of the company",
-        # Standard SEBI template labels (tried in specificity order)
-        "profit for the period / year",
-        "profit for the period/ year",
-        "profit for the period/year",
-        "profit for the period",
+        # Priority 2: explicit loss-or-profit label — highest specificity
+        # among the standard SEBI template rows. Tried BEFORE the plain
+        # "profit for the period" variants so that consolidated P&L main rows
+        # (format: "Profit/(Loss) for the Period/ Year") are picked up before
+        # any subsidiary-breakdown notes inside the same section (which use
+        # the plainer "Profit for the Period/Year" label without "/(loss)").
         "profit/(loss) for the period",
         "profit / (loss) for the period",
+        # Priority 3: standard plain labels (no loss qualifier)
+        "profit for the period / year",
+        "profit for the period/ year",
+        "profit for the period",
         "net profit for the period",
         "net profit / (loss) for the period",
         "net profit/(loss) for the period",
+        # Priority 4: looser match — "profit for the period/year" (no space
+        # before "year") is the format used in subsidiary notes breakdowns
+        # inside consolidated filings. It is kept as a fallback for standalone
+        # filings where the main P&L uses this exact phrasing.
+        "profit for the period/year",
         "profit after tax",
     ],
     "operating_profit": [
@@ -540,15 +549,32 @@ def find_label_line(section: str, aliases: list[str]) -> tuple[str, str] | None:
     before falling to the next one, so a heading like "1 Income from
     operations" never shadows the data row "(a) Revenue from operations
     99,375.12 ...".
+
+    Special alias: "owners of the company" is the attribution sub-line in
+    consolidated filings ("Profit attributable to: / Owners of the Company
+    10,839.18"). Because "Owners of the Company" also appears in balance-sheet
+    equity lines, this alias is only valid when the IMMEDIATELY preceding
+    non-empty line contains "profit attributable".
     """
     # Heal the whole section up-front so numeric detection works on lines
     # with space-as-thousand-separator.
     healed_lines = [_fix_broken_thousand_separators(l) for l in section.splitlines()]
     lc_lines = [l.lower() for l in healed_lines]
     for a in (s.lower() for s in aliases):
-        for line, lc in zip(healed_lines, lc_lines):
+        for idx, (line, lc) in enumerate(zip(healed_lines, lc_lines)):
             if a not in lc:
                 continue
+            # Context guard for the attribution sub-line: only accept
+            # "owners of the company" when the previous non-empty line
+            # mentions "profit attributable".
+            if a == "owners of the company":
+                prev_lc = next(
+                    (lc_lines[j] for j in range(idx - 1, -1, -1)
+                     if lc_lines[j].strip()),
+                    "",
+                )
+                if "profit attributable" not in prev_lc:
+                    continue
             toks = numeric_tokens(line)
             if not toks:
                 continue
@@ -968,9 +994,24 @@ def upsert_row(sb, company: dict, ticker: str, ann_date: date, parsed: dict,
     if not sane:
         return {"written": False, "reason": f"sanity check failed: {why}"}
 
+    # Sanity-check: NP > Revenue is structurally impossible (even for banks,
+    # treasury income doesn't exceed total interest income). Catches cases
+    # where the parser picks a balance-sheet equity line or annual summary
+    # instead of the quarterly PAT row.
+    rev = parsed.get("revenue")
+    np_ = parsed.get("net_profit")
+    if rev and np_ and np_ > 0 and rev > 0 and np_ > rev * 1.5:
+        return {
+            "written": False,
+            "reason": f"sanity check failed: NP {np_/1e7:.0f}Cr > 1.5× Revenue {rev/1e7:.0f}Cr",
+        }
+
     # Source hierarchy: nse > bse_pdf > screener.
-    # bse_pdf CAN overwrite a screener row (official filing vs scraped web
-    # page), but MUST NOT overwrite an nse row (XBRL is ground-truth).
+    # bse_pdf CAN overwrite a screener row, but ONLY when our parse produced
+    # a complete result (both revenue AND net_profit present). Partial bse_pdf
+    # writes (e.g. revenue-only or NP-only) leave the existing screener row
+    # intact, because a partial official source is no better than a complete
+    # scraped one — and may introduce inconsistency.
     existing = sb.table("quarterly_financials").select("source,data_quality_status") \
         .eq("ticker", ticker).eq("quarter_end_date", quarter_end.isoformat()) \
         .limit(1).execute().data or []
@@ -983,7 +1024,13 @@ def upsert_row(sb, company: dict, ticker: str, ann_date: date, parsed: dict,
         # bse (calendar grid, not PDF) is also authoritative — skip.
         if src == "bse" and qual == "ok":
             return {"written": False, "reason": "already have bse row"}
-        # screener is provisional — bse_pdf may overwrite it.
+        # For screener rows: only overwrite when bse_pdf produced a COMPLETE
+        # result. A partial bse_pdf parse is not worth clobbering good screener data.
+        if src == "screener" and qual == "ok" and quality != "ok":
+            return {
+                "written": False,
+                "reason": f"partial bse_pdf ({quality}) won't overwrite complete screener row",
+            }
 
     row = {
         "company_id": company["id"],
