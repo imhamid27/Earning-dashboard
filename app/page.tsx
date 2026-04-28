@@ -1296,7 +1296,7 @@ function TodayBand({
       {/* Scrollable tab content — no-scrollbar hides the native arrows
           (overflow-hidden on the parent clips their hit area anyway);
           mouse-wheel and touch scroll still work. */}
-      <div className="px-5 md:px-6 pb-5 md:pb-6 pt-4 md:pt-5 overflow-y-auto flex-1 no-scrollbar">
+      <div className="px-5 md:px-6 pb-5 md:pb-6 pt-4 md:pt-5 overflow-y-auto flex-1 thin-scrollbar-dark">
         {/* #1 What changed today — always visible on the Today tab so the
             reader sees a live count, even when zero.
             strong = profit YoY > 20%, weak = profit YoY < 0%. */}
