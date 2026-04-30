@@ -40,12 +40,13 @@ on:
     # Calendar refresh × 3 (IST 08:00, 15:00, 21:00 = 02:30, 09:30, 15:30 UTC)
     # Each daily run also does a quick results sweep after the calendar scripts.
     - cron: '30 2,9,15 * * 1-5'
-    # Hourly result sweeps — 04:30 IST to 23:30 IST (10:00 UTC to 18:00 UTC).
-    # Window trimmed from '0 4-19' (16 runs) to '0 4-17' (14 runs) to cut
-    # runner minutes — filings before 09:30 IST and after 23:00 IST are rare.
-    - cron: '0 4-17 * * 1-5'
-    # Early-morning catch-up: 02:00 UTC (07:30 IST) weekdays — processes
-    # anything that filed overnight before morning readers open the dashboard.
+    # Fast XBRL check every 2 hours, 09:30–23:30 IST (04:00–18:00 UTC).
+    # Only runs nse_results + bse_results (~5 min each) so runner minutes
+    # stay low. Heavy work (Screener, PDF, commentary, coverage) is handled
+    # by the 3× daily runs above. 7 runs/day × ~5 min = ~35 min/day.
+    - cron: '0 4,6,8,10,12,14,16 * * 1-5'
+    # Early-morning catch-up: 02:00 UTC (07:30 IST) weekdays — full sweep
+    # picks up anything that filed overnight before morning readers arrive.
     - cron: '0 2 * * 1-5'
     # Weekly backfill: Sunday 18:00 UTC (23:30 IST)
     - cron: '0 18 * * 0'
@@ -118,11 +119,11 @@ jobs:
             exit 0
           fi
           case "${{ github.event.schedule }}" in
-            '30 2,9,15 * * 1-5')  echo "mode=daily"    >> "$GITHUB_OUTPUT" ;;
-            '0 4-19 * * 1-5')     echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
-            '0 2 * * 1-5')        echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
-            '0 18 * * 0')         echo "mode=backfill" >> "$GITHUB_OUTPUT" ;;
-            *)                    echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
+            '30 2,9,15 * * 1-5')           echo "mode=daily"    >> "$GITHUB_OUTPUT" ;;
+            '0 4,6,8,10,12,14,16 * * 1-5') echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
+            '0 2 * * 1-5')                 echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
+            '0 18 * * 0')                  echo "mode=backfill" >> "$GITHUB_OUTPUT" ;;
+            *)                             echo "mode=hourly"   >> "$GITHUB_OUTPUT" ;;
           esac
 
       - name: Run ingest (${{ steps.mode.outputs.mode }})
@@ -157,39 +158,18 @@ jobs:
               python scripts/fetch_results.py
               ;;
             hourly)
-              # Sweep 1: poll announced companies for fresh NSE XBRL filings.
-              # --quarters 1: only the current quarter — hourly runs don't
-              # need to backfill history; that's what backfill/daily does.
-              # Cuts XBRL fetches from ~8 per company to 1 → saves ~10 min.
+              # Lightweight XBRL + filing-link check — runs every 2 hours.
+              # Kept minimal (~5 min total) so the 7 daily slots stay cheap.
+              # Heavy work (Screener, PDF parsing, commentary, coverage) all
+              # runs in the 3× daily slots above which have 40-min budgets.
+
+              # Sweep 1: fresh NSE XBRL for announced companies only.
+              # --quarters 1: current quarter — history is for Sunday backfill.
               python scripts/nse_results.py --quarters 1
-              # Sweep 2: BSE filing-link poll. Record the PDF URL on the
-              # matching announcement_events row so /q4 can surface
-              # 'View filing ↗' before numbers are available.
+
+              # Sweep 2: record BSE filing PDF links so 'View filing ↗'
+              # appears on the dashboard even before numbers are parsed.
               python scripts/bse_results.py
-              # Sweep 3 (same-day PDF numbers): only run during Indian filing
-              # hours (approx. 12:30–23:30 IST = 07:00–18:00 UTC).  Outside
-              # that window filings rarely land, so skip the 112-PDF scan.
-              HOUR=$(date +%H)
-              if [ "$HOUR" -ge 7 ] && [ "$HOUR" -le 18 ]; then
-                python scripts/bse_pdf_results.py --days 3
-              else
-                echo "bse_pdf_results: skipped outside filing hours (IST)"
-              fi
-              # Sweep 4: gap-fill — try NSE XBRL → Screener for every
-              # announced company still missing Q4 numbers.
-              python scripts/fetch_results.py
-              # (Market snapshot moved to its own workflow —
-              # .github/workflows/market-snapshot.yml — runs every
-              # 15 min during trading hours on a separate concurrency
-              # group so it doesn't queue behind the 16-min NSE sweep.)
-              # Related Coverage — also runs hourly so stories stay fresh
-              # even when daily runs time out before reaching their Phase 2.
-              # Takes ~2-3 min; keeps the "In Context" card updated.
-              python scripts/fetch_related_coverage.py
-              # Live commentary — generate for any row updated in last 4h.
-              # Runs AFTER the filing sweep so commentary is built from
-              # the freshest available numbers.
-              python scripts/generate_commentary.py --since-hours 4
               ;;
             backfill)
               # Light weekly sweep: only the latest quarter per company +
