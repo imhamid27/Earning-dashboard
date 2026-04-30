@@ -14,7 +14,7 @@
 //   - img-src 'self' data:           inline SVG / base64 allowed
 //   - no script-src 'unsafe-eval'    Next 14 doesn't need it in prod
 // ---------------------------------------------------------------------------
-const SUPABASE_HOST = "https://xadlrigegmrzvlfxplfs.supabase.co";
+const SUPABASE_HOST = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
 // Google Analytics hosts — split into three directives because gtag
 // loads JS from one domain, POSTs analytics beacons to another, and

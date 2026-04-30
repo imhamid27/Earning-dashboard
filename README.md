@@ -28,7 +28,7 @@ npm install
 # 2. copy env + fill in your Supabase keys
 cp .env.example .env
 # edit .env:
-#   NEXT_PUBLIC_SUPABASE_URL=https://xadlrigegmrzvlfxplfs.supabase.co
+#   NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 #   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 #   SUPABASE_SERVICE_ROLE_KEY=...  (needed for ingestion, keep secret)
 
