@@ -40,9 +40,10 @@ on:
     # Calendar refresh × 3 (IST 08:00, 15:00, 21:00 = 02:30, 09:30, 15:30 UTC)
     # Each daily run also does a quick results sweep after the calendar scripts.
     - cron: '30 2,9,15 * * 1-5'
-    # Hourly result sweeps — extended to 19:00 UTC (00:30 IST) to cover
-    # late-evening Indian filings (was 16:00 UTC / 21:30 IST).
-    - cron: '0 4-19 * * 1-5'
+    # Hourly result sweeps — 04:30 IST to 23:30 IST (10:00 UTC to 18:00 UTC).
+    # Window trimmed from '0 4-19' (16 runs) to '0 4-17' (14 runs) to cut
+    # runner minutes — filings before 09:30 IST and after 23:00 IST are rare.
+    - cron: '0 4-17 * * 1-5'
     # Early-morning catch-up: 02:00 UTC (07:30 IST) weekdays — processes
     # anything that filed overnight before morning readers open the dashboard.
     - cron: '0 2 * * 1-5'
@@ -72,7 +73,9 @@ jobs:
     # Hard cap: no single run blocks the schedule for more than this. We
     # learned the hard way that a stalled Sunday backfill can serialise and
     # starve the Mon–Fri daily/hourly slots.
-    timeout-minutes: 30
+    # Raised from 30 → 40 min so daily runs (which run 8 scripts) can
+    # complete without timeout-killing the result-sweep phase.
+    timeout-minutes: 40
     env:
       TZ: Asia/Kolkata
       NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.SUPABASE_URL }}
@@ -147,31 +150,33 @@ jobs:
               # announcements discovered in Phase 1 WITHOUT waiting for the
               # next hourly slot. Critical for the 21:00 IST daily run which
               # fires right as post-market board meetings start publishing.
-              python scripts/nse_results.py
+              # --quarters 1: current quarter only; Sunday backfill does history.
+              python scripts/nse_results.py --quarters 1
               python scripts/bse_results.py
+              python scripts/bse_pdf_results.py --days 1
               python scripts/fetch_results.py
               ;;
             hourly)
-              # Sweep 1: poll every NIFTY-500 company for fresh NSE XBRL
-              # filings — catches companies we didn't know had announced.
-              python scripts/nse_results.py
-              # Sweep 2: BSE filing-link poll. For every NIFTY-500 scrip,
-              # record the PDF URL on the matching announcement_events
-              # row so /q4 can surface 'View filing ↗' even before our
-              # numbers pipeline catches up from Screener.
+              # Sweep 1: poll announced companies for fresh NSE XBRL filings.
+              # --quarters 1: only the current quarter — hourly runs don't
+              # need to backfill history; that's what backfill/daily does.
+              # Cuts XBRL fetches from ~8 per company to 1 → saves ~10 min.
+              python scripts/nse_results.py --quarters 1
+              # Sweep 2: BSE filing-link poll. Record the PDF URL on the
+              # matching announcement_events row so /q4 can surface
+              # 'View filing ↗' before numbers are available.
               python scripts/bse_results.py
-              # Sweep 3 (same-day numbers): parse the BSE filing PDF for
-              # any company whose announcement is confirmed but whose
-              # numbers aren't in quarterly_financials yet. This is what
-              # closes the "filing landed, numbers still pending 4-12h
-              # waiting on Screener" gap. Screener-sourced rows are left
-              # alone; we only fill when no better source exists.
-              python scripts/bse_pdf_results.py --days 3
-              # Sweep 4: for every company whose announcement has been
-              # confirmed but whose numbers are still missing, try NSE
-              # XBRL → Screener in priority order. Closes any remaining
-              # gap for filings we couldn't parse from BSE PDF (image
-              # scans, bespoke templates, etc.).
+              # Sweep 3 (same-day PDF numbers): only run during Indian filing
+              # hours (approx. 12:30–23:30 IST = 07:00–18:00 UTC).  Outside
+              # that window filings rarely land, so skip the 112-PDF scan.
+              HOUR=$(date +%H)
+              if [ "$HOUR" -ge 7 ] && [ "$HOUR" -le 18 ]; then
+                python scripts/bse_pdf_results.py --days 3
+              else
+                echo "bse_pdf_results: skipped outside filing hours (IST)"
+              fi
+              # Sweep 4: gap-fill — try NSE XBRL → Screener for every
+              # announced company still missing Q4 numbers.
               python scripts/fetch_results.py
               # (Market snapshot moved to its own workflow —
               # .github/workflows/market-snapshot.yml — runs every
