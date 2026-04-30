@@ -138,18 +138,18 @@ jobs:
               python scripts/moneycontrol_calendar.py
               # Expert quotes: seed starter set (idempotent) + age out >90d.
               python scripts/fetch_expert_quotes.py --seed --deactivate-old 90
-              # Phase 2 — Immediate result sweep. Fetch numbers for any
+              # Phase 2 — Related Coverage. Run BEFORE the result sweeps so
+              # stories are refreshed even if Phase 3 runs long and times out.
+              # Fetches contextual news for leading/lagging sectors and outlier
+              # companies. Runs 3× daily (08:00, 15:00, 21:00 IST).
+              python scripts/fetch_related_coverage.py
+              # Phase 3 — Immediate result sweep. Fetch numbers for any
               # announcements discovered in Phase 1 WITHOUT waiting for the
               # next hourly slot. Critical for the 21:00 IST daily run which
               # fires right as post-market board meetings start publishing.
               python scripts/nse_results.py
               python scripts/bse_results.py
               python scripts/fetch_results.py
-              # Phase 3 — Related Coverage. Fetch contextual news for the
-              # leading/lagging sectors and outlier companies discovered in
-              # Phase 1 & 2. Runs 3× daily (08:00, 15:00, 21:00 IST) so the
-              # timeline card always has fresh, relevant stories.
-              python scripts/fetch_related_coverage.py
               ;;
             hourly)
               # Sweep 1: poll every NIFTY-500 company for fresh NSE XBRL
@@ -177,6 +177,10 @@ jobs:
               # .github/workflows/market-snapshot.yml — runs every
               # 15 min during trading hours on a separate concurrency
               # group so it doesn't queue behind the 16-min NSE sweep.)
+              # Related Coverage — also runs hourly so stories stay fresh
+              # even when daily runs time out before reaching their Phase 2.
+              # Takes ~2-3 min; keeps the "In Context" card updated.
+              python scripts/fetch_related_coverage.py
               # Live commentary — generate for any row updated in last 4h.
               # Runs AFTER the filing sweep so commentary is built from
               # the freshest available numbers.
