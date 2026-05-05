@@ -63,10 +63,11 @@ export const metadata: Metadata = {
   category: "finance"
 };
 
-// Google Analytics measurement ID. Hardcoded here (not read from env) so
-// the tag fires identically across every environment — matches the exact
-// snippet Google provides in the GA4 dashboard.
-const GA_MEASUREMENT_ID = "G-RBFXGWE6YW";
+// Google Analytics measurement IDs. Both fire on every page view —
+// G-RBFXGWE6YW is the site-level property, G-4L9Y6DPEP6 is the
+// additional property. Hardcoded so the tags fire before React hydrates.
+const GA_MEASUREMENT_ID  = "G-RBFXGWE6YW";
+const GA_MEASUREMENT_ID2 = "G-4L9Y6DPEP6";
 
 // Computed once at module load — same value used by metadataBase above.
 const SITE_URL = siteUrl();
@@ -165,7 +166,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             HTML, before React hydrates. That's the most compatible
             rendering path: browsers with strict tracking settings, slow
             connections that never hydrate, and search-engine crawlers that
-            don't execute React all still see the same tag. */}
+            don't execute React all still see the same tag.
+            A single dataLayer init + gtag() bootstrap covers both properties;
+            each gets its own config() call so events are tracked separately. */}
         <script
           async
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
@@ -177,6 +180,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
               gtag('config', '${GA_MEASUREMENT_ID}');
+              gtag('config', '${GA_MEASUREMENT_ID2}');
             `,
           }}
         />
