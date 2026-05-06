@@ -5,18 +5,20 @@
 import { redirect } from "next/navigation";
 
 interface Props {
-  params: { name: string };
+  params: Promise<{ name: string }>;
 }
 
 export async function generateMetadata({ params }: Props) {
-  const decoded = decodeURIComponent(params.name);
+  const { name } = await params;
+  const decoded = decodeURIComponent(name);
   return {
     title: `${decoded} Earnings Results — India Corporate Earnings Dashboard`,
     description: `Quarterly earnings results for ${decoded} — revenue, net profit, YoY growth across multiple quarters.`,
-    alternates: { canonical: `/company/${params.name}` },
+    alternates: { canonical: `/company/${name}` },
   };
 }
 
-export default function EarningsCompanyPage({ params }: Props) {
-  redirect(`/company/${params.name}`);
+export default async function EarningsCompanyPage({ params }: Props) {
+  const { name } = await params;
+  redirect(`/company/${name}`);
 }

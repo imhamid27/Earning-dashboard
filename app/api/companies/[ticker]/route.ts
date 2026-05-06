@@ -5,8 +5,9 @@ import { withGrowth } from "@/lib/growth";
 
 // GET /api/companies/[ticker]
 // Returns: { company, quarters: [...with QoQ/YoY growth] }
-export async function GET(_req: NextRequest, { params }: { params: { ticker: string } }) {
-  const ticker = cleanTicker(decodeURIComponent(params.ticker));
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ ticker: string }> }) {
+  const { ticker: rawTicker } = await params;
+  const ticker = cleanTicker(decodeURIComponent(rawTicker));
   if (!ticker) return jsonError("invalid ticker", 400);
 
   const sb = supabaseServer();
