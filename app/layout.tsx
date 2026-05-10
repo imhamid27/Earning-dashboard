@@ -17,15 +17,65 @@ export const metadata: Metadata = {
     template: "%s | India Earnings Tracker"
   },
   description:
-    "Track quarterly results for listed Indian companies with revenue, profit, sector trends, upcoming earnings dates, and company-level filing detail.",
+    "Track quarterly results, net profit, revenue, EPS and YoY growth for 1,000+ listed Indian companies on NSE and BSE. Live earnings calendar, sector-wise analysis, board-meeting dates, dividend announcements and direct filing PDFs — sourced from official exchange filings.",
   keywords: [
+    // Core navigational
     "India earnings tracker",
-    "Indian company results",
+    "Indian quarterly results",
     "quarterly results India",
+    "earnings dashboard India",
+    "results dashboard India",
+    "moneycontrol alternative",
+    "moneycontrol earnings",
+    // Quarter terms (rotate with the active fiscal cycle)
+    "Q1 results FY26",
+    "Q2 results FY26",
+    "Q3 results FY26",
+    "Q4 results FY26",
     "Q4 FY26 results",
+    "quarterly earnings India",
+    "annual results India",
+    // Result dates / calendar
+    "results calendar India",
+    "earnings calendar India",
+    "today's results India",
+    "results today NSE BSE",
+    "upcoming results India",
+    "result date India",
+    "board meeting calendar India",
+    // Exchange terms
     "NSE earnings",
     "BSE earnings",
-    "upcoming results calendar India",
+    "NSE results",
+    "BSE results",
+    "NSE BSE listed companies",
+    // Metrics
+    "net profit India",
+    "PAT India",
+    "revenue growth India",
+    "EBITDA India",
+    "EPS India",
+    "YoY growth",
+    "QoQ growth",
+    "operating profit India",
+    // Indices
+    "Nifty 50 results",
+    "Nifty 500 results",
+    "Sensex earnings",
+    "BSE 500",
+    "Nifty Next 50 results",
+    // Corporate actions (Moneycontrol-style)
+    "dividend India",
+    "bonus issue India",
+    "stock split India",
+    "share buyback India",
+    "result intimation",
+    // Companies
+    "Reliance results",
+    "TCS results",
+    "Infosys results",
+    "HDFC Bank results",
+    "ICICI Bank results",
     "company quarterly earnings India"
   ],
   // No global canonical override — Next.js resolves canonical per-page

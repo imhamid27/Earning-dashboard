@@ -20,32 +20,99 @@ import { siteUrl } from "@/lib/site";
 const calendar = quarterToCalendar(ACTIVE_QUARTER);
 
 const TITLE = `India Earnings Tracker — ${ACTIVE_QUARTER} Quarterly Results, Live NSE & BSE`;
-const DESCRIPTION = `Live ${ACTIVE_QUARTER} (${calendar}) earnings dashboard for listed Indian companies. Track quarterly revenue, net profit, EPS and YoY growth across NSE and BSE — with sector breakdowns, upcoming results dates, and direct filing PDFs sourced from official exchange filings.`;
+const DESCRIPTION = `Live ${ACTIVE_QUARTER} (${calendar}) earnings dashboard for 1,000+ listed Indian companies. Track quarterly revenue, net profit, PAT, EBITDA, EPS, YoY/QoQ growth and operating margins across NSE and BSE — with sector-wise breakdowns, upcoming result dates, dividend declarations, board meetings and direct filing PDFs sourced from official exchange filings. Free, no paywall.`;
 
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   keywords: [
+    // Brand + intent
     "India earnings tracker",
-    "India quarterly results",
+    "Indian quarterly results",
+    "results dashboard India",
+    "earnings dashboard India",
+    "moneycontrol alternative",
+    "moneycontrol results",
+    "moneycontrol earnings",
+    // Active quarter
+    `${ACTIVE_QUARTER} results`,
+    `${ACTIVE_QUARTER} earnings`,
     `${ACTIVE_QUARTER} results India`,
     `${ACTIVE_QUARTER} earnings India`,
     `${calendar} results`,
-    "Indian company results",
-    "NSE results today",
-    "BSE results today",
+    `${calendar} quarterly results`,
+    // All quarter buckets — query volume comes from people typing
+    // "Q1 results 2026", "Q2 FY26 results" etc.
+    "Q1 results FY26",
+    "Q2 results FY26",
+    "Q3 results FY26",
+    "Q4 results FY26",
+    "quarterly results India",
+    "quarterly earnings India",
+    "annual results India",
+    "FY26 results India",
+    // Live / today / calendar
     "live earnings India",
+    "today's results India",
+    "results today NSE",
+    "results today BSE",
+    "results today India",
+    "upcoming results India",
     "earnings calendar India",
+    "results calendar India",
+    "board meeting calendar India",
+    "result date India",
+    // Exchanges
+    "NSE results",
+    "BSE results",
+    "NSE earnings",
+    "BSE earnings",
+    "NSE BSE listed companies",
+    // Metrics (high-volume Moneycontrol terms)
+    "net profit India",
+    "PAT India",
+    "revenue growth India",
+    "EBITDA India",
+    "EPS India",
+    "operating profit India",
+    "YoY profit growth",
+    "QoQ revenue growth",
+    "consolidated results",
+    "standalone results",
+    // Indices
+    "Nifty 50 results",
+    "Nifty Next 50 results",
+    "Nifty 500 results",
+    "Sensex results",
+    "BSE 500 results",
+    "Nifty Bank results",
+    "Nifty IT results",
+    // Bellwether companies (drives long-tail brand searches)
     "Reliance results",
     "TCS results",
     "Infosys results",
     "HDFC Bank results",
     "ICICI Bank results",
-    "Nifty 50 results",
-    "Sensex results",
-    "results dashboard India",
-    "moneycontrol alternative",
+    "ITC results",
+    "SBI results",
+    "Bharti Airtel results",
+    "Larsen Toubro results",
+    // Sectors
+    "IT sector results",
+    "banking sector results",
+    "FMCG sector results",
+    "auto sector results",
+    "pharma sector results",
+    "metals sector results",
+    // Corporate actions
+    "dividend announcement India",
+    "bonus issue India",
+    "stock split India",
+    "share buyback India",
+    // Editorial framing
     "earnings season India",
+    "India Inc results",
+    "corporate India earnings",
   ],
   alternates: { canonical: canonical("/") },
   openGraph: {

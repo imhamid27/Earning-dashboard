@@ -202,6 +202,23 @@ table.data-table tbody tr:last-child td { border-bottom: 0; }
 .skeleton { @apply bg-core-surface rounded-md; animation: pulse-soft 1.2s ease-in-out infinite; }
 
 /* ---------------------------------------------------------------------
+   FAQ accordion — kill the browser default <details> disclosure
+   triangle so only our chevron icon serves as the open/close cue.
+   The .faq-row class is applied by components/FaqBlock.tsx.
+   --------------------------------------------------------------------- */
+.faq-row > summary { list-style: none; }
+.faq-row > summary::-webkit-details-marker { display: none; }
+.faq-row > summary::marker { display: none; content: ""; }
+
+/* Soft fade-in of the answer body when a row opens. Keeps the
+   accordion feeling tactile without burning compositor budget. */
+@keyframes faq-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.faq-row[open] > div { animation: faq-fade-in 200ms ease-out; }
+
+/* ---------------------------------------------------------------------
    Brand dot-and-dash dividers — sampled from the official brand kit
    `Core_ Single Pattern_Full Color Filled.png`
    --------------------------------------------------------------------- */
