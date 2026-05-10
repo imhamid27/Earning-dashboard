@@ -42,8 +42,8 @@ export default function FaqBlock({
       <JsonLd data={buildFaqLd(items)} />
 
       {/* Section header — eyebrow + title + counter. Eyebrow doubles
-          as a Moneycontrol-style "tag" so the section reads as a
-          familiar editorial unit. */}
+          as an editorial tag so the section reads as a familiar
+          newsroom-style unit. */}
       <header className="flex items-end justify-between gap-4 mb-6 flex-wrap">
         <div>
           <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-bold text-core-pink mb-2">

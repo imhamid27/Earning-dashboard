@@ -68,7 +68,7 @@ export const metadata: Metadata = {
     "capital goods results India",
     "chemicals sector results",
     "media sector results India",
-    // Index-level (Moneycontrol heavy on these)
+    // Index-level — high search volume from sector-tracking readers
     "Nifty Bank results",
     "Nifty IT results",
     "Nifty Auto results",
@@ -84,7 +84,6 @@ export const metadata: Metadata = {
     // Cross-cutting
     "sector outlook India",
     "sector commentary India",
-    "moneycontrol sector results",
   ],
   alternates: { canonical: canonical(URL_PATH) },
   openGraph: {

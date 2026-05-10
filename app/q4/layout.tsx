@@ -88,8 +88,6 @@ export const metadata: Metadata = {
     "bonus issue announcement",
     "concall transcript",
     "earnings call India",
-    "moneycontrol Q4 results",
-    "moneycontrol earnings season",
   ],
   alternates: { canonical: canonical(URL_PATH) },
   openGraph: {

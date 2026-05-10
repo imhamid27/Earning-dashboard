@@ -73,8 +73,6 @@ export const metadata: Metadata = {
     "India Inc results",
     "Nifty 50 result dates",
     "Sensex result dates",
-    "moneycontrol results calendar",
-    "moneycontrol upcoming results",
   ],
   alternates: { canonical: canonical(URL_PATH) },
   openGraph: {

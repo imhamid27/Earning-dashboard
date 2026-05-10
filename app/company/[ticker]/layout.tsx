@@ -97,7 +97,7 @@ export async function generateMetadata({
       `${tickerBare} quarterly results`,
       `${tickerBare} ${ACTIVE_QUARTER}`,
       `${tickerBare} share price`,
-      // Metrics (Moneycontrol-style per-company queries)
+      // Metrics (high-volume per-company queries)
       `${display} net profit`,
       `${display} revenue`,
       `${display} sales`,
@@ -134,7 +134,6 @@ export async function generateMetadata({
       `${display} investor presentation`,
       // Generic
       "India earnings tracker",
-      "moneycontrol alternative",
       ...(co?.sector ? [`${co.sector} sector results`, `${co.sector} stocks`] : []),
       ...(co?.industry ? [`${co.industry} stocks India`] : []),
     ],

@@ -31,9 +31,11 @@ export const metadata: Metadata = {
     "Indian quarterly results",
     "results dashboard India",
     "earnings dashboard India",
-    "moneycontrol alternative",
-    "moneycontrol results",
-    "moneycontrol earnings",
+    "best earnings tracker India",
+    "free results tracker India",
+    "free quarterly results India",
+    "best stock results website India",
+    "best results aggregator India",
     // Active quarter
     `${ACTIVE_QUARTER} results`,
     `${ACTIVE_QUARTER} earnings`,
@@ -68,7 +70,7 @@ export const metadata: Metadata = {
     "NSE earnings",
     "BSE earnings",
     "NSE BSE listed companies",
-    // Metrics (high-volume Moneycontrol terms)
+    // Metrics (high-volume retail finance terms)
     "net profit India",
     "PAT India",
     "revenue growth India",
@@ -196,8 +198,8 @@ export default function Home() {
       a: `${ACTIVE_QUARTER} covers ${calendar}. SEBI requires listed companies to file results within 45 days of quarter-end, so most filings land in the four to six weeks immediately after the quarter closes. The /q4 page on this dashboard tracks every announcement as it happens, grouped by date.`,
     },
     {
-      q: `How is this different from Moneycontrol or similar trackers?`,
-      a: `We focus on speed, structured data, and verifiable sources. Every metric on the site comes directly from NSE/BSE XBRL filings — not transcripts, not broker rewrites — and the database refreshes every two hours. Pages are designed for fast scanning (KPI strips, sector heatmaps) and for direct linking from search engines and AI answer engines.`,
+      q: `What makes this dashboard different?`,
+      a: `Speed, structured data, and verifiable sources. Every metric on the site comes directly from NSE/BSE XBRL filings — not transcripts, not broker rewrites — and the database refreshes every two hours. Pages are designed for fast scanning (KPI strips, sector heatmaps) and for direct linking from search engines and AI answer engines, with no paywall and no login.`,
     },
     {
       q: `Where do you source the data?`,

@@ -25,8 +25,10 @@ export const metadata: Metadata = {
     "quarterly results India",
     "earnings dashboard India",
     "results dashboard India",
-    "moneycontrol alternative",
-    "moneycontrol earnings",
+    "best earnings tracker India",
+    "free results tracker India",
+    "best stock results website India",
+    "free quarterly results India",
     // Quarter terms (rotate with the active fiscal cycle)
     "Q1 results FY26",
     "Q2 results FY26",
@@ -64,7 +66,7 @@ export const metadata: Metadata = {
     "Sensex earnings",
     "BSE 500",
     "Nifty Next 50 results",
-    // Corporate actions (Moneycontrol-style)
+    // Corporate actions
     "dividend India",
     "bonus issue India",
     "stock split India",
