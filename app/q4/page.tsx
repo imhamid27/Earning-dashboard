@@ -131,8 +131,9 @@ export default function Q4Page() {
             </span>
           </h1>
           <p className="text-core-muted mt-2 max-w-2xl text-sm">
-            Companies filing their {quarter} results, grouped by the day they announced.
-            Pick a date below to see who reported then.
+            Live NSE and BSE quarterly results calendar — every {quarter} filing, grouped
+            by the day it was announced. Pick a date below for the quarterly results
+            announced on that day, with revenue, net profit and YoY growth.
           </p>
         </div>
         <div className="flex items-baseline gap-6">
@@ -158,6 +159,18 @@ export default function Q4Page() {
         />
       ) : (
         <>
+          {/* Editorial header for the timeline — gives the date strip a
+              real h2 so SE crawlers + AEO engines pick up the section
+              theme ("quarterly results today, by date"). */}
+          <header className="pt-2">
+            <h2 className="text-lg md:text-xl font-bold tracking-tightest leading-snug">
+              Quarterly results today, by date
+            </h2>
+            <p className="mt-1 text-[12px] text-core-muted">
+              Pick a day to see every NSE and BSE quarterly result filed on that date.
+            </p>
+          </header>
+
           {/* Date tabs — one chronological timeline from earliest past filing
               through today and into upcoming scheduled dates. Horizontal
               scroll has chevron controls + fade masks so nothing hides. */}
@@ -217,7 +230,8 @@ export default function Q4Page() {
               <section className="space-y-3">
                 <div>
                   <h2 className="text-xl font-bold tracking-tightest leading-snug">
-                    Results announced on {formatDate(activeGroup.date)}
+                    Quarterly results announced on {formatDate(activeGroup.date)}
+                    <span className="text-core-muted font-semibold"> · NSE & BSE</span>
                   </h2>
                   <div className="mt-1 text-sm text-core-muted">
                     <span className="tabular-nums font-semibold text-core-ink">{filed.length}</span> filed

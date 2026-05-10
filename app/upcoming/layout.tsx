@@ -15,25 +15,45 @@ import FaqBlock from "@/components/FaqBlock";
 
 const URL_PATH = "/upcoming";
 
-const title = `Upcoming Results Calendar — Indian Earnings Schedule (${ACTIVE_QUARTER})`;
-const description = `Day-by-day calendar of upcoming earnings announcements from listed Indian companies on NSE and BSE — including bellwethers like Reliance, TCS, HDFC Bank, Infosys. Board-meeting dates updated as exchanges receive notices.`;
+const title = `Quarterly Results Calendar 2026 — Upcoming NSE & BSE Earnings`;
+const description = `Live quarterly results calendar for India — upcoming earnings announcements from NSE and BSE listed companies, day by day. See quarterly results scheduled today, tomorrow and through the week, including bellwethers like Reliance, TCS, HDFC Bank and Infosys. Board-meeting dates updated as exchanges receive notices.`;
 
 export const metadata: Metadata = {
   title,
   description,
   keywords: [
-    // Calendar / upcoming
+    // Calendar / upcoming — primary head terms
+    "quarterly results calendar",
+    "quarterly results calendar 2026",
+    "quarterly results calendar India",
+    "quarterly results calendar NSE",
+    "quarterly results calendar BSE",
+    "results calendar India",
+    "results calendar 2026",
+    "NSE result calendar",
+    "NSE result calendar 2026",
+    "BSE result calendar",
+    "BSE result calendar 2026",
+    "company results calendar",
+    "company results calendar India",
     "upcoming results India",
     "upcoming earnings India",
     "upcoming results NSE",
     "upcoming results BSE",
+    "upcoming quarterly results NSE",
+    "upcoming quarterly results NSE tomorrow",
+    "upcoming quarterly results BSE",
+    "upcoming results NSE stocks 2026",
     "earnings calendar India",
-    "results calendar India",
     "results schedule India",
     "next earnings date",
     "next results date",
+    "quarterly results today",
+    "quarterly results today NSE",
+    "quarterly results today BSE",
     "today's results",
     "tomorrow's results",
+    "quarterly results tomorrow",
     "results this week India",
     "results next week India",
     "results this month India",
@@ -102,15 +122,24 @@ export default function UpcomingLayout({ children }: { children: React.ReactNode
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     "@id": `${url}#collection`,
-    name: "Upcoming Indian Earnings Results",
+    name: "Quarterly Results Calendar — Upcoming NSE & BSE Earnings",
+    headline: "Quarterly Results Calendar 2026 — Upcoming Indian Earnings",
     description,
     url,
     isPartOf: { "@id": `${base}/#website` },
     inLanguage: "en-IN",
-    about: { "@type": "Thing", name: "Upcoming earnings calendar" },
+    about: { "@type": "Thing", name: "Quarterly results calendar India" },
   };
 
   const faqItems = [
+    {
+      q: "Is this an NSE and BSE quarterly results calendar?",
+      a: "Yes. Every date on this page is a board-meeting intimation filed by a listed company directly with NSE or BSE — the formal exchange notice that quarterly financial results will be considered on that date. We pull those filings as they're published, so the calendar reflects the official schedule, not estimated or rumoured dates.",
+    },
+    {
+      q: "How do I see quarterly results scheduled for tomorrow?",
+      a: "Look for the 'Tomorrow' pill in the date timeline above. It groups every company whose board meeting to consider results is scheduled for the next calendar day. The day-after-tomorrow and the rest of the week are listed alongside it for quick scanning.",
+    },
     {
       q: "How do you know when a company will announce results?",
       a: "Listed Indian companies are required to give NSE/BSE at least two working days' notice before any board meeting where financial results will be considered. We pull those notices directly from the exchange announcements feed and surface them here as soon as they appear.",
@@ -140,7 +169,7 @@ export default function UpcomingLayout({ children }: { children: React.ReactNode
       {children}
       <div className="container-core pb-12">
         <FaqBlock
-          title="Frequently asked about upcoming Indian earnings"
+          title="Frequently asked about the quarterly results calendar"
           items={faqItems}
         />
       </div>

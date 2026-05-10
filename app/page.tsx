@@ -19,8 +19,8 @@ import { siteUrl } from "@/lib/site";
 
 const calendar = quarterToCalendar(ACTIVE_QUARTER);
 
-const TITLE = `India Earnings Tracker — ${ACTIVE_QUARTER} Quarterly Results, Live NSE & BSE`;
-const DESCRIPTION = `Live ${ACTIVE_QUARTER} (${calendar}) earnings dashboard for 1,000+ listed Indian companies. Track quarterly revenue, net profit, PAT, EBITDA, EPS, YoY/QoQ growth and operating margins across NSE and BSE — with sector-wise breakdowns, upcoming result dates, dividend declarations, board meetings and direct filing PDFs sourced from official exchange filings. Free, no paywall.`;
+const TITLE = `India Earnings Tracker — Quarterly Results Calendar, Live NSE & BSE`;
+const DESCRIPTION = `Live quarterly results calendar for India — track ${ACTIVE_QUARTER} (${calendar}) earnings for 1,000+ listed Indian companies on NSE and BSE. Quarterly results today, upcoming results scheduled for tomorrow, and the full results calendar 2026 with revenue, net profit, PAT, EBITDA, EPS and YoY/QoQ growth. Sector-wise breakdowns, board-meeting dates and direct filing PDFs from official exchange filings. Free, no paywall.`;
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -53,7 +53,26 @@ export const metadata: Metadata = {
     "quarterly earnings India",
     "annual results India",
     "FY26 results India",
-    // Live / today / calendar
+    // Live / today / calendar — primary head terms
+    "quarterly results today",
+    "quarterly results today NSE",
+    "quarterly results today BSE",
+    "quarterly results calendar",
+    "quarterly results calendar 2026",
+    "quarterly results calendar India",
+    "quarterly results calendar NSE",
+    "quarterly results calendar BSE",
+    "results calendar India",
+    "results calendar 2026",
+    "NSE result calendar",
+    "NSE result calendar 2026",
+    "BSE result calendar",
+    "BSE result calendar 2026",
+    "company results calendar",
+    "company results calendar India",
+    "upcoming quarterly results NSE",
+    "upcoming quarterly results NSE tomorrow",
+    "upcoming results NSE stocks 2026",
     "live earnings India",
     "today's results India",
     "results today NSE",
@@ -61,7 +80,6 @@ export const metadata: Metadata = {
     "results today India",
     "upcoming results India",
     "earnings calendar India",
-    "results calendar India",
     "board meeting calendar India",
     "result date India",
     // Exchanges
@@ -264,7 +282,8 @@ export default function Home() {
               {ACTIVE_QUARTER} Announcements →
             </div>
             <p className="mt-1 text-core-muted leading-relaxed">
-              Day-by-day timeline of every filed and pending {ACTIVE_QUARTER} result.
+              Quarterly results announced today and through the week — every
+              filed and pending {ACTIVE_QUARTER} result, by date, NSE and BSE.
             </p>
           </a>
           <a href="/sectors" className="block group">
@@ -284,10 +303,11 @@ export default function Home() {
               Section
             </div>
             <div className="mt-1 font-bold text-core-ink group-hover:text-core-pink">
-              Upcoming Results Calendar →
+              Quarterly Results Calendar →
             </div>
             <p className="mt-1 text-core-muted leading-relaxed">
-              Scheduled earnings dates from filed board-meeting intimations.
+              NSE and BSE earnings scheduled for tomorrow and the weeks ahead,
+              drawn straight from filed board-meeting intimations.
             </p>
           </a>
         </div>

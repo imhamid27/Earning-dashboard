@@ -115,14 +115,16 @@ export default function UpcomingPage() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6">
           <div className="flex-1 min-w-0">
             <h1 className="text-[clamp(1.85rem,4vw,2.85rem)] font-extrabold tracking-tightest leading-[1.05]">
-              Upcoming Results
+              Upcoming Results <span className="text-core-muted font-bold">·</span> Quarterly Results Calendar
               <span className="inline-block align-middle ml-2 -translate-y-0.5">
                 <InfoTooltip text={DISCLAIMER_SHORT} size="md" />
               </span>
             </h1>
             <p className="text-core-muted mt-3 max-w-2xl text-[14px]">
-              Companies with a scheduled earnings meeting. Results typically file after
-              market hours — <Link href="/" className="text-core-pink hover:underline">check the dashboard →</Link> once numbers land.
+              Live quarterly results calendar for NSE and BSE listed Indian companies —
+              every scheduled earnings date drawn straight from filed board-meeting
+              intimations. Results typically file after market hours;{" "}
+              <Link href="/" className="text-core-pink hover:underline">check the dashboard →</Link> once numbers land.
             </p>
           </div>
           <div className="grid grid-cols-3 md:flex md:items-baseline gap-4 md:gap-7 md:text-right shrink-0 pt-2 md:pt-0 border-t md:border-0 border-core-line">
@@ -174,11 +176,16 @@ export default function UpcomingPage() {
         </div>
       ) : (
         <section className="space-y-8">
-          <header className="flex items-baseline gap-3">
-            <span className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold">
-              Full schedule
-            </span>
-            <span className="text-[12px] text-core-muted">· grouped by date</span>
+          <header>
+            <h2 className="text-xl md:text-2xl font-bold tracking-tightest leading-snug">
+              Quarterly results today, tomorrow, and the rest of the week
+            </h2>
+            <div className="mt-1.5 flex items-baseline gap-3">
+              <span className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] text-core-ink font-bold">
+                Full schedule
+              </span>
+              <span className="text-[12px] text-core-muted">· grouped by date</span>
+            </div>
           </header>
           {groups.map((g) => {
             // Timing hint: results land either pre-market or post-market.

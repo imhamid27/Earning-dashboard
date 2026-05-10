@@ -18,8 +18,8 @@ import FaqBlock from "@/components/FaqBlock";
 const URL_PATH = "/q4";
 
 const calendar = quarterToCalendar(ACTIVE_QUARTER); // e.g. "Jan–Mar 2026"
-const title = `${ACTIVE_QUARTER} Results — India Earnings Announcements (${calendar})`;
-const description = `Live tracker of every ${ACTIVE_QUARTER} (${calendar}) results announcement from listed Indian companies on NSE and BSE. Filed numbers, upcoming filings, board-meeting dates, and direct PDF links — updated as filings land.`;
+const title = `${ACTIVE_QUARTER} Results — Quarterly Results Today, NSE & BSE (${calendar})`;
+const description = `Live ${ACTIVE_QUARTER} (${calendar}) quarterly results calendar — every announcement from listed Indian companies on NSE and BSE, by date. Quarterly results today, filed numbers with YoY/QoQ growth, upcoming filings, board-meeting dates and direct PDF links — updated as filings land with the exchanges.`;
 
 export const metadata: Metadata = {
   title,
@@ -46,7 +46,11 @@ export const metadata: Metadata = {
     "quarterly results India",
     "quarterly earnings India",
     "annual results India",
-    // Today / live / live tracker
+    // Today / live / live tracker — primary head terms
+    "quarterly results today",
+    "quarterly results today NSE",
+    "quarterly results today BSE",
+    "Quarterly results Today nse",
     "results today",
     "today's results India",
     "results today NSE",
@@ -56,10 +60,24 @@ export const metadata: Metadata = {
     "earnings season India",
     "India Inc results",
     // Calendar / upcoming
-    "earnings calendar India",
+    "quarterly results calendar",
+    "quarterly results calendar 2026",
+    "quarterly results calendar India",
+    "quarterly results calendar NSE",
+    "quarterly results calendar BSE",
     "results calendar India",
+    "results calendar 2026",
+    "NSE result calendar",
+    "NSE result calendar 2026",
+    "BSE result calendar",
+    "BSE result calendar 2026",
+    "company results calendar",
+    "company results calendar India",
+    "earnings calendar India",
     "upcoming results NSE",
     "upcoming results BSE",
+    "upcoming quarterly results NSE",
+    "upcoming quarterly results NSE tomorrow",
     "board meeting results India",
     "result intimation India",
     // Specific result actions
@@ -120,20 +138,24 @@ export default function Q4Layout({ children }: { children: React.ReactNode }) {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     "@id": `${url}#collection`,
-    name: `${ACTIVE_QUARTER} Results Announcements`,
-    headline: `${ACTIVE_QUARTER} (${calendar}) Indian Earnings Announcements`,
+    name: `${ACTIVE_QUARTER} Results — Quarterly Results Today, NSE & BSE`,
+    headline: `${ACTIVE_QUARTER} (${calendar}) Indian Quarterly Results Calendar`,
     description,
     url,
     isPartOf: { "@id": `${base}/#website` },
     inLanguage: "en-IN",
     about: {
       "@type": "Thing",
-      name: `${ACTIVE_QUARTER} earnings season`,
+      name: `${ACTIVE_QUARTER} quarterly results calendar`,
     },
     publisher: { "@id": `${base}/#organization` },
   };
 
   const faqItems = [
+    {
+      q: `Where can I see quarterly results announced today?`,
+      a: `The date timeline above is the live ${ACTIVE_QUARTER} quarterly results calendar — every NSE and BSE filing, by date. The "today" tab is selected by default whenever a company has reported on the current trading day; otherwise it shows the most recent date with filings.`,
+    },
     {
       q: `When do Indian companies announce ${ACTIVE_QUARTER} results?`,
       a: `SEBI requires listed companies to file quarterly results within 45 days of quarter-end. ${ACTIVE_QUARTER} covers ${calendar}, so most filings land in the four to six weeks immediately after. Bellwethers like TCS and Reliance typically file early; smaller caps tend to use the full window.`,
