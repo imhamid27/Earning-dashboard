@@ -32,9 +32,26 @@ export type CacheTier = keyof typeof CACHE_TIERS;
 
 export function jsonOk<T>(data: T, init?: ResponseInit & { cache?: CacheTier }) {
   const { cache, ...rest } = init ?? {};
-  return NextResponse.json({ ok: true, data }, {
+  // Serialize manually + set Content-Length explicitly. Background: Next 16's
+  // App Router `NextResponse.json()` uses Web Streams under the hood and
+  // emits responses with `Transfer-Encoding: chunked` instead of a
+  // Content-Length header. CloudFront's auto-compression then refuses to
+  // gzip/brotli the response because it can't verify the body falls in the
+  // required 1 KB – 10 MB range. The dashboard's stress test on 2026-05-13
+  // showed http_req_receiving p95 at 4.4 s, dominated by uncompressed JSON
+  // — fixing this is the single biggest remaining wire-byte win.
+  //
+  // By converting the JSON to a Uint8Array up front, we get a known-length
+  // body that CloudFront treats as a static byte buffer; auto-compression
+  // kicks in and JSON drops ~80% on the wire.
+  const body = JSON.stringify({ ok: true, data });
+  const bodyBuf = new TextEncoder().encode(body);
+  return new NextResponse(bodyBuf, {
     ...rest,
+    status: rest.status ?? 200,
     headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Length": String(bodyBuf.byteLength),
       "Cache-Control": CACHE_TIERS[cache ?? "short"],
       // Critical pair with Cache-Control: lets intermediate caches store
       // gzip+brotli+identity variants separately. Without Vary, a CDN
