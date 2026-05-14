@@ -1,59 +1,83 @@
 // Next.js edge middleware.
 //
-// Currently does one job: rewrite the Cache-Control header for dynamic
-// app-router routes that Next would otherwise stamp with
-// `private, no-cache, no-store, max-age=0, must-revalidate`.
+// Job: cap the Cache-Control header on server-rendered pages so the CDN
+// caches them sensibly.
 //
-// Why this matters: routes whose layout/page calls Supabase from
-// generateMetadata are auto-marked "fully dynamic" by Next. Once a route
-// is dynamic, Next emits aggressive no-cache headers — and any CDN
-// (CloudFront, Cloudflare, Vercel Edge) sees those and refuses to cache
-// the response. The result: every page view round-trips to origin even
-// when the page is editorial-shell content that barely changes.
+// Two distinct problems we're correcting:
 //
-// `export const revalidate = N` in the layout is the documented fix, but
-// it only works when the dynamic data comes through Next's own fetch()
-// API. supabase-js uses raw fetch + custom transport, so Next can't
-// memoize it, and the route stays dynamic regardless of revalidate.
+// 1. Dynamic routes (e.g. /company/[ticker]) — when a route's
+//    generateMetadata uses supabase-js (raw transport, not Next's
+//    memoized fetch), Next marks it as fully dynamic and emits
+//    `Cache-Control: private, no-cache, no-store, max-age=0,
+//    must-revalidate`. CloudFront then refuses to cache and every page
+//    view round-trips to origin.
 //
-// Middleware runs AFTER the route handler in the response pipeline (when
-// using `NextResponse.next()` to passthrough), so the headers we set here
-// override Next's emitted defaults. CloudFront then sees the s-maxage we
-// asked for and caches at the edge as intended.
+// 2. Statically-generated routes (e.g. /, /q4, /sectors, /upcoming) —
+//    Next's static optimization stamps them with
+//    `Cache-Control: s-maxage=31536000` (ONE YEAR at the edge). That's
+//    nonsense for an earnings dashboard: every code change requires a
+//    manual CloudFront invalidation to ship.
+//
+// Middleware solves both by rewriting Cache-Control on the way out.
+// Setting the value after the route handler runs means our value wins
+// over whatever Next emitted by default.
+//
+// Why both problems land here:
+//   - `export const revalidate = N` in the page would fix #2 in theory,
+//     but on Free CloudFront + Coolify we want a single source of truth
+//     for CDN cache policy, and middleware is the easiest place to put
+//     it. Tweaking TTLs becomes one file edit.
+//   - For #1 nothing in Next config helps because the dynamic data
+//     comes through a non-memoizable transport.
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Cache-Control values mirror the tiers in lib/api.ts so origin pages
 // and their downstream API calls share a coherent freshness policy.
-const TIER_SHORT  = "public, max-age=30, s-maxage=60, stale-while-revalidate=300";
-const TIER_LONG   = "public, max-age=120, s-maxage=600, stale-while-revalidate=1800";
+//
+// LONG = 2 min browser / 10 min edge cache / 30 min stale-while-revalidate.
+// Suitable for page HTML shells whose content rhythm is "updates a few
+// times per hour at most" (filings landing every 2 h, market refreshes
+// every ~minute via /api/* which has its own tighter tier).
+const TIER_LONG = "public, max-age=120, s-maxage=600, stale-while-revalidate=1800";
+
+// Page paths whose Cache-Control we override. Exact-match set for the
+// top-level routes; the dynamic / alias families are caught by
+// startsWith() below.
+const EXACT_PATHS = new Set<string>(["/", "/q4", "/sectors", "/upcoming"]);
 
 export function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const path = req.nextUrl.pathname;
 
-  // /company/[ticker] — editorial HTML shell (heading, breadcrumbs,
-  // FAQ, glossary). Real-time data (latest quarter, live price) is
-  // fetched by client-side JS from /api/* which has its own caching,
-  // so a 5-min HTML shell cache doesn't affect data freshness for users.
-  if (path.startsWith("/company/")) {
-    res.headers.set("Cache-Control", TIER_LONG);
-    res.headers.set("Vary", "Accept-Encoding");
-  }
+  const shouldRewrite =
+    EXACT_PATHS.has(path) ||
+    path.startsWith("/company/") ||
+    path.startsWith("/earnings/");
 
-  // Static-quarter alias redirects — small HTML responses, mostly cacheable.
-  if (path.startsWith("/earnings/")) {
+  if (shouldRewrite) {
     res.headers.set("Cache-Control", TIER_LONG);
+    // Vary: Accept-Encoding lets the CDN store gzip/brotli/identity
+    // variants separately. Without it, a CDN that's seen a compressed
+    // response could replay it to a client that didn't ask for one.
+    res.headers.set("Vary", "Accept-Encoding");
   }
 
   return res;
 }
 
-// Apply only to the paths above (and skip API routes which set their own
-// headers via lib/api.ts, and Next internals).
+// Matcher determines which paths trigger middleware at all. Listing them
+// explicitly is cheaper than running middleware on every request just to
+// fall through. /_next/static/* and /api/* are deliberately excluded —
+// _next/static has its own immutable cache headers from next.config.js,
+// and /api/* sets its own Cache-Control via lib/api.ts.
 export const config = {
   matcher: [
+    "/",
+    "/q4",
+    "/sectors",
+    "/upcoming",
     "/company/:path*",
     "/earnings/:path*",
   ],
