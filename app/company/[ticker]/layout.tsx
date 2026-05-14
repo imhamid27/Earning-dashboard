@@ -26,19 +26,13 @@ import JsonLd from "@/components/JsonLd";
 import FaqBlock from "@/components/FaqBlock";
 import Glossary from "@/components/Glossary";
 
-// ISR with a 5-minute revalidation window. Without this, generateMetadata's
-// Supabase call marks the route as fully dynamic and Next emits
-// `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`
-// — which makes CloudFront skip the edge entirely and proxy every company
-// page hit to origin. With `revalidate = 300`, Next switches the route to
-// ISR mode, the rendered HTML is cached for 5 min, and emitted headers
-// include `s-maxage` directives that CloudFront honours.
-//
-// Why 300 s: company metadata (name, sector, ISIN) almost never changes
-// in real time, and the per-quarter financial numbers update only when
-// fresh ingestion lands — which the in-page client fetch picks up
-// regardless of the HTML shell's age. 5 min is a generous freshness
-// budget for the editorial wrapper.
+// Set a 5-minute ISR window. NB: in practice Next can't honour this when
+// generateMetadata uses supabase-js (raw transport, not Next's memoized
+// fetch), so it keeps emitting `Cache-Control: no-cache` on responses.
+// The actual CDN cache header is set by middleware.ts which catches
+// /company/* and overrides Cache-Control to the LONG cache tier. We keep
+// `revalidate = 300` as a defensive hint — harmless when middleware does
+// its job, useful if a future Next version starts respecting the value.
 export const revalidate = 300;
 
 interface CompanyMeta {
