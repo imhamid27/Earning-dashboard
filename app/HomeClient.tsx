@@ -1258,9 +1258,11 @@ function TodayBand({
 
         {/* Tabs: horizontally scrollable on narrow screens so no tab ever
             wraps or gets cut off. Flex with nowrap + overflow-x-auto,
-            and a right-edge fade mask to hint that more tabs exist. */}
+            and a right-edge fade mask to hint that more tabs exist.
+            Tab strip stays on a SINGLE line (no wrap) — the small-screen
+            fallback is a sideways scroll rather than two stacked rows. */}
         <nav className="mt-4 md:mt-5 border-b border-white/10">
-          <div className="flex flex-wrap gap-x-4">
+          <div className="flex flex-nowrap gap-x-4 overflow-x-auto no-scrollbar">
             {/* Yesterday tab is hidden when there's nothing to show —
                 keeps the nav clean mid-quarter when we're deep into
                 today's reporting. */}
