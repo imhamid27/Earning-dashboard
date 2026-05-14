@@ -3,15 +3,43 @@
 // these before it touches Supabase or the filesystem.
 import { NextResponse } from "next/server";
 
-const SHORT_CACHE = "public, s-maxage=60, stale-while-revalidate=300";
-const LONG_CACHE  = "public, s-maxage=600, stale-while-revalidate=1800";
+// Cache tiers — chosen against expected churn for each endpoint type.
+// Each tier has BOTH `max-age` (browser cache) and `s-maxage` (CDN cache).
+// We deliberately make the browser tier short so a user pressing refresh
+// rarely sees stale data; the CDN tier is longer because a CDN purges
+// edge data on a global revalidate cycle. `stale-while-revalidate` keeps
+// the response served instantly while the next request triggers a refresh
+// in the background — critical for keeping perceived latency low.
+//
+// Setting `Vary: Accept-Encoding` is mandatory once we encourage caching:
+// without it a cache that's seen a gzipped response could replay it to a
+// client that didn't ask for gzip, and vice versa.
+const CACHE_TIERS = {
+  // Live-ish: prices, market context — refresh every minute at the edge,
+  // every 10 s in the browser.
+  live:   "public, max-age=10, s-maxage=60, stale-while-revalidate=120",
+  // Default: typical API reads that turn over every few minutes (sectors,
+  // dashboard, summary). Browser caches briefly; CDN caches a minute.
+  short:  "public, max-age=30, s-maxage=60, stale-while-revalidate=300",
+  // Slow-changing: filings land a handful of times per hour at most.
+  long:   "public, max-age=120, s-maxage=600, stale-while-revalidate=1800",
+  // Effectively static: quarter list, glossary, bellwether index.
+  // Hour-long edge cache, day-long stale window.
+  static: "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+} as const;
 
-export function jsonOk<T>(data: T, init?: ResponseInit & { cache?: "short" | "long" }) {
+export type CacheTier = keyof typeof CACHE_TIERS;
+
+export function jsonOk<T>(data: T, init?: ResponseInit & { cache?: CacheTier }) {
   const { cache, ...rest } = init ?? {};
   return NextResponse.json({ ok: true, data }, {
     ...rest,
     headers: {
-      "Cache-Control": cache === "long" ? LONG_CACHE : SHORT_CACHE,
+      "Cache-Control": CACHE_TIERS[cache ?? "short"],
+      // Critical pair with Cache-Control: lets intermediate caches store
+      // gzip+brotli+identity variants separately. Without Vary, a CDN
+      // can replay a gzipped response to a client that didn't ask for it.
+      "Vary": "Accept-Encoding",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       ...(rest.headers ?? {})

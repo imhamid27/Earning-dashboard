@@ -21,5 +21,6 @@ export async function GET() {
     }
   }
   labels.sort((a, b) => -compareQuarterLabels(a, b));
-  return jsonOk(labels);
+  // Quarter list rolls over once every ~3 months — safe to cache hard.
+  return jsonOk(labels, { cache: "static" });
 }

@@ -19,7 +19,13 @@ export async function GET(req: NextRequest) {
   const sb = supabaseServer();
 
   // Universe of active companies, filtered by sector / bucket / search.
-  let cQuery = sb.from("companies").select("*").eq("is_active", true);
+  // Project only the columns the homepage consumes — skip raw_json,
+  // ingestion timestamps and other wide metadata that bloated the
+  // wire payload at p95.
+  let cQuery = sb
+    .from("companies")
+    .select("id,ticker,company_name,sector,industry,exchange,market_cap_bucket,next_result_date")
+    .eq("is_active", true);
   if (sector) cQuery = cQuery.eq("sector", sector);
   if (bucket) cQuery = cQuery.eq("market_cap_bucket", bucket);
   if (search) cQuery = cQuery.or(`company_name.ilike.%${search}%,ticker.ilike.%${search}%`);

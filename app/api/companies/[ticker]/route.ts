@@ -16,7 +16,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tic
     { data: quarters, error: qErr },
     { data: events },
   ] = await Promise.all([
-    sb.from("companies").select("*").eq("ticker", ticker).maybeSingle(),
+    // Project only the columns the company page uses. Drop wide metadata
+    // (raw_json, updated_at, ingestion-only flags) which never reach the UI.
+    sb.from("companies")
+      .select("id,ticker,company_name,exchange,sector,industry,isin,market_cap_bucket,next_result_date,bse_scrip")
+      .eq("ticker", ticker)
+      .maybeSingle(),
     sb.from("quarterly_financials")
       .select("id,ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps,currency,data_quality_status,fetched_at")
       .eq("ticker", ticker)

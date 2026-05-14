@@ -26,5 +26,8 @@ export async function GET(_req: NextRequest) {
     .limit(20);
 
   if (error) return jsonError(error.message, 500);
-  return jsonOk(data ?? [], { cache: "short" });
+  // Coverage rows are populated 3× daily by fetch_related_coverage.py —
+  // long cache tier (10 min edge / 2 min browser) matches that cadence
+  // without ever serving truly stale data.
+  return jsonOk(data ?? [], { cache: "long" });
 }

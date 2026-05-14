@@ -144,9 +144,14 @@ export async function GET(req: NextRequest) {
       : marketOpen ? "open"
       : "closed";
 
-  return jsonOk({
-    as_of: mostRecent || new Date().toISOString(),
-    market_status,
-    prices,
-  });
+  return jsonOk(
+    {
+      as_of: mostRecent || new Date().toISOString(),
+      market_status,
+      prices,
+    },
+    // Stock prices refresh once per minute on the snapshot job; tier "live"
+    // shares the same window so the CDN coalesces concurrent viewers.
+    { cache: "live" }
+  );
 }

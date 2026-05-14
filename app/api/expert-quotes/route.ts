@@ -2,8 +2,10 @@ import { NextRequest } from "next/server";
 import { supabaseServer } from "@/lib/supabase";
 import { jsonOk, jsonError } from "@/lib/api";
 
-export const dynamic    = "force-dynamic";
-export const fetchCache = "force-no-store";
+// Re-execute the route per request (no Next build-time caching) — but the
+// HTTP cache headers we set on the response still apply, so CDN + browser
+// can cache the result for the long static window.
+export const dynamic = "force-dynamic";
 
 // GET /api/expert-quotes?limit=5
 //
@@ -38,5 +40,9 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await q;
   if (error) return jsonError(error.message, 500);
-  return jsonOk({ quotes: data ?? [], count: (data ?? []).length });
+  // Editorial / curated content, very low churn.
+  return jsonOk(
+    { quotes: data ?? [], count: (data ?? []).length },
+    { cache: "static" }
+  );
 }

@@ -79,9 +79,10 @@ export async function POST(req: NextRequest) {
     .limit(8);
   if (error) return jsonError(error.message, 500);
 
-  return jsonOk({
-    ticker,
-    elapsed_ms: Date.now() - start,
-    rows: rows ?? []
-  });
+  // This endpoint side-effects (spawns ingest workers), so the response
+  // must never be cached. Override the default cache header with no-store.
+  return jsonOk(
+    { ticker, elapsed_ms: Date.now() - start, rows: rows ?? [] },
+    { headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
 }

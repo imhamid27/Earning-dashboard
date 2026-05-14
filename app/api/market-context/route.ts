@@ -156,9 +156,14 @@ export async function GET(_req: NextRequest) {
       : marketOpen ? "open"                    // in session → LIVE
       : "closed";                               // off-hours → last close
 
-  return jsonOk({
-    as_of: mostRecent || new Date().toISOString(),
-    market_status,
-    indices,
-  });
+  return jsonOk(
+    {
+      as_of: mostRecent || new Date().toISOString(),
+      market_status,
+      indices,
+    },
+    // Index ticks land every minute on the snapshot job; cache 60s at the
+    // edge so we don't proxy that same payload to every browser tab.
+    { cache: "live" }
+  );
 }

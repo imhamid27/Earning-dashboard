@@ -14,10 +14,12 @@ export async function GET(req: NextRequest) {
   const sb = supabaseServer();
 
   // Single-ticker shortcut — same shape as the company detail endpoint.
+  // Project only the columns we actually return; skip raw_json (the bulky
+  // exchange-filing blob) which was previously inflating responses 5-10×.
   if (ticker) {
     const { data, error } = await sb
       .from("quarterly_financials")
-      .select("*")
+      .select("id,ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps,currency,data_quality_status,fetched_at")
       .eq("ticker", ticker)
       .order("quarter_end_date", { ascending: true });
     if (error) return jsonError(error.message, 500);

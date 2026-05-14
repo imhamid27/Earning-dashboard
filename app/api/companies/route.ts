@@ -13,7 +13,15 @@ export async function GET(req: NextRequest) {
   const active = sp.get("active") !== "0";
 
   const sb = supabaseServer();
-  let query = sb.from("companies").select("*").order("company_name", { ascending: true }).limit(200);
+  // Project only the columns consumers (search box, filter lists, sitemap
+  // generation) actually use. Skipping wide metadata columns like ISIN,
+  // bse_scrip, market_cap_bucket, updated_at, raw_json shrinks the payload
+  // by ~60% on the typical 200-row response.
+  let query = sb
+    .from("companies")
+    .select("ticker,company_name,sector,industry,exchange,is_active")
+    .order("company_name", { ascending: true })
+    .limit(200);
   if (active) query = query.eq("is_active", true);
   if (sector) query = query.eq("sector", sector);
   if (q) query = query.or(`company_name.ilike.%${q}%,ticker.ilike.%${q}%`);

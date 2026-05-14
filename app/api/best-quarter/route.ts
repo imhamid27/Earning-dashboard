@@ -36,5 +36,11 @@ export async function GET(req: Request) {
     .filter((r) => r.reporters >= min)
     .sort((a, b) => -compareQuarterLabels(a.quarter_label, b.quarter_label));
 
-  return jsonOk({ min, best: candidates[0] ?? null, all_with_coverage: candidates });
+  // "Best quarter with coverage" — the choice only changes once a new
+  // quarter crosses the min threshold (weekly at most during a reporting
+  // season; otherwise monthly). Long edge cache is safe.
+  return jsonOk(
+    { min, best: candidates[0] ?? null, all_with_coverage: candidates },
+    { cache: "static" }
+  );
 }
