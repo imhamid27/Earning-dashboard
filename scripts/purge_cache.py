@@ -1,5 +1,5 @@
 """
-Cloudflare cache-purge helper for ingestion scripts.
+CloudFront cache-invalidation helper for ingestion scripts.
 
 After fetch_results.py, nse_results.py, bse_results.py etc. land a fresh
 quarter row, call purge_for_ticker(ticker) so the CDN edge drops its
@@ -7,19 +7,25 @@ stale /api/dashboard, /api/company/[ticker], etc. The very next reader
 gets the new numbers instead of waiting for the s-maxage TTL.
 
 Two transport options:
-  1. Hit the dashboard's /api/cache-purge admin endpoint (PREFERRED —
-     keeps Cloudflare credentials in one place, the Next deployment).
-  2. Hit Cloudflare's API directly (fallback for scripts that can't
-     reach the dashboard, e.g. local dev).
 
-Env vars consumed:
-  NEXT_PUBLIC_SITE_URL   = https://earnings.thecore.in
-  CACHE_PURGE_SECRET     = shared secret matching the Next API route
-  CLOUDFLARE_ZONE_ID     = (only for direct mode)
-  CLOUDFLARE_API_TOKEN   = (only for direct mode)
+  1. PREFERRED — hit the dashboard's /api/cache-purge admin endpoint.
+     Keeps AWS credentials in one place (the Next deployment), and the
+     ingestion script only needs CACHE_PURGE_SECRET, not AWS keys.
+
+  2. FALLBACK — talk to CloudFront's CreateInvalidation API directly via
+     boto3. Used when the dashboard isn't reachable from the ingestion
+     box (e.g. local dev). Requires boto3 + AWS credentials in the
+     ingestion env.
 
 Both functions return (ok: bool, message: str). They never raise —
-ingestion shouldn't fail because the CDN didn't accept a purge.
+ingestion shouldn't fail because the CDN didn't accept an invalidation.
+
+Env vars consumed:
+  NEXT_PUBLIC_SITE_URL              = https://earnings.thecore.in (for mode 1)
+  CACHE_PURGE_SECRET                = shared secret matching the Next route (mode 1)
+  AWS_CLOUDFRONT_DISTRIBUTION_ID    = e.g. E1A2B3C4D5E6F7 (mode 2 only)
+  AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY  (mode 2 only)
+  AWS_DEFAULT_REGION                = us-east-1 (CloudFront control plane)
 """
 
 from __future__ import annotations
@@ -36,7 +42,7 @@ import requests
 def purge_for_ticker(ticker: str, timeout: float = 8.0) -> tuple[bool, str]:
     """Tell the Next /api/cache-purge endpoint to invalidate edges for
     this ticker. Safe to call from any ingestion script — env-var-driven,
-    no Cloudflare creds required client-side."""
+    no AWS creds required on the ingestion side."""
     base = (os.environ.get("NEXT_PUBLIC_SITE_URL") or "").rstrip("/")
     secret = os.environ.get("CACHE_PURGE_SECRET")
     if not base or not secret:
@@ -59,25 +65,30 @@ def purge_for_ticker(ticker: str, timeout: float = 8.0) -> tuple[bool, str]:
     if r.status_code == 200:
         try:
             body = r.json()
+            data = body.get("data", {})
             return True, (
-                f"purged {body['data'].get('purged', 0)} URLs"
-                f"{' (CF skipped: env not configured)' if body['data'].get('skipped') else ''}"
+                f"purged {data.get('purged', 0)} paths"
+                + (f" (invalidation {data.get('invalidation_id')})"
+                   if data.get('invalidation_id') else "")
+                + (" [CDN skipped: env not configured]"
+                   if data.get('skipped') else "")
             )
         except Exception:
             return True, "ok"
     return False, f"http {r.status_code}: {r.text[:200]}"
 
 
-def purge_urls(urls: Iterable[str], timeout: float = 8.0) -> tuple[bool, str]:
-    """Same as purge_for_ticker but for an explicit URL list."""
+def purge_paths(paths: Iterable[str], timeout: float = 8.0) -> tuple[bool, str]:
+    """Same as purge_for_ticker but for an explicit path list. Each entry
+    must start with '/' (e.g. '/api/dashboard'). Wildcards OK: '/api/*'."""
     base = (os.environ.get("NEXT_PUBLIC_SITE_URL") or "").rstrip("/")
     secret = os.environ.get("CACHE_PURGE_SECRET")
     if not base or not secret:
         return False, "NEXT_PUBLIC_SITE_URL / CACHE_PURGE_SECRET not set"
 
-    payload = {"urls": list(urls)}
-    if not payload["urls"]:
-        return True, "no-op (empty url list)"
+    payload = {"paths": list(paths)}
+    if not payload["paths"]:
+        return True, "no-op (empty path list)"
 
     try:
         r = requests.post(
@@ -94,52 +105,60 @@ def purge_urls(urls: Iterable[str], timeout: float = 8.0) -> tuple[bool, str]:
     return False, f"http {r.status_code}: {r.text[:200]}"
 
 
-# ---- Mode 2: direct Cloudflare API call (fallback) -------------------------
+# Back-compat alias for existing call sites that still say `purge_urls`.
+purge_urls = purge_paths
 
-def purge_direct(urls: Iterable[str]) -> tuple[bool, str]:
-    """Bypass the Next API and talk to Cloudflare directly. Useful for
-    one-off local invocations or for scripts that can't reach the
-    deployed dashboard."""
-    zone = os.environ.get("CLOUDFLARE_ZONE_ID")
-    token = os.environ.get("CLOUDFLARE_API_TOKEN")
-    if not zone or not token:
-        return False, "CLOUDFLARE_ZONE_ID / CLOUDFLARE_API_TOKEN not set"
 
-    cleaned = sorted({u for u in urls if u.startswith(("http://", "https://"))})
+# ---- Mode 2: direct CloudFront CreateInvalidation (fallback) ---------------
+
+def purge_direct(paths: Iterable[str]) -> tuple[bool, str]:
+    """Bypass the Next API and talk to CloudFront directly via boto3.
+    Useful for local dev where the dashboard isn't reachable, or for
+    ops-side mass invalidations.
+
+    Requires AWS credentials in env (AWS_ACCESS_KEY_ID/SECRET_ACCESS_KEY
+    or an attached IAM role) and AWS_CLOUDFRONT_DISTRIBUTION_ID."""
+    dist_id = os.environ.get("AWS_CLOUDFRONT_DISTRIBUTION_ID")
+    if not dist_id:
+        return False, "AWS_CLOUDFRONT_DISTRIBUTION_ID not set"
+
+    try:
+        import boto3  # noqa: WPS433  (lazy import; not all deploys need this)
+    except ImportError:
+        return False, "boto3 not installed (pip install boto3)"
+
+    cleaned = sorted({
+        p if p.startswith("/") else "/" + p
+        for p in paths
+        if p
+    })
     if not cleaned:
-        return False, "no absolute URLs to purge"
+        return False, "no valid paths"
 
-    # CF free plan: max 30 URLs per request — batch.
-    purged = 0
-    for i in range(0, len(cleaned), 30):
-        batch = cleaned[i : i + 30]
-        try:
-            r = requests.post(
-                f"https://api.cloudflare.com/client/v4/zones/{zone}/purge_cache",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Content-Type": "application/json",
-                },
-                json={"files": batch},
-                timeout=10,
-            )
-        except requests.RequestException as e:
-            return False, f"network: {e}"
+    # CloudFront control plane lives in us-east-1; the distribution ID is
+    # global but the API endpoint is regional.
+    client = boto3.client("cloudfront", region_name="us-east-1")
+    try:
+        resp = client.create_invalidation(
+            DistributionId=dist_id,
+            InvalidationBatch={
+                "Paths": {"Quantity": len(cleaned), "Items": cleaned},
+                "CallerReference": f"purge-direct-{int(time.time()*1000)}",
+            },
+        )
+    except Exception as e:
+        return False, f"boto3 error: {type(e).__name__}: {e}"
 
-        if r.status_code != 200:
-            return False, f"http {r.status_code}: {r.text[:200]}"
-        purged += len(batch)
-
-    return True, f"purged {purged} URLs"
+    inv_id = resp.get("Invalidation", {}).get("Id", "?")
+    return True, f"invalidated {len(cleaned)} paths (id={inv_id})"
 
 
 # ---- Convenience: ingestion drivers call this at the end -------------------
 
 def purge_for_tickers(tickers: Iterable[str], pause: float = 0.25) -> None:
-    """Purge edge cache for a batch of tickers, with a small pause between
-    calls so we don't spam CF (and so the receiving Next instance doesn't
-    queue too many concurrent purges). Logs but never raises — purge
-    failures must not crash an ingestion run."""
+    """Invalidate edge cache for a batch of tickers, with a small pause
+    between calls so we don't spam the API. Logs but never raises —
+    purge failures must NOT crash an ingestion run."""
     seen = sorted(set(tickers))
     for t in seen:
         ok, msg = purge_for_ticker(t)

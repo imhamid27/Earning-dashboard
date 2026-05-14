@@ -1,24 +1,28 @@
 // POST /api/cache-purge
 //
-// Admin endpoint called by ingestion scripts after a filing lands, so the
-// CDN edge cache drops its stale copy and the very next reader fetches the
-// fresh numbers from origin.
+// Admin endpoint called by ingestion scripts after a filing lands, so
+// CloudFront's edge cache drops its stale copy and the very next reader
+// fetches the fresh numbers from origin.
 //
-// Auth model: shared-secret in a header. The ingestion scripts run on the
-// same machine that holds the secret. No public access.
+// Auth model: shared-secret in a header. The ingestion scripts run on
+// the same machine that holds the secret. No public access.
 //
-// Body shapes:
-//   { ticker: "TCS.NS" }                 -> standard ticker-change purge
-//   { urls:   ["https://.../api/foo"] }  -> explicit URL list
-//   { ticker: "TCS.NS", urls: [...] }    -> both (URLs appended)
+// Body shapes (paths, not full URLs — CloudFront invalidations are
+// path-based within a distribution):
+//   { ticker: "TCS.NS" }                  → standard ticker-change purge
+//   { paths:  ["/api/foo", "/api/bar"] }  → explicit path list
+//   { ticker: "TCS.NS", paths: [...] }    → both (paths appended)
 //
-// Returns { ok: true, purged, skipped } on success (skipped means CF env
-// vars weren't configured — useful before DNS migration).
+// Wildcards supported in paths, e.g. "/api/*" or "/company/*". Useful
+// for broad invalidations after bulk ingestion runs.
+//
+// Returns { ok: true, purged, skipped, invalidationId } on success;
+// skipped=true means AWS_CLOUDFRONT_DISTRIBUTION_ID wasn't configured
+// (useful before/during the CloudFront cutover).
 
 import { NextRequest } from "next/server";
 import { jsonOk, jsonError } from "@/lib/api";
-import { purgeCdn, urlsForTickerChange } from "@/lib/cdn";
-import { siteUrl } from "@/lib/site";
+import { purgeCdn, pathsForTickerChange } from "@/lib/cdn";
 
 // Never cache the purge endpoint itself.
 export const dynamic = "force-dynamic";
@@ -42,27 +46,29 @@ export async function POST(req: NextRequest) {
   }
   if (mismatch !== 0) return jsonError("forbidden", 403);
 
-  let body: { ticker?: string; urls?: string[] };
+  let body: { ticker?: string; paths?: string[]; urls?: string[] };
   try {
     body = await req.json();
   } catch {
     return jsonError("body must be JSON", 400);
   }
 
-  const origin = siteUrl();
   const collected: string[] = [];
 
   if (body.ticker && typeof body.ticker === "string") {
-    // Pre-cleaned by the caller; we don't validate further here because
-    // the URL builder URL-encodes the value anyway.
-    collected.push(...urlsForTickerChange(origin, body.ticker));
+    collected.push(...pathsForTickerChange(body.ticker));
   }
+  if (Array.isArray(body.paths)) {
+    for (const p of body.paths) if (typeof p === "string") collected.push(p);
+  }
+  // Back-compat: older callers may pass `urls` (the Cloudflare-era shape).
+  // purgeCdn() strips scheme+host so absolute URLs still work fine.
   if (Array.isArray(body.urls)) {
     for (const u of body.urls) if (typeof u === "string") collected.push(u);
   }
 
   if (collected.length === 0) {
-    return jsonError("body must include either ticker or urls", 400);
+    return jsonError("body must include ticker, paths, or urls", 400);
   }
 
   const result = await purgeCdn(collected);
@@ -73,6 +79,7 @@ export async function POST(req: NextRequest) {
       purged: result.purged,
       skipped: "skipped" in result ? result.skipped : false,
       reason: "reason" in result ? result.reason : null,
+      invalidation_id: "invalidationId" in result ? result.invalidationId : null,
       total_requested: collected.length,
     },
     { headers: { "Cache-Control": "no-store" } }

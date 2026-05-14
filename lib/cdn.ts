@@ -1,108 +1,165 @@
-// Cloudflare cache-purge helper.
+// AWS CloudFront cache-invalidation helper.
 //
-// Why: when ingestion lands a fresh quarterly result, the CDN's edge copy
-// of /api/dashboard, /api/q4-announcements, /api/companies/[ticker] etc.
-// is now stale. Without a purge, readers wait for the s-maxage TTL
-// (60s–60min depending on tier) before seeing the new numbers — fine for
-// passive browsing, bad when the user is actively refreshing because TCS
-// just reported.
+// Why: when ingestion lands a fresh quarterly result, the CloudFront edge
+// copy of /api/dashboard, /api/q4-announcements, /api/companies/[ticker],
+// etc. is now stale. Without an invalidation, readers wait for the
+// s-maxage TTL (60s–60min depending on tier) before seeing the new
+// numbers — fine for passive browsing, bad when the user is actively
+// refreshing because TCS just reported.
 //
-// How: the cron scripts (Python + this Next API route) hit CF's purge API
-// with a list of URL prefixes. CF marks those edge entries as stale; the
-// next request triggers a fresh origin fetch and re-caches.
+// How: cron scripts (Python via boto3 + this Next API route) call
+// CloudFront's CreateInvalidation API with a list of path patterns.
+// CloudFront marks those edge entries as stale globally; the next request
+// triggers a fresh origin fetch and re-caches.
 //
-// Auth: needs a Cloudflare API token scoped to the zone with
-//   Zone → Cache Purge → Purge
-// permission only. Create at
-//   https://dash.cloudflare.com/profile/api-tokens
-// Save to CLOUDFLARE_API_TOKEN. Save the zone ID (visible on the zone
-// overview page) to CLOUDFLARE_ZONE_ID.
+// CloudFront invalidation paths are PATH-only (no scheme/host), and
+// support wildcards. e.g. "/api/dashboard" or "/api/*" or "/company/*".
+// Free tier: 1,000 paths/month included, then $0.005/path. Wildcards
+// count as one path each, so "/api/*" is a cheap way to nuke the whole
+// API tree.
 //
-// Gracefully degrades: if the env vars aren't set, purgeCdn() logs a
-// debug line and returns ok. This keeps local dev + non-CF deployments
-// (e.g. before DNS migration) working unchanged.
+// Auth: needs IAM permissions on cloudfront:CreateInvalidation for the
+// distribution. The simplest IAM policy:
+//   {
+//     "Effect": "Allow",
+//     "Action": "cloudfront:CreateInvalidation",
+//     "Resource": "arn:aws:cloudfront::<account-id>:distribution/<dist-id>"
+//   }
+// Set AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY in the Next deployment
+// env. Or if Coolify runs on EC2 with an instance-attached role, no
+// keys needed — the SDK picks up the role automatically.
+//
+// Gracefully degrades: if AWS_CLOUDFRONT_DISTRIBUTION_ID isn't set,
+// purgeCdn() returns ok with skipped=true. Keeps local dev + non-CDN
+// deployments working unchanged.
 
-const PURGE_URL = (zoneId: string) =>
-  `https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`;
+import {
+  CloudFrontClient,
+  CreateInvalidationCommand,
+} from "@aws-sdk/client-cloudfront";
 
 export type PurgeResult =
-  | { ok: true; purged: number; skipped: false }
+  | { ok: true; purged: number; skipped: false; invalidationId?: string }
   | { ok: true; purged: 0; skipped: true; reason: string }
   | { ok: false; error: string };
 
-/**
- * Purge a list of URLs from the Cloudflare edge cache.
- *
- * URLs must be absolute — CF rejects relative paths. Pass them in the
- * exact form the edge sees them (including scheme + host).
- *
- * Cloudflare's free plan allows up to 30 URLs per request; we batch in
- * chunks of 30 so callers can pass arbitrarily many without thinking.
- */
-export async function purgeCdn(urls: string[]): Promise<PurgeResult> {
-  const zoneId = process.env.CLOUDFLARE_ZONE_ID;
-  const token  = process.env.CLOUDFLARE_API_TOKEN;
+// Singleton client. The AWS SDK auto-discovers credentials from env vars
+// (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY) or an EC2 instance role,
+// in that order. Region is fixed to us-east-1 because CloudFront's
+// control plane only lives there — invalidations target any
+// distribution from us-east-1 regardless of where the edges are.
+let _cf: CloudFrontClient | null = null;
+function client(): CloudFrontClient {
+  if (_cf) return _cf;
+  _cf = new CloudFrontClient({ region: "us-east-1" });
+  return _cf;
+}
 
-  if (!zoneId || !token) {
+/**
+ * Invalidate a list of path patterns at the CloudFront edge.
+ *
+ * Paths must start with `/` and may use `*` as a wildcard. Examples:
+ *   "/api/dashboard"   → exact path
+ *   "/api/*"           → entire API tree (cheaper, broader)
+ *   "/company/TCS.NS"  → one company page
+ *
+ * Querystring is NOT part of the invalidation path — CloudFront
+ * invalidates all variants of a path regardless of querystring.
+ *
+ * One CloudFront invalidation request can target up to 3,000 paths;
+ * we batch in chunks of 1,000 to stay well within that.
+ */
+export async function purgeCdn(paths: string[]): Promise<PurgeResult> {
+  const distId = process.env.AWS_CLOUDFRONT_DISTRIBUTION_ID;
+
+  if (!distId) {
     return {
       ok: true,
       purged: 0,
       skipped: true,
-      reason: "CLOUDFLARE_ZONE_ID / CLOUDFLARE_API_TOKEN not configured",
+      reason: "AWS_CLOUDFRONT_DISTRIBUTION_ID not configured",
     };
   }
-  if (!urls.length) {
-    return { ok: true, purged: 0, skipped: true, reason: "no URLs" };
+  if (!paths.length) {
+    return { ok: true, purged: 0, skipped: true, reason: "no paths" };
   }
 
-  // De-duplicate + drop relative URLs; CF rejects them silently otherwise.
-  const cleaned = Array.from(new Set(urls.filter((u) => /^https?:\/\//i.test(u))));
+  // Normalise: strip scheme+host if a caller passed a full URL, dedupe,
+  // and ensure each entry starts with "/". CloudFront rejects relative
+  // paths or full URLs.
+  const cleaned = Array.from(
+    new Set(
+      paths
+        .map((p) => p.replace(/^https?:\/\/[^/]+/i, ""))
+        .map((p) => (p.startsWith("/") ? p : "/" + p))
+        .filter((p) => p.length > 0)
+    )
+  );
   if (!cleaned.length) {
-    return { ok: false, error: "no absolute URLs passed; CF requires scheme+host" };
+    return { ok: false, error: "no valid path patterns after normalisation" };
   }
 
-  // Chunk for the 30-URL/request free-plan ceiling.
-  const CHUNK = 30;
+  const CHUNK = 1000;
   let purged = 0;
+  let firstId: string | undefined;
   for (let i = 0; i < cleaned.length; i += CHUNK) {
     const batch = cleaned.slice(i, i + CHUNK);
-    const res = await fetch(PURGE_URL(zoneId), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ files: batch }),
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      return { ok: false, error: `CF purge ${res.status}: ${body.slice(0, 240)}` };
+    try {
+      // CallerReference must be unique per request — using a timestamp+
+      // batch-index combination so retries of the same logical purge get
+      // distinct IDs from AWS's perspective.
+      const callerReference = `purge-${Date.now()}-${i}`;
+      const out = await client().send(
+        new CreateInvalidationCommand({
+          DistributionId: distId,
+          InvalidationBatch: {
+            CallerReference: callerReference,
+            Paths: { Quantity: batch.length, Items: batch },
+          },
+        })
+      );
+      purged += batch.length;
+      if (!firstId) firstId = out.Invalidation?.Id ?? undefined;
+    } catch (err: any) {
+      return {
+        ok: false,
+        error: `CloudFront invalidation failed: ${err?.name ?? "Error"}: ${err?.message ?? String(err)}`,
+      };
     }
-    purged += batch.length;
   }
 
-  return { ok: true, purged, skipped: false };
+  return { ok: true, purged, skipped: false, invalidationId: firstId };
 }
 
 /**
- * Convenience: purge the standard "something changed about ticker X" set.
+ * Convenience: the standard "something changed about ticker X" path set.
  * Cron callers (Python / Next API) use this so each one doesn't have to
  * remember which routes are downstream of a filing landing.
+ *
+ * Note: unlike the Cloudflare version, these are PATHS (no host), since
+ * CloudFront invalidations are path-based within a distribution.
  */
-export function urlsForTickerChange(siteOrigin: string, ticker: string): string[] {
+export function pathsForTickerChange(ticker: string): string[] {
   const enc = encodeURIComponent(ticker);
   return [
-    `${siteOrigin}/api/dashboard`,
-    `${siteOrigin}/api/summary`,
-    `${siteOrigin}/api/sectors`,
-    `${siteOrigin}/api/q4-announcements`,
-    `${siteOrigin}/api/upcoming`,
-    `${siteOrigin}/api/trends`,
-    `${siteOrigin}/api/companies/${enc}`,
-    `${siteOrigin}/api/quarterly-results?ticker=${enc}`,
-    `${siteOrigin}/company/${enc}`,
-    `${siteOrigin}/`,
-    `${siteOrigin}/q4`,
-    `${siteOrigin}/sectors`,
+    "/api/dashboard",
+    "/api/summary",
+    "/api/sectors",
+    "/api/q4-announcements",
+    "/api/upcoming",
+    "/api/trends",
+    `/api/companies/${enc}`,
+    `/api/quarterly-results*`, // matches both ?ticker= variants
+    `/company/${enc}`,
+    "/",
+    "/q4",
+    "/sectors",
   ];
+}
+
+// Back-compat alias: older callers (and the Python helper) may still
+// reference `urlsForTickerChange(origin, ticker)`. Keep a thin shim that
+// ignores the origin arg and returns the new path-based shape.
+export function urlsForTickerChange(_origin: string, ticker: string): string[] {
+  return pathsForTickerChange(ticker);
 }
