@@ -59,6 +59,19 @@ COPY --from=builder --chown=nextjs:nodejs /app/public           ./public
 USER nextjs
 EXPOSE 3000
 
+# Note on compression:
+#   Next 16 standalone DOES auto-compress HTML responses (verified via
+#   `node server.js` on a local build: / shrinks 88KB → 14KB with
+#   Accept-Encoding: gzip). It does NOT compress App Router route
+#   handlers — `NextResponse.json()` flows through a Web Streams
+#   pipeline that bypasses Node-stream-based compression middleware.
+#   On the deployed origin, even the HTML compression doesn't fire,
+#   pointing at Coolify's Traefik proxy as the layer breaking the
+#   Accept-Encoding negotiation.
+#   The correct fix is putting a CDN (Cloudflare) in front; the edge
+#   compresses everything outbound to clients regardless of origin
+#   behaviour. See CLOUDFLARE.md.
+
 # The standalone output creates a top-level `server.js` that boots Next.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/quarters || exit 1

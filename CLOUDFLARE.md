@@ -1,44 +1,61 @@
 # Cloudflare CDN Setup
 
-Putting Cloudflare's free CDN in front of `earnings.thecore.in` is the single biggest perf win available — it lets the `s-maxage` directives we already ship (set per route in `lib/api.ts`) actually take effect, dropping origin RPS by 70–90% in steady state.
+Putting Cloudflare's free CDN in front of `earnings.thecore.in` is the single biggest perf win available, for two reasons:
 
-The dashboard is already prepped for this. What's left is the DNS + dashboard config + env vars. Allow ~30 min of clicking, plus DNS propagation (typically 5 min to 24 h).
+1. **It lets `s-maxage` actually work.** The per-route directives in `lib/api.ts` (60s / 600s / 3600s) need an edge that honours them — without one, only browsers cache, and that only helps repeat visitors. With Cloudflare, origin RPS drops 70–90% in steady state.
+2. **It fixes a broken origin compression path.** Direct curl against the production origin currently returns `Content-Length: 88421` on the homepage with no `Content-Encoding` — Coolify's Traefik proxy is blocking the Accept-Encoding negotiation between client and Next. Local testing confirms Next 16 standalone DOES compress HTML at the Node layer (88KB → 14KB), so the breakage is in Traefik, not Next. Rather than chase that down at Traefik level, Cloudflare's edge brotli/gzip negotiates with the client directly and serves compressed payloads end-to-end. The origin-to-CF leg stays uncompressed, but that's a fat datacenter link where bandwidth is cheap.
 
----
-
-## Important: this requires migrating `thecore.in` to Cloudflare's nameservers
-
-Cloudflare's free plan operates at the **zone level**, not the subdomain level. To proxy `earnings.thecore.in`, you point the entire `thecore.in` zone at Cloudflare's nameservers. Cloudflare reads your existing DNS records, mirrors them, and only proxies the records you explicitly toggle to "Proxied" (the orange cloud icon). The main `thecore.in` site continues to resolve exactly as today via the same A/CNAME/MX records, untouched.
-
-If you can't migrate the zone (e.g. some other team owns `thecore.in` DNS), Cloudflare's **CNAME-setup plan ($20+/mo on Pro)** or **Cloudflare for SaaS** is the workaround. Or use Bunny CDN / Fastly which support per-hostname CNAME without zone control.
-
-The rest of this doc assumes the zone migration path.
+The dashboard code is already prepped for this. What's left is the DNS + dashboard config + env vars. Allow ~30 min of clicking, plus DNS propagation (typically 5 min to 24 h).
 
 ---
 
-## Step 1 — Sign up + add the zone
+## Setup path: subdomain delegation (no parent-zone migration)
+
+The main `thecore.in` site currently runs through CloudFront (managed by someone else) and the DNS is on GoDaddy (`ns11.domaincontrol.com` / `ns12.domaincontrol.com`). We don't migrate the whole zone — we delegate only the `earnings` subdomain to Cloudflare, leaving everything else in GoDaddy/CloudFront untouched.
+
+The trick: Cloudflare lets you add a subdomain as its own zone, and GoDaddy lets you add NS records that point that subdomain at Cloudflare's nameservers. Two small DNS edits in GoDaddy, no impact on `thecore.in` or `www`.
+
+---
+
+## Step 1 — Add `earnings.thecore.in` as a Cloudflare zone
 
 1. Create a Cloudflare account at <https://dash.cloudflare.com/sign-up>. Free plan is fine.
-2. Click **Add a site** → enter `thecore.in` → select **Free**.
-3. Cloudflare scans your existing DNS records. Review the list — every record currently active should appear. **Verify the row for `earnings` (subdomain) is present and points at your Coolify VPS.** Adjust if missing.
-4. Cloudflare shows you the two nameservers to set at your registrar. Note them down.
+2. Click **Add a site** → enter `earnings.thecore.in` (the subdomain, NOT just `thecore.in`) → select **Free**.
+3. Cloudflare assigns two nameservers to this zone. They'll look like `aria.ns.cloudflare.com` and `jay.ns.cloudflare.com`. Note both values exactly.
+4. The zone will sit in **"Pending Nameserver Update"** until Step 2 is done.
 
-## Step 2 — Update nameservers at your domain registrar
+## Step 2 — Delegate the subdomain in GoDaddy
 
-1. Log into wherever `thecore.in` was originally bought (GoDaddy, Namecheap, BigRock, Hostinger, etc.).
-2. Find the DNS / nameservers section. Replace the existing nameservers with the two Cloudflare gave you.
-3. Save. Propagation starts immediately but can take 5 min to 24 h. Cloudflare emails when it detects the change.
+1. Sign in to GoDaddy → My Products → DNS for `thecore.in`.
+2. **Find any existing `A` or `CNAME` record for `earnings`** (currently points to `46.225.160.82`, your Coolify VPS). **Delete it.** This is mandatory — otherwise GoDaddy keeps answering for `earnings.thecore.in` and Cloudflare's delegation gets ignored.
+3. **Add two `NS` records:**
+   ```
+   Type: NS    Name: earnings    Value: <cf-nameserver-1>.ns.cloudflare.com    TTL: 1 Hour
+   Type: NS    Name: earnings    Value: <cf-nameserver-2>.ns.cloudflare.com    TTL: 1 Hour
+   ```
+   (Use the exact values Cloudflare gave you in Step 1.)
+4. Save.
 
-While propagation is happening, the main `thecore.in` continues working through the old DNS path; nothing breaks.
+Propagation usually takes 5–30 min. Cloudflare emails when it confirms the delegation is live and the zone activates.
 
-## Step 3 — Set proxy mode for `earnings`
+While propagation is running, the dashboard at `earnings.thecore.in` may briefly serve from the Coolify VPS directly (old cached DNS) before flipping to Cloudflare — there's no downtime, just a transition.
+
+## Step 3 — Recreate the A record inside Cloudflare
 
 Once Cloudflare confirms the zone is active:
 
-1. Open the `thecore.in` zone in Cloudflare dashboard.
-2. Go to **DNS → Records**.
-3. Find the `earnings` row. Click the cloud icon in the **Proxy status** column so it turns **orange (Proxied)**. This is what makes Cloudflare actually intercept traffic — without it, requests bypass the edge cache.
-4. For the apex `thecore.in` and any other subdomains you DON'T want CDN-ified, leave them grey-cloud (DNS only). MX records for email must always be DNS-only.
+1. Open the `earnings.thecore.in` zone in Cloudflare.
+2. Go to **DNS → Records → Add record**:
+   ```
+   Type:  A
+   Name:  @                        (this represents earnings.thecore.in itself)
+   IPv4:  46.225.160.82            (your Coolify VPS IP)
+   Proxy status: Proxied (orange cloud)   ← critical
+   TTL:   Auto
+   ```
+3. Save.
+
+The orange cloud is what makes Cloudflare actually intercept traffic — without it the request bypasses the edge.
 
 ## Step 4 — Configure caching rules for `earnings.thecore.in`
 
@@ -81,7 +98,7 @@ Two values to grab:
 
 ### `CLOUDFLARE_ZONE_ID`
 
-On the Cloudflare overview page for `thecore.in`, scroll down. **Zone ID** is in the right sidebar. Copy it.
+On the Cloudflare overview page for the **`earnings.thecore.in`** zone (not the parent `thecore.in` — we don't have that zone), scroll down. **Zone ID** is in the right sidebar. Copy it.
 
 ### `CLOUDFLARE_API_TOKEN`
 
@@ -89,7 +106,7 @@ On the Cloudflare overview page for `thecore.in`, scroll down. **Zone ID** is in
 2. **Custom token**:
    - Name: `earnings-dashboard-cache-purge`
    - Permissions: **Zone → Cache Purge → Purge** (this one only — least privilege).
-   - Zone Resources: **Include → Specific zone → thecore.in**.
+   - Zone Resources: **Include → Specific zone → earnings.thecore.in**.
 3. **Create Token**. Copy the value (shown once).
 
 ### Generate `CACHE_PURGE_SECRET`
