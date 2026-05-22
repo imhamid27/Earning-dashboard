@@ -167,8 +167,23 @@ export default function CompanyDetail() {
       <EmptyState title="Company not found" message={err} cta={<Link href="/" className="link-pink text-sm">← Back to dashboard</Link>} />
     </div>
   );
+  // SSR-visible H1 in the loading branch — Bing/Google crawlers don't
+  // run JS, so without this they'd see only the "Loading…" placeholder
+  // and flag "H1 tag missing". `ticker` comes from useParams() which is
+  // resolved at server-render time, so the H1 text is correct in SSR.
+  // Once the /api/companies fetch resolves, this branch unmounts and
+  // the full data-loaded UI takes over with its own (richer) H1 using
+  // the actual company_name. Exactly one H1 at any time.
   if (!data) return (
-    <div className="container-core py-10"><div className="card p-8 text-sm text-core-muted">Loading…</div></div>
+    <div className="container-core py-10">
+      <h1 className="text-3xl md:text-5xl font-extrabold tracking-tightest leading-[1.05]">
+        {ticker.replace(/\.(NS|BO)$/, "")}
+        <span className="block text-core-muted text-[clamp(1rem,1.6vw,1.25rem)] font-semibold tracking-tight mt-2">
+          Quarterly Results &amp; Earnings
+        </span>
+      </h1>
+      <div className="card p-8 text-sm text-core-muted mt-6">Loading…</div>
+    </div>
   );
 
   const latest = data.quarters[data.quarters.length - 1];

@@ -80,11 +80,14 @@ export async function generateMetadata({
   // longer gets clipped in Google's SERP.
   const title = `${display} (${tickerBare}) — ${ACTIVE_QUARTER} Results & Earnings`;
 
+  // Tightened to ~120-140 chars (varies with company-name length).
+  // Bing/Google truncate past ~155 with "…". The previous 197-char
+  // version was flagged in Bing Webmaster Tools as too long.
   const description = co
-    ? `${display} (${tickerBare}) quarterly results — revenue, net profit, EPS, YoY/QoQ growth, and filing PDFs. ${
-        co.sector ? `Sector: ${co.sector}. ` : ""
-      }Free dashboard tracking ${ACTIVE_QUARTER} earnings for listed Indian companies.`
-    : `${ticker} quarterly results — revenue, net profit, EPS, YoY/QoQ growth, and filing PDFs across multiple quarters.`;
+    ? `${display} (${tickerBare}) ${ACTIVE_QUARTER} results — revenue, net profit, EPS, YoY growth & filing PDFs from NSE/BSE.${
+        co.sector ? ` ${co.sector} sector.` : ""
+      }`
+    : `${ticker} ${ACTIVE_QUARTER} quarterly results — revenue, net profit, EPS, YoY growth, and filing PDFs.`;
 
   return {
     title,

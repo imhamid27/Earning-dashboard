@@ -17,7 +17,8 @@ const URL_PATH = "/sectors";
 
 export const metadata: Metadata = {
   title: `Sector-wise Earnings ${ACTIVE_QUARTER} — Revenue & Profit by Indian Sector`,
-  description: `Compare ${ACTIVE_QUARTER} revenue and net-profit growth across Indian sectors — IT, Banking, FMCG, Auto, Metals, Pharma and more. Find the strongest and weakest sectors by quarter, with company drill-downs.`,
+  // Tightened to ~150 chars — Bing/Google truncate past ~155 with "…".
+  description: `${ACTIVE_QUARTER} sector earnings — revenue and profit growth across IT, Banking, FMCG, Auto, Metals, Pharma. Strongest and weakest Indian sectors.`,
   keywords: [
     // Sector earnings — generic
     "sector earnings India",

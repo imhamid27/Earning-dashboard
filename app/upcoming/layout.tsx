@@ -16,7 +16,8 @@ import FaqBlock from "@/components/FaqBlock";
 const URL_PATH = "/upcoming";
 
 const title = `Quarterly Results Calendar 2026 — Upcoming NSE & BSE Earnings`;
-const description = `Live quarterly results calendar for India — upcoming earnings announcements from NSE and BSE listed companies, day by day. See quarterly results scheduled today, tomorrow and through the week, including bellwethers like Reliance, TCS, HDFC Bank and Infosys. Board-meeting dates updated as exchanges receive notices.`;
+// Tightened to ~150 chars — Bing/Google truncate past ~155 with "…".
+const description = `India's upcoming earnings calendar — NSE & BSE results scheduled today, tomorrow, and the week ahead. Reliance, TCS, HDFC Bank, Infosys & 1,000+ more.`;
 
 export const metadata: Metadata = {
   title,

@@ -19,7 +19,8 @@ const URL_PATH = "/q4";
 
 const calendar = quarterToCalendar(ACTIVE_QUARTER); // e.g. "Jan–Mar 2026"
 const title = `${ACTIVE_QUARTER} Results — Quarterly Results Today, NSE & BSE (${calendar})`;
-const description = `Live ${ACTIVE_QUARTER} (${calendar}) quarterly results calendar — every announcement from listed Indian companies on NSE and BSE, by date. Quarterly results today, filed numbers with YoY/QoQ growth, upcoming filings, board-meeting dates and direct PDF links — updated as filings land with the exchanges.`;
+// Tightened to ~150 chars — Bing/Google truncate past ~155 with "…".
+const description = `Live ${ACTIVE_QUARTER} quarterly results — every Indian company announcement on NSE & BSE, by date. Filed numbers, YoY growth, board-meeting dates, PDFs.`;
 
 export const metadata: Metadata = {
   title,

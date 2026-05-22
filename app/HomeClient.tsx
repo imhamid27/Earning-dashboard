@@ -589,7 +589,20 @@ export default function DashboardPage() {
 
   if (!board || !minTimeElapsed) return (
     <div className="container-core">
-      <FilingLoader quarter={quarter} total={500} label="Reading filings" />
+      {/* SSR-visible H1 — Bing/Google crawlers don't run JS, so without
+          this they'd see only the FilingLoader skeleton and flag "H1 tag
+          missing". Once the client fetch resolves, this loading branch
+          is unmounted and the full data-loaded UI takes over with its
+          own H1 ("India Inc. Reporting"). Exactly one H1 at any time. */}
+      <h1 className="font-sans font-extrabold tracking-tightest leading-[1.05] text-[clamp(1.85rem,4.5vw,3.5rem)] pt-8 md:pt-12">
+        India Earnings Tracker
+        <span className="block text-core-muted text-[clamp(1rem,2vw,1.5rem)] font-semibold tracking-tight mt-2">
+          {quarter} Quarterly Results · Live NSE &amp; BSE
+        </span>
+      </h1>
+      <div className="mt-8">
+        <FilingLoader quarter={quarter} total={500} label="Reading filings" />
+      </div>
     </div>
   );
 

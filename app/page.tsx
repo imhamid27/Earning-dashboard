@@ -20,7 +20,9 @@ import { siteUrl } from "@/lib/site";
 const calendar = quarterToCalendar(ACTIVE_QUARTER);
 
 const TITLE = `India Earnings Tracker — Quarterly Results Calendar, Live NSE & BSE`;
-const DESCRIPTION = `Live quarterly results calendar for India — track ${ACTIVE_QUARTER} (${calendar}) earnings for 1,000+ listed Indian companies on NSE and BSE. Quarterly results today, upcoming results scheduled for tomorrow, and the full results calendar 2026 with revenue, net profit, PAT, EBITDA, EPS and YoY/QoQ growth. Sector-wise breakdowns, board-meeting dates and direct filing PDFs from official exchange filings. Free, no paywall.`;
+// Description tightened to ~150 chars — Bing flagged the old 417-char
+// version as "too long". Search engines truncate past ~155 with "…".
+const DESCRIPTION = `Live ${ACTIVE_QUARTER} earnings calendar — quarterly results for 1,000+ NSE & BSE Indian companies. Revenue, profit, EPS, YoY growth. Free.`;
 
 export const metadata: Metadata = {
   title: TITLE,
