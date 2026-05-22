@@ -25,7 +25,7 @@ Google does **not** directly support IndexNow today. For Google we rely on the s
 3. **Redeploy** so the env var takes effect.
 4. **Verify the key endpoint is reachable:**
    ```bash
-   curl https://earnings.thecore.in/api/indexnow-key
+   curl https://earnings.thecore.in/indexnow.txt
    ```
    Should return the exact key string with status 200. If it returns 404, the env var didn't propagate — re-check Coolify.
 
@@ -60,7 +60,7 @@ Expected response (abbreviated):
 
 If `index.skipped: true` with reason `INDEXNOW_KEY not configured`, the env var isn't loaded.
 
-If `index.ok: false` with a 403 error, the key file at `/api/indexnow-key` isn't returning the same key string — usually a redeploy fixes it.
+If `index.ok: false` with a 403 error, the key file at `/indexnow.txt` isn't returning the same key string — usually a redeploy fixes it.
 
 ### Verifying it worked
 

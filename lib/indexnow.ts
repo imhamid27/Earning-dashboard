@@ -84,7 +84,11 @@ export async function submitToIndexNow(urls: string[]): Promise<IndexNowResult> 
     };
   }
 
-  const keyLocation = `${base}/api/indexnow-key`;
+  // keyLocation MUST be at the host root (or a parent directory of every
+  // submitted URL) — IndexNow rejects submissions for URLs outside the
+  // key file's directory with HTTP 422. /indexnow.txt at the root
+  // covers everything on the host.
+  const keyLocation = `${base}/indexnow.txt`;
 
   try {
     const res = await fetch("https://api.indexnow.org/IndexNow", {
