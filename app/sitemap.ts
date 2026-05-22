@@ -77,19 +77,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.85,
     },
-    // SEO alias paths — each redirects to its canonical sibling above.
-    {
-      url: `${base}/earnings/q4-fy26`,
-      lastModified: now,
-      changeFrequency: "hourly",
-      priority: 0.5,
-    },
-    {
-      url: `${base}/earnings/sectors`,
-      lastModified: today,
-      changeFrequency: "daily",
-      priority: 0.5,
-    },
+    // SEO alias paths (/earnings/q4-fy26, /earnings/sectors, etc.) used
+    // to be listed here for crawler discoverability. They've been
+    // removed because next.config.js now emits proper 308 redirects for
+    // those paths to their canonical destinations — listing them here
+    // would just give crawlers redirect-only URLs to follow, polluting
+    // the sitemap's freshness signal. The canonical URLs (above) are
+    // the only entries that should be in the sitemap.
   ];
 
   try {

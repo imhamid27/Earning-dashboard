@@ -98,6 +98,39 @@ const nextConfig = {
         ]
       }
     ];
+  },
+
+  // SEO alias paths — earlier we kept these as Next pages that called
+  // redirect() from next/navigation, but Next 16 pre-renders them as
+  // static HTML and the redirect() call silently fails to fire. Crawlers
+  // then see 3 pages with rendered-but-empty bodies (just the root layout
+  // chrome) — Bing Webmaster Tools flagged this as "duplicate titles +
+  // duplicate descriptions + missing H1".
+  //
+  // The fix: declare these as proper 308 redirects at the routing layer.
+  // Now /earnings/* paths never render a page — Next emits a 308 with
+  // the canonical Location header before any HTML generation, and
+  // crawlers follow it to the canonical URL. permanent: true =>
+  // HTTP 308 (Permanent Redirect) which Bing/Google treat as a strong
+  // canonical signal.
+  async redirects() {
+    return [
+      {
+        source: "/earnings/q4-fy26",
+        destination: "/q4",
+        permanent: true,
+      },
+      {
+        source: "/earnings/sectors",
+        destination: "/sectors",
+        permanent: true,
+      },
+      {
+        source: "/earnings/company/:name",
+        destination: "/company/:name",
+        permanent: true,
+      },
+    ];
   }
 };
 
