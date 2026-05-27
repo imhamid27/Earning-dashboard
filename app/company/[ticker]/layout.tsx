@@ -301,18 +301,37 @@ export default async function CompanyLayout({
   // The intro paragraph below the client component's header. Composed at
   // render time so each /company/[ticker] page has demonstrably unique
   // text content in the SSR HTML — different company name, different
-  // sector, different latest-quarter numbers. This is what breaks
+  // industry, different latest-quarter numbers. This is what breaks
   // Google's "Duplicate without user-selected canonical" classification
-  // (42 pages flagged in GSC). Keep it short but factual.
+  // (42 pages flagged in GSC).
+  //
+  // Sector vs Industry: many tickers have `sector = "Other"` in the DB
+  // (TCS, HDFC Bank, Infosys all hit this). "an Other sector company"
+  // reads both grammatically off ("a other") and semantically thin.
+  // Industry is more specific anyway ("Computers - Software & Consulting"
+  // vs "Other"), so we prefer it as the primary descriptor and only
+  // fall back to sector when industry is missing.
+  const isUsefulSector =
+    co?.sector && co.sector.toLowerCase() !== "other" && co.sector.trim() !== "";
+  const descriptor =
+    co?.industry && co.industry.trim() !== ""
+      ? co.industry
+      : isUsefulSector
+      ? `${co!.sector} sector`
+      : null;
+  // Pick the right article ("a" / "an") based on the descriptor's first
+  // letter — cheap heuristic, accurate ~95% of the time. Falls back to
+  // "an actively listed" when we have no usable descriptor.
+  const article = descriptor
+    ? /^[aeiouAEIOU]/.test(descriptor)
+      ? "an"
+      : "a"
+    : "an actively";
   const aboutSentence = co
     ? [
-        `${display} (${tickerBare}) is a${
-          co.sector
-            ? ` ${co.sector.toLowerCase()} sector`
-            : "n actively listed"
-        } company on ${co.exchange || "NSE/BSE"}${
-          co.industry ? `, classified under ${co.industry}` : ""
-        }.`,
+        `${display} (${tickerBare}) is ${article}${
+          descriptor ? ` ${descriptor}` : " listed"
+        } company on ${co.exchange || "NSE/BSE"}.`,
         latest
           ? `Latest filed quarter: ${latest.quarter_label}${
               revFmt ? `, revenue ${revFmt}` : ""
