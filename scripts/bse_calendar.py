@@ -112,7 +112,16 @@ def main() -> int:
     print(f"Indexed {len(by_scrip)} by BSE scrip, {len(by_symbol)} by NSE symbol.")
 
     print("Fetching BSE forthcoming-results calendar...")
-    payload = fetch_bse_calendar()
+    try:
+        payload = fetch_bse_calendar()
+    except Exception as e:
+        # BSE's edge layer occasionally blocks cloud-runner IPs (GitHub Actions,
+        # CI clouds) with a TCP-level timeout. This is a transient infra issue —
+        # not a code bug. Rather than killing the whole daily workflow and missing
+        # NSE results + PDF parsing, we log a warning and exit cleanly so the
+        # scheduler retries next slot.
+        print(f"[warn] BSE calendar unavailable: {type(e).__name__}: {e} — skipping this slot.", file=sys.stderr)
+        return 0
     print(f"BSE returned {len(payload)} rows.")
 
     out: list[dict[str, Any]] = []
