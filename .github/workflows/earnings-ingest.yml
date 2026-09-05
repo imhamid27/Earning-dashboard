@@ -74,9 +74,9 @@ jobs:
     # Hard cap: no single run blocks the schedule for more than this. We
     # learned the hard way that a stalled Sunday backfill can serialise and
     # starve the Mon–Fri daily/hourly slots.
-    # Raised from 30 → 40 min so daily runs (which run 8 scripts) can
-    # complete without timeout-killing the result-sweep phase.
-    timeout-minutes: 40
+    # Raised from 30 → 40 → 55 min. Daily runs (8 scripts) were being cut
+    # off mid-nse_results (1000 companies at NSE_RPS=2 takes 35+ min alone).
+    timeout-minutes: 55
     env:
       TZ: Asia/Kolkata
       NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.SUPABASE_URL }}
