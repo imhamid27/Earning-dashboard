@@ -47,6 +47,9 @@ drop policy if exists "public read commentary" on public.live_commentary;
 create policy "public read commentary"
   on public.live_commentary for select using (true);
 
+grant select                          on public.live_commentary to anon;
+grant select, insert, update, delete  on public.live_commentary to service_role;
+
 -- ---------------------------------------------------------------------
 -- 2. expert_quotes
 --    Curated management / analyst commentary sourced from earnings
@@ -91,6 +94,9 @@ alter table public.expert_quotes enable row level security;
 drop policy if exists "public read quotes" on public.expert_quotes;
 create policy "public read quotes"
   on public.expert_quotes for select using (is_active = true);
+
+grant select                          on public.expert_quotes to anon;
+grant select, insert, update, delete  on public.expert_quotes to service_role;
 
 -- ---------------------------------------------------------------------
 -- 3. Add 'source' column to quarterly_financials if not present

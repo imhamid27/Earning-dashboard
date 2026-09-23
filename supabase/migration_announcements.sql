@@ -78,6 +78,9 @@ drop policy if exists "public read announcements" on public.announcement_events;
 create policy "public read announcements"
   on public.announcement_events for select using (true);
 
+grant select                          on public.announcement_events to anon;
+grant select, insert, update, delete  on public.announcement_events to service_role;
+
 -- ---------------------------------------------------------------------
 -- 4. Helper view — upcoming events joined with company info
 -- ---------------------------------------------------------------------

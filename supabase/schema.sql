@@ -171,6 +171,22 @@ create policy "no public access"
   on public.fetch_logs for all using (false);
 
 -- ---------------------------------------------------------------------
+-- Data API grants (required from Supabase Oct 30 2026 — new tables no
+-- longer receive automatic grants; add them here so a db reset or new
+-- preview branch stays accessible through PostgREST / supabase-js).
+-- ---------------------------------------------------------------------
+-- companies: public read (anon), ingest writes (service_role)
+grant select                            on public.companies             to anon;
+grant select, insert, update, delete    on public.companies             to service_role;
+
+-- quarterly_financials: public read (anon), ingest writes (service_role)
+grant select                            on public.quarterly_financials  to anon;
+grant select, insert, update, delete    on public.quarterly_financials  to service_role;
+
+-- fetch_logs: internal only — service_role write, no public access
+grant select, insert, update, delete    on public.fetch_logs            to service_role;
+
+-- ---------------------------------------------------------------------
 -- Seed: top-50 starter companies (expand via lib/tickers.ts)
 -- ---------------------------------------------------------------------
 insert into public.companies (company_name, ticker, exchange, sector, industry, market_cap_bucket) values

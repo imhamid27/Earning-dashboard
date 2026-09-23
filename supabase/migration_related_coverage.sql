@@ -46,3 +46,6 @@ create policy "public read related_coverage"
 
 -- Writes are done by the Python ingestion script using the service role
 -- key, which bypasses RLS entirely — no insert/update policy needed.
+
+grant select                          on public.related_coverage to anon;
+grant select, insert, update, delete  on public.related_coverage to service_role;
