@@ -21,6 +21,8 @@ export async function GET() {
     }
   }
   labels.sort((a, b) => -compareQuarterLabels(a, b));
-  // Quarter list rolls over once every ~3 months — safe to cache hard.
-  return jsonOk(labels, { cache: "static" });
+  // Quarter list rolls over every ~3 months. "static" (1-year CDN cache)
+  // was wrong — it prevented Q2 from appearing until a manual invalidation.
+  // "short" (s-maxage=600, swr=1800) lets the new quarter show within 10 min.
+  return jsonOk(labels, { cache: "short" });
 }

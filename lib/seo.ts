@@ -6,7 +6,7 @@ import { siteUrl } from "@/lib/site";
 
 // Active reporting quarter — duplicated from page-level constants so this
 // module has no React imports and can be used from server components.
-export const ACTIVE_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
+export const ACTIVE_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q2 FY27";
 
 /** Convert a fiscal label like "Q4 FY26" into the human/calendar form. */
 export function quarterToCalendar(q: string): string {

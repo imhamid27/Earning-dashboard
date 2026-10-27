@@ -16,7 +16,7 @@ import { TURNED_PROFITABLE, TURNED_LOSS_MAKING } from "@/lib/growth";
 import RelatedCoverage from "@/components/RelatedCoverage";
 import type { LatestQuarterRow } from "@/lib/types";
 
-const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
+const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q2 FY27";
 
 // Bellwethers shown under the "Big names" tab when pending.
 const MAJOR_TICKERS = [
@@ -127,7 +127,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetch("/api/quarters").then((r) => r.json())
-      .then((j) => { if (j.ok && j.data?.length) setAvailableQuarters(j.data); })
+      .then((j) => {
+        if (j.ok && j.data?.length) {
+          setAvailableQuarters(j.data);
+          // Auto-advance to the latest quarter that has data. Without this,
+          // the default stays pinned to DEFAULT_QUARTER even when a newer
+          // quarter (e.g. Q2 FY27) already has filings in the DB.
+          setQuarter(j.data[0]);
+        }
+      })
       .catch(() => {});
   }, []);
 
