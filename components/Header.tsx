@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ACTIVE_QUARTER } from "@/lib/seo";
 
 // Top bar. Left: The Core logo + app wordmark. Right: desktop = inline nav;
 // mobile = hamburger that slides a sheet down from the top. No dot-dash
@@ -10,7 +11,7 @@ import { useEffect, useState } from "react";
 
 const NAV = [
   { href: "/",         label: "Dashboard" },
-  { href: "/q4",       label: "Q4 FY26" },
+  { href: "/q4",       label: ACTIVE_QUARTER },
   { href: "/sectors",  label: "Sectors" },
   { href: "/upcoming", label: "Upcoming" }
 ];

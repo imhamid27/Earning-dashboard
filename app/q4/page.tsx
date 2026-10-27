@@ -46,7 +46,7 @@ interface Payload {
 // This page is scoped to the current reporting quarter only — it's a
 // "track this quarter as it happens" view, not a history browser. If you
 // need to browse older quarters, use the Dashboard's quarter dropdown.
-const QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
+const QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q2 FY27";
 
 // AEO: breadcrumb schema — static, built at module load.
 const BASE = siteUrl();

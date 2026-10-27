@@ -177,7 +177,7 @@ const SECTORS_LD = {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q4 FY26";
+const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q2 FY27";
 
 export default function SectorsPage() {
   const [quarters, setQuarters]     = useState<string[]>([]);
