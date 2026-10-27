@@ -175,6 +175,11 @@ create policy "no public access"
 -- longer receive automatic grants; add them here so a db reset or new
 -- preview branch stays accessible through PostgREST / supabase-js).
 -- ---------------------------------------------------------------------
+-- views: public read (anon). Views with security_invoker=true evaluate
+-- RLS against the calling role, so anon SELECT is needed here too.
+grant select  on public.v_latest_quarter  to anon;
+grant select  on public.v_sector_current  to anon;
+
 -- companies: public read (anon), ingest writes (service_role)
 grant select                            on public.companies             to anon;
 grant select, insert, update, delete    on public.companies             to service_role;

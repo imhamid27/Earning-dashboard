@@ -109,10 +109,13 @@ alter table public.quarterly_financials
 -- 4. Optional: seed a placeholder expert quote so the block renders
 --    on first deploy (editors replace/add via Supabase dashboard).
 -- ---------------------------------------------------------------------
+-- ON CONFLICT DO NOTHING without a unique-constraint target is a no-op
+-- (id is auto-generated UUID, so no conflict ever triggers). Use WHERE NOT
+-- EXISTS instead so re-running the migration (db reset, preview branch)
+-- doesn't append a duplicate placeholder row each time.
 insert into public.expert_quotes
   (expert_name, designation, firm, quote, source_name, published_date, is_active)
-values
-  (
+select
     'Editorial note',
     'Dashboard',
     'The Core',
@@ -120,5 +123,7 @@ values
     'The Core',
     current_date,
     true
-  )
-on conflict do nothing;
+where not exists (
+  select 1 from public.expert_quotes
+  where expert_name = 'Editorial note' and firm = 'The Core'
+);

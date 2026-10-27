@@ -74,9 +74,13 @@ jobs:
     # Hard cap: no single run blocks the schedule for more than this. We
     # learned the hard way that a stalled Sunday backfill can serialise and
     # starve the Mon–Fri daily/hourly slots.
-    # Raised from 30 → 40 → 55 min. Daily runs (8 scripts) were being cut
-    # off mid-nse_results (1000 companies at NSE_RPS=2 takes 35+ min alone).
-    timeout-minutes: 55
+    # Raised from 30 → 40 → 55 → 75 min. During peak earnings season
+    # nse_results alone (hundreds of pending events at NSE_RPS=2) runs 35+
+    # min; the 8-script daily phase needs headroom for coverage + PDF parsing
+    # after that. 75 min keeps backfill slots safe (they run the Sunday
+    # cron only) and doesn't starve the Mon–Fri hourly slots which are
+    # on a separate concurrency group slot (~25 min).
+    timeout-minutes: 75
     env:
       TZ: Asia/Kolkata
       NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.SUPABASE_URL }}

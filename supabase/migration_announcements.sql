@@ -102,3 +102,5 @@ from public.announcement_events e
 join public.companies c on c.id = e.company_id
 where e.announcement_date >= current_date - interval '1 day'
 order by e.announcement_date asc;
+
+grant select  on public.v_upcoming_events to anon;

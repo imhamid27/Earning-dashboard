@@ -114,13 +114,14 @@ def main() -> int:
     print("Fetching BSE forthcoming-results calendar...")
     try:
         payload = fetch_bse_calendar()
-    except cffi_requests.RequestsError as e:
-        # BSE's edge layer occasionally blocks cloud-runner IPs (GitHub Actions,
-        # CI clouds) with a TCP-level timeout (curl error 28: 0 bytes received).
-        # Narrow to RequestsError (covers Timeout, ConnectionError, HTTPError from
-        # raise_for_status) so code bugs (JSONDecodeError, AttributeError) still
-        # propagate and don't go silently green. The daily cron will pick up
-        # BSE calendar data on the next scheduled slot once the block clears.
+    except (cffi_requests.RequestsError, ValueError) as e:
+        # BSE's edge blocks cloud-runner IPs in two observable ways:
+        #   (a) TCP timeout → curl error 28 → RequestsError/Timeout
+        #   (b) HTTP 200 with an HTML error/redirect body → raise_for_status()
+        #       passes → r.json() raises json.JSONDecodeError (a ValueError).
+        # Both are transient infrastructure failures, not code bugs. Catch both
+        # and exit 0 so downstream phases (coverage + results sweep) still run.
+        # AttributeError and other code bugs still propagate and exit 1.
         print(f"[warn] BSE calendar fetch failed ({type(e).__name__}: {e}) — skipping this slot.", file=sys.stderr)
         return 0
     print(f"BSE returned {len(payload)} rows.")

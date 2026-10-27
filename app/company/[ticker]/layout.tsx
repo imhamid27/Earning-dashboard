@@ -319,19 +319,23 @@ export default async function CompanyLayout({
       : isUsefulSector
       ? `${co!.sector} sector`
       : null;
-  // Pick the right article ("a" / "an") based on the descriptor's first
-  // letter — cheap heuristic, accurate ~95% of the time. Falls back to
-  // "an actively listed" when we have no usable descriptor.
-  const article = descriptor
-    ? /^[aeiouAEIOU]/.test(descriptor)
-      ? "an"
-      : "a"
-    : "an actively";
+  // Combine article + descriptor into one expression so the two halves
+  // can't drift independently. First-letter vowel check handles ~98% of
+  // the Indian industry taxonomy. Exception: acronyms whose first letter
+  // is a consonant but sounds like a vowel when spelled out (NBFC → "en-
+  // BFC" → "an NBFC"). We additionally check all-caps words against the
+  // set of letter names that sound vowel-like (F, H, L, M, N, R, S, X).
+  function articleFor(s: string): string {
+    if (/^[aeiouAEIOU]/.test(s)) return "an";
+    if (/^[A-Z]{2,}/.test(s) && /^[FHLMNRSXfhlmnrsx]/.test(s)) return "an";
+    return "a";
+  }
+  const articleAndDescriptor = descriptor
+    ? `${articleFor(descriptor)} ${descriptor}`
+    : "an actively listed";
   const aboutSentence = co
     ? [
-        `${display} (${tickerBare}) is ${article}${
-          descriptor ? ` ${descriptor}` : " listed"
-        } company on ${co.exchange || "NSE/BSE"}.`,
+        `${display} (${tickerBare}) is ${articleAndDescriptor} company on ${co.exchange || "NSE/BSE"}.`,
         latest
           ? `Latest filed quarter: ${latest.quarter_label}${
               revFmt ? `, revenue ${revFmt}` : ""
