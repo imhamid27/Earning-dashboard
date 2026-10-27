@@ -4,104 +4,107 @@
 
 import type { Metadata } from "next";
 import {
-  ACTIVE_QUARTER,
   canonical,
   buildBreadcrumbLd,
   SOCIAL_CARD_DEFAULTS,
 } from "@/lib/seo";
+import { getActiveQuarter } from "@/lib/getActiveQuarter";
 import { siteUrl } from "@/lib/site";
 import JsonLd from "@/components/JsonLd";
 import FaqBlock from "@/components/FaqBlock";
 
 const URL_PATH = "/sectors";
 
-export const metadata: Metadata = {
-  title: `Sector-wise Earnings ${ACTIVE_QUARTER} — Revenue & Profit by Indian Sector`,
-  // Tightened to ~150 chars — Bing/Google truncate past ~155 with "…".
-  description: `${ACTIVE_QUARTER} sector earnings — revenue and profit growth across IT, Banking, FMCG, Auto, Metals, Pharma. Strongest and weakest Indian sectors.`,
-  keywords: [
-    // Sector earnings — generic
-    "sector earnings India",
-    "sector wise quarterly results",
-    "sector wise results India",
-    "sectoral results India",
-    "sectoral indices India",
-    `${ACTIVE_QUARTER} sector results`,
-    `${ACTIVE_QUARTER} sectoral performance`,
-    "Indian sector revenue growth",
-    "Indian sector profit growth",
-    "best performing sectors India",
-    "worst performing sectors India",
-    "top performing sectors NSE",
-    "top performing sectors BSE",
-    "sector heatmap India",
-    "sector winners losers India",
-    // Per-sector long tail (this is where the volume is — every reader
-    // searches by their own sector first)
-    "IT sector results India",
-    "IT companies results",
-    "IT stocks earnings",
-    "banking sector results India",
-    "banking stocks results",
-    "private banks results",
-    "PSU banks results",
-    "NBFC results",
-    "FMCG sector results India",
-    "FMCG stocks earnings",
-    "consumer goods results India",
-    "auto sector results India",
-    "auto stocks earnings",
-    "automobile results India",
-    "metals sector results India",
-    "metal stocks results",
-    "steel companies results",
-    "cement companies results",
-    "pharma sector results India",
-    "pharma stocks earnings",
-    "healthcare sector results",
-    "energy sector results India",
-    "oil and gas results",
-    "power sector results India",
-    "telecom sector results",
-    "realty sector results India",
-    "real estate stocks results",
-    "infrastructure sector results",
-    "capital goods results India",
-    "chemicals sector results",
-    "media sector results India",
-    // Index-level — high search volume from sector-tracking readers
-    "Nifty Bank results",
-    "Nifty IT results",
-    "Nifty Auto results",
-    "Nifty Pharma results",
-    "Nifty FMCG results",
-    "Nifty Metal results",
-    "Nifty Realty results",
-    "Nifty Energy results",
-    "Nifty Financial Services results",
-    "BSE sectoral indices",
-    "Nifty sectoral indices",
-    "Nifty sector performance",
-    // Cross-cutting
-    "sector outlook India",
-    "sector commentary India",
-  ],
-  alternates: { canonical: canonical(URL_PATH) },
-  openGraph: {
-    ...SOCIAL_CARD_DEFAULTS,
-    title: `Sector-wise Earnings ${ACTIVE_QUARTER} — India`,
-    description: `Compare ${ACTIVE_QUARTER} revenue and net-profit growth across Indian sectors. Find the strongest and weakest sectors with company drill-downs.`,
-    url: canonical(URL_PATH),
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `Sector-wise Earnings ${ACTIVE_QUARTER} — India`,
-    description: `Revenue and net-profit growth by sector for ${ACTIVE_QUARTER}.`,
-  },
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const q = await getActiveQuarter();
+  return {
+    title: `Sector-wise Earnings ${q} — Revenue & Profit by Indian Sector`,
+    description: `${q} sector earnings — revenue and profit growth across IT, Banking, FMCG, Auto, Metals, Pharma. Strongest and weakest Indian sectors.`,
+    keywords: [
+      // Sector earnings — generic
+      "sector earnings India",
+      "sector wise quarterly results",
+      "sector wise results India",
+      "sectoral results India",
+      "sectoral indices India",
+      `${q} sector results`,
+      `${q} sectoral performance`,
+      "Indian sector revenue growth",
+      "Indian sector profit growth",
+      "best performing sectors India",
+      "worst performing sectors India",
+      "top performing sectors NSE",
+      "top performing sectors BSE",
+      "sector heatmap India",
+      "sector winners losers India",
+      // Per-sector long tail (this is where the volume is — every reader
+      // searches by their own sector first)
+      "IT sector results India",
+      "IT companies results",
+      "IT stocks earnings",
+      "banking sector results India",
+      "banking stocks results",
+      "private banks results",
+      "PSU banks results",
+      "NBFC results",
+      "FMCG sector results India",
+      "FMCG stocks earnings",
+      "consumer goods results India",
+      "auto sector results India",
+      "auto stocks earnings",
+      "automobile results India",
+      "metals sector results India",
+      "metal stocks results",
+      "steel companies results",
+      "cement companies results",
+      "pharma sector results India",
+      "pharma stocks earnings",
+      "healthcare sector results",
+      "energy sector results India",
+      "oil and gas results",
+      "power sector results India",
+      "telecom sector results",
+      "realty sector results India",
+      "real estate stocks results",
+      "infrastructure sector results",
+      "capital goods results India",
+      "chemicals sector results",
+      "media sector results India",
+      // Index-level — high search volume from sector-tracking readers
+      "Nifty Bank results",
+      "Nifty IT results",
+      "Nifty Auto results",
+      "Nifty Pharma results",
+      "Nifty FMCG results",
+      "Nifty Metal results",
+      "Nifty Realty results",
+      "Nifty Energy results",
+      "Nifty Financial Services results",
+      "BSE sectoral indices",
+      "Nifty sectoral indices",
+      "Nifty sector performance",
+      // Cross-cutting
+      "sector outlook India",
+      "sector commentary India",
+    ],
+    alternates: { canonical: canonical(URL_PATH) },
+    openGraph: {
+      ...SOCIAL_CARD_DEFAULTS,
+      title: `Sector-wise Earnings ${q} — India`,
+      description: `Compare ${q} revenue and net-profit growth across Indian sectors. Find the strongest and weakest sectors with company drill-downs.`,
+      url: canonical(URL_PATH),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Sector-wise Earnings ${q} — India`,
+      description: `Revenue and net-profit growth by sector for ${q}.`,
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
-export default function SectorsLayout({ children }: { children: React.ReactNode }) {
+export default async function SectorsLayout({ children }: { children: React.ReactNode }) {
+  const q = await getActiveQuarter();
   const base = siteUrl();
   const url = canonical(URL_PATH);
 
@@ -110,14 +113,12 @@ export default function SectorsLayout({ children }: { children: React.ReactNode 
     { name: "Sector earnings", url },
   ]);
 
-  // CollectionPage describes /sectors as a curated overview page —
-  // helps Google understand it's an index/landing rather than an article.
   const collectionLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     "@id": `${url}#collection`,
-    name: `Sector-wise Earnings — ${ACTIVE_QUARTER}`,
-    description: `Sector-level revenue and net-profit growth for Indian listed companies, ${ACTIVE_QUARTER}.`,
+    name: `Sector-wise Earnings — ${q}`,
+    description: `Sector-level revenue and net-profit growth for Indian listed companies, ${q}.`,
     url,
     isPartOf: { "@id": `${base}/#website` },
     inLanguage: "en-IN",
@@ -125,7 +126,7 @@ export default function SectorsLayout({ children }: { children: React.ReactNode 
 
   const faqItems = [
     {
-      q: `Which Indian sectors are reporting strongest in ${ACTIVE_QUARTER}?`,
+      q: `Which Indian sectors are reporting strongest in ${q}?`,
       a: `Open this page to see the live "Best" and "Weakest" sector tags at the top of the dashboard, sorted by net-profit YoY growth. Sectors are ranked by aggregated revenue and profit across all listed constituents that have filed for the quarter.`,
     },
     {

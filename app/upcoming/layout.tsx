@@ -4,11 +4,11 @@
 
 import type { Metadata } from "next";
 import {
-  ACTIVE_QUARTER,
   canonical,
   buildBreadcrumbLd,
   SOCIAL_CARD_DEFAULTS,
 } from "@/lib/seo";
+import { getActiveQuarter } from "@/lib/getActiveQuarter";
 import { siteUrl } from "@/lib/site";
 import JsonLd from "@/components/JsonLd";
 import FaqBlock from "@/components/FaqBlock";
@@ -19,7 +19,9 @@ const title = `Quarterly Results Calendar 2026 — Upcoming NSE & BSE Earnings`;
 // Tightened to ~150 chars — Bing/Google truncate past ~155 with "…".
 const description = `India's upcoming earnings calendar — NSE & BSE results scheduled today, tomorrow, and the week ahead. Reliance, TCS, HDFC Bank, Infosys & 1,000+ more.`;
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const q = await getActiveQuarter();
+  return {
   title,
   description,
   keywords: [
@@ -58,9 +60,9 @@ export const metadata: Metadata = {
     "results this week India",
     "results next week India",
     "results this month India",
-    `${ACTIVE_QUARTER} upcoming results`,
-    `${ACTIVE_QUARTER} results date`,
-    `${ACTIVE_QUARTER} board meeting`,
+    `${q} upcoming results`,
+    `${q} results date`,
+    `${q} board meeting`,
     // Board meetings / intimations
     "board meeting calendar India",
     "board meeting intimation",
@@ -108,7 +110,8 @@ export const metadata: Metadata = {
     description,
   },
   robots: { index: true, follow: true },
-};
+  };
+}
 
 export default function UpcomingLayout({ children }: { children: React.ReactNode }) {
   const base = siteUrl();

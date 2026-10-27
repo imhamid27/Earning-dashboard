@@ -8,148 +8,148 @@ import HomeClient from "./HomeClient";
 import JsonLd from "@/components/JsonLd";
 import FaqBlock from "@/components/FaqBlock";
 import {
-  ACTIVE_QUARTER,
   quarterToCalendar,
   canonical,
   buildBreadcrumbLd,
   buildItemListLd,
   SOCIAL_CARD_DEFAULTS,
 } from "@/lib/seo";
+import { getActiveQuarter } from "@/lib/getActiveQuarter";
 import { siteUrl } from "@/lib/site";
 
-const calendar = quarterToCalendar(ACTIVE_QUARTER);
-
 const TITLE = `India Earnings Tracker — Quarterly Results Calendar, Live NSE & BSE`;
-// Description tightened to ~150 chars — Bing flagged the old 417-char
-// version as "too long". Search engines truncate past ~155 with "…".
-const DESCRIPTION = `Live ${ACTIVE_QUARTER} earnings calendar — quarterly results for 1,000+ NSE & BSE Indian companies. Revenue, profit, EPS, YoY growth. Free.`;
 
-export const metadata: Metadata = {
-  title: TITLE,
-  description: DESCRIPTION,
-  keywords: [
-    // Brand + intent
-    "India earnings tracker",
-    "Indian quarterly results",
-    "results dashboard India",
-    "earnings dashboard India",
-    "best earnings tracker India",
-    "free results tracker India",
-    "free quarterly results India",
-    "best stock results website India",
-    "best results aggregator India",
-    // Active quarter
-    `${ACTIVE_QUARTER} results`,
-    `${ACTIVE_QUARTER} earnings`,
-    `${ACTIVE_QUARTER} results India`,
-    `${ACTIVE_QUARTER} earnings India`,
-    `${calendar} results`,
-    `${calendar} quarterly results`,
-    // All quarter buckets — query volume comes from people typing
-    // "Q1 results 2026", "Q2 FY26 results" etc.
-    "Q1 results FY26",
-    "Q2 results FY26",
-    "Q3 results FY26",
-    "Q4 results FY26",
-    "quarterly results India",
-    "quarterly earnings India",
-    "annual results India",
-    "FY26 results India",
-    // Live / today / calendar — primary head terms
-    "quarterly results today",
-    "quarterly results today NSE",
-    "quarterly results today BSE",
-    "quarterly results calendar",
-    "quarterly results calendar 2026",
-    "quarterly results calendar India",
-    "quarterly results calendar NSE",
-    "quarterly results calendar BSE",
-    "results calendar India",
-    "results calendar 2026",
-    "NSE result calendar",
-    "NSE result calendar 2026",
-    "BSE result calendar",
-    "BSE result calendar 2026",
-    "company results calendar",
-    "company results calendar India",
-    "upcoming quarterly results NSE",
-    "upcoming quarterly results NSE tomorrow",
-    "upcoming results NSE stocks 2026",
-    "live earnings India",
-    "today's results India",
-    "results today NSE",
-    "results today BSE",
-    "results today India",
-    "upcoming results India",
-    "earnings calendar India",
-    "board meeting calendar India",
-    "result date India",
-    // Exchanges
-    "NSE results",
-    "BSE results",
-    "NSE earnings",
-    "BSE earnings",
-    "NSE BSE listed companies",
-    // Metrics (high-volume retail finance terms)
-    "net profit India",
-    "PAT India",
-    "revenue growth India",
-    "EBITDA India",
-    "EPS India",
-    "operating profit India",
-    "YoY profit growth",
-    "QoQ revenue growth",
-    "consolidated results",
-    "standalone results",
-    // Indices
-    "Nifty 50 results",
-    "Nifty Next 50 results",
-    "Nifty 500 results",
-    "Sensex results",
-    "BSE 500 results",
-    "Nifty Bank results",
-    "Nifty IT results",
-    // Bellwether companies (drives long-tail brand searches)
-    "Reliance results",
-    "TCS results",
-    "Infosys results",
-    "HDFC Bank results",
-    "ICICI Bank results",
-    "ITC results",
-    "SBI results",
-    "Bharti Airtel results",
-    "Larsen Toubro results",
-    // Sectors
-    "IT sector results",
-    "banking sector results",
-    "FMCG sector results",
-    "auto sector results",
-    "pharma sector results",
-    "metals sector results",
-    // Corporate actions
-    "dividend announcement India",
-    "bonus issue India",
-    "stock split India",
-    "share buyback India",
-    // Editorial framing
-    "earnings season India",
-    "India Inc results",
-    "corporate India earnings",
-  ],
-  alternates: { canonical: canonical("/") },
-  openGraph: {
-    ...SOCIAL_CARD_DEFAULTS,
+export async function generateMetadata(): Promise<Metadata> {
+  const q = await getActiveQuarter();
+  const calendar = quarterToCalendar(q);
+  const DESCRIPTION = `Live ${q} earnings calendar — quarterly results for 1,000+ NSE & BSE Indian companies. Revenue, profit, EPS, YoY growth. Free.`;
+  return {
     title: TITLE,
     description: DESCRIPTION,
-    url: canonical("/"),
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: TITLE,
-    description: DESCRIPTION,
-  },
-  robots: { index: true, follow: true },
-};
+    keywords: [
+      // Brand + intent
+      "India earnings tracker",
+      "Indian quarterly results",
+      "results dashboard India",
+      "earnings dashboard India",
+      "best earnings tracker India",
+      "free results tracker India",
+      "free quarterly results India",
+      "best stock results website India",
+      "best results aggregator India",
+      // Active quarter
+      `${q} results`,
+      `${q} earnings`,
+      `${q} results India`,
+      `${q} earnings India`,
+      `${calendar} results`,
+      `${calendar} quarterly results`,
+      // All quarter buckets — query volume comes from people typing
+      // "Q1 results 2026", "Q2 FY26 results" etc.
+      "Q1 results FY26",
+      "Q2 results FY26",
+      "Q3 results FY26",
+      "Q4 results FY26",
+      "quarterly results India",
+      "quarterly earnings India",
+      "annual results India",
+      "FY26 results India",
+      // Live / today / calendar — primary head terms
+      "quarterly results today",
+      "quarterly results today NSE",
+      "quarterly results today BSE",
+      "quarterly results calendar",
+      "quarterly results calendar 2026",
+      "quarterly results calendar India",
+      "quarterly results calendar NSE",
+      "quarterly results calendar BSE",
+      "results calendar India",
+      "results calendar 2026",
+      "NSE result calendar",
+      "NSE result calendar 2026",
+      "BSE result calendar",
+      "BSE result calendar 2026",
+      "company results calendar",
+      "company results calendar India",
+      "upcoming quarterly results NSE",
+      "upcoming quarterly results NSE tomorrow",
+      "upcoming results NSE stocks 2026",
+      "live earnings India",
+      "today's results India",
+      "results today NSE",
+      "results today BSE",
+      "results today India",
+      "upcoming results India",
+      "earnings calendar India",
+      "board meeting calendar India",
+      "result date India",
+      // Exchanges
+      "NSE results",
+      "BSE results",
+      "NSE earnings",
+      "BSE earnings",
+      "NSE BSE listed companies",
+      // Metrics (high-volume retail finance terms)
+      "net profit India",
+      "PAT India",
+      "revenue growth India",
+      "EBITDA India",
+      "EPS India",
+      "operating profit India",
+      "YoY profit growth",
+      "QoQ revenue growth",
+      "consolidated results",
+      "standalone results",
+      // Indices
+      "Nifty 50 results",
+      "Nifty Next 50 results",
+      "Nifty 500 results",
+      "Sensex results",
+      "BSE 500 results",
+      "Nifty Bank results",
+      "Nifty IT results",
+      // Bellwether companies (drives long-tail brand searches)
+      "Reliance results",
+      "TCS results",
+      "Infosys results",
+      "HDFC Bank results",
+      "ICICI Bank results",
+      "ITC results",
+      "SBI results",
+      "Bharti Airtel results",
+      "Larsen Toubro results",
+      // Sectors
+      "IT sector results",
+      "banking sector results",
+      "FMCG sector results",
+      "auto sector results",
+      "pharma sector results",
+      "metals sector results",
+      // Corporate actions
+      "dividend announcement India",
+      "bonus issue India",
+      "stock split India",
+      "share buyback India",
+      // Editorial framing
+      "earnings season India",
+      "India Inc results",
+      "corporate India earnings",
+    ],
+    alternates: { canonical: canonical("/") },
+    openGraph: {
+      ...SOCIAL_CARD_DEFAULTS,
+      title: TITLE,
+      description: DESCRIPTION,
+      url: canonical("/"),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: TITLE,
+      description: DESCRIPTION,
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 // Bellwether tickers — surfaced as an ItemList so AI engines can answer
 // "which bellwether companies report in India?" by quoting from this list.
@@ -171,7 +171,9 @@ const BELLWETHERS = [
   { ticker: "ASIANPAINT.NS", name: "Asian Paints" },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const q = await getActiveQuarter();
+  const calendar = quarterToCalendar(q);
   const base = siteUrl();
   const url = canonical("/");
 
@@ -180,13 +182,15 @@ export default function Home() {
   ]);
 
   const bellwetherListLd = buildItemListLd(
-    `Bellwether Indian Companies — ${ACTIVE_QUARTER} Earnings`,
-    `Large-cap Indian companies whose ${ACTIVE_QUARTER} (${calendar}) results materially shape market sentiment.`,
+    `Bellwether Indian Companies — ${q} Earnings`,
+    `Large-cap Indian companies whose ${q} (${calendar}) results materially shape market sentiment.`,
     BELLWETHERS.map((b) => ({
       name: b.name,
       url: `${base}/company/${encodeURIComponent(b.ticker)}`,
     }))
   );
+
+  const DESCRIPTION = `Live ${q} earnings calendar — quarterly results for 1,000+ NSE & BSE Indian companies. Revenue, profit, EPS, YoY growth. Free.`;
 
   // WebPage schema with explicit primaryImageOfPage and significantLink
   // helps AI engines identify the homepage as the canonical landing for
@@ -214,8 +218,8 @@ export default function Home() {
       a: `India Earnings Tracker is a free, live dashboard of quarterly results for 1,000+ listed Indian companies on NSE and BSE. We aggregate revenue, net profit, operating profit, EPS, and YoY/QoQ growth for every reporting quarter, with direct links to the original filing PDFs. No paywall, no broker estimates — only filed, official numbers from the exchanges.`,
     },
     {
-      q: `When are ${ACTIVE_QUARTER} results announced?`,
-      a: `${ACTIVE_QUARTER} covers ${calendar}. SEBI requires listed companies to file results within 45 days of quarter-end, so most filings land in the four to six weeks immediately after the quarter closes. The /q4 page on this dashboard tracks every announcement as it happens, grouped by date.`,
+      q: `When are ${q} results announced?`,
+      a: `${q} covers ${calendar}. SEBI requires listed companies to file results within 45 days of quarter-end, so most filings land in the four to six weeks immediately after the quarter closes. The /q4 page on this dashboard tracks every announcement as it happens, grouped by date.`,
     },
     {
       q: `What makes this dashboard different?`,
@@ -252,7 +256,7 @@ export default function Home() {
       <section className="container-core pb-12">
         <div className="border-t border-core-line pt-10 mt-6">
           <h2 className="text-xl md:text-2xl font-bold tracking-tightest mb-2">
-            Track {ACTIVE_QUARTER} earnings for India's bellwether companies
+            Track {q} earnings for India's bellwether companies
           </h2>
           <p className="text-[14px] leading-relaxed text-core-muted mb-5 max-w-3xl">
             Large-cap names whose quarterly results disproportionately shape
@@ -281,11 +285,11 @@ export default function Home() {
               Section
             </div>
             <div className="mt-1 font-bold text-core-ink group-hover:text-core-pink">
-              {ACTIVE_QUARTER} Announcements →
+              {q} Announcements →
             </div>
             <p className="mt-1 text-core-muted leading-relaxed">
               Quarterly results announced today and through the week — every
-              filed and pending {ACTIVE_QUARTER} result, by date, NSE and BSE.
+              filed and pending {q} result, by date, NSE and BSE.
             </p>
           </a>
           <a href="/sectors" className="block group">
