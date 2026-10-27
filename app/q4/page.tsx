@@ -43,71 +43,69 @@ interface Payload {
   undated: Company[];
 }
 
-// This page is scoped to the current reporting quarter only — it's a
-// "track this quarter as it happens" view, not a history browser. If you
-// need to browse older quarters, use the Dashboard's quarter dropdown.
-const QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q2 FY27";
+// This page is scoped to the current reporting quarter by default, but
+// includes a quarter picker so users can also browse historical quarters.
 
-// AEO: breadcrumb schema — static, built at module load.
 const BASE = siteUrl();
-const Q4_BREADCRUMB = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Dashboard", "item": `${BASE}/` },
-    { "@type": "ListItem", "position": 2, "name": `${QUARTER} announcements`, "item": `${BASE}/q4` }
-  ]
-};
 
 export default function Q4Page() {
   const [data, setData] = useState<Payload | null>(null);
   const [prices, setPrices] = useState<PriceMap>({});
   const [err, setErr] = useState<string | null>(null);
   const [activeDate, setActiveDate] = useState<string | null>(null);
+  // Fetched live from /api/quarters so this page always defaults to the
+  // current quarter without any env var change or redeploy at rollover.
+  const [quarter, setQuarter] = useState<string>(
+    process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q2 FY27"
+  );
+  const [availableQuarters, setAvailableQuarters] = useState<string[]>([]);
 
+  // Load the quarter list once; auto-select the latest as default.
   useEffect(() => {
-    setData(null); setErr(null);
-    fetch(`/api/q4-announcements?quarter=${encodeURIComponent(QUARTER)}`)
+    fetch("/api/quarters?v=2")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok && j.data?.length) {
+          setAvailableQuarters(j.data);
+          setQuarter(j.data[0]);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Re-fetch announcements whenever the selected quarter changes.
+  useEffect(() => {
+    if (!quarter) return;
+    setData(null); setErr(null); setActiveDate(null);
+    fetch(`/api/q4-announcements?quarter=${encodeURIComponent(quarter)}`)
       .then((r) => r.json())
       .then((j) => {
         if (!j.ok) throw new Error(j.error);
         setData(j.data);
-        // Default-active = most recent *reported* tab (readers care about
-        // what just landed); fall back to the first upcoming date if no
-        // company has reported yet.
+        // Default-active = most recent *reported* tab; fall back to first
+        // upcoming date if no company has reported yet.
         const reported: DateGroup[] = j.data.dates.filter((d: DateGroup) => d.kind === "reported");
         if (reported.length > 0) {
           setActiveDate(reported[reported.length - 1].date);
         } else if (j.data.dates.length > 0) {
           setActiveDate(j.data.dates[0].date);
-        } else {
-          setActiveDate(null);
         }
       })
       .catch((e) => setErr(String(e)));
+  }, [quarter]);
 
-    // Prices are a separate endpoint (same as homepage). We don't want
-    // the price sidecar to block the main payload — if prices fail, the
-    // table still renders without the price chip.
+  // Prices — fetched once, independent of quarter.
+  useEffect(() => {
     fetch(`/api/prices`)
       .then((r) => r.json())
-      .then((j) => {
-        if (j.ok && j.data?.prices) setPrices(j.data.prices);
-      })
-      .catch(() => { /* silent */ });
+      .then((j) => { if (j.ok && j.data?.prices) setPrices(j.data.prices); })
+      .catch(() => {});
   }, []);
 
-  // Back-compat for the rest of the template, which still references `quarter`.
-  const quarter = QUARTER;
-
-  // When the active date changes (default or user click), scroll the active
-  // tab into the centre of the tab scroller. Keeps the selection visible
-  // even when the rail has 30+ tabs.
+  // When the active date changes, scroll it into view in the tab rail.
   useEffect(() => {
     if (!activeDate) return;
-    const btn = document.querySelector(
-      `button[data-active="true"]`
-    ) as HTMLElement | null;
+    const btn = document.querySelector(`button[data-active="true"]`) as HTMLElement | null;
     btn?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }, [activeDate]);
 
@@ -116,9 +114,18 @@ export default function Q4Page() {
     [data, activeDate]
   );
 
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Dashboard", "item": `${BASE}/` },
+      { "@type": "ListItem", "position": 2, "name": `${quarter} announcements`, "item": `${BASE}/q4` }
+    ]
+  };
+
   return (
     <div className="container-core py-8 space-y-6">
-      <JsonLd data={Q4_BREADCRUMB} />
+      <JsonLd data={breadcrumbLd} />
 
       {/* Heading */}
       <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
@@ -135,6 +142,24 @@ export default function Q4Page() {
             by the day it was announced. Pick a date below for the quarterly results
             announced on that day, with revenue, net profit and YoY growth.
           </p>
+          {/* Quarter picker — lets users switch between current and historical quarters */}
+          {availableQuarters.length > 1 && (
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              {availableQuarters.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setQuarter(q)}
+                  className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                    q === quarter
+                      ? "border-core-pink bg-core-pink/10 text-core-pink font-semibold"
+                      : "border-core-line text-core-muted hover:border-core-ink hover:text-core-ink"
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-baseline gap-6">
           <div className="text-3xl font-extrabold tabular-nums tracking-tightest">
@@ -151,7 +176,7 @@ export default function Q4Page() {
       {err ? (
         <EmptyState title="Couldn't load" message={err} />
       ) : !data ? (
-        <FilingLoader quarter={QUARTER} total={500} label="Reading filings" />
+        <FilingLoader quarter={quarter} total={500} label="Reading filings" />
       ) : data.dates.length === 0 ? (
         <EmptyState
           title={`No ${quarter} results yet`}
@@ -211,14 +236,6 @@ export default function Q4Page() {
           {activeGroup ? (
             activeGroup.kind === "reported" ? (
               (() => {
-                // Separate filed-with-numbers rows from "scheduled but filing
-                // still pending" rows. The calendar puts a company on
-                // DATE X because their board meeting was booked for that
-                // day, but the formal XBRL filing is usually submitted
-                // hours (sometimes a day or two) later. Showing both in
-                // the same table with em-dashes made it look like a data
-                // bug — instead, put filed rows on top and pending ones in
-                // a clearly-labelled sub-section.
                 const all = activeGroup.companies as Company[];
                 const filed = all
                   .filter((c) => c.revenue != null || c.net_profit != null)
@@ -289,11 +306,6 @@ export default function Q4Page() {
                     <div className="text-xs uppercase tracking-[0.14em] text-core-muted mb-2">
                       Filing pending · board meeting held, numbers not yet submitted
                     </div>
-                    {/* Mobile-friendly card list instead of a table with
-                        empty cells. Each pending company is a single row
-                        with: name · ticker · sector · price chip · PDF link.
-                        Clean on any viewport width; no horizontal scroll,
-                        no "Awaiting…" italic spanning a dozen columns. */}
                     <div className="card divide-y divide-core-line">
                       {pending.map((c) => (
                         <div
