@@ -143,11 +143,11 @@ export const metadata: Metadata = {
   category: "finance"
 };
 
-// Google Analytics measurement IDs. Both fire on every page view —
-// G-RBFXGWE6YW is the site-level property, G-4L9Y6DPEP6 is the
-// additional property. Hardcoded so the tags fire before React hydrates.
-const GA_MEASUREMENT_ID  = "G-RBFXGWE6YW";
-const GA_MEASUREMENT_ID2 = "G-4L9Y6DPEP6";
+// G-RBFXGWE6YW is the earnings-site GA4 property (direct gtag).
+// GT-P3JCDWX  is the main-site GTM container — it fires G-4L9Y6DPEP6
+// (main site GA4) so earnings traffic rolls up into thecore.in reports.
+const GA_MEASUREMENT_ID = "G-RBFXGWE6YW";
+const GTM_ID            = "GT-P3JCDWX";
 
 // Computed once at module load — same value used by metadataBase above.
 const SITE_URL = siteUrl();
@@ -241,14 +241,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Arvo:wght@400;700&display=swap"
         />
 
-        {/* Google Analytics — the exact snippet GA4 provides.
-            Raw <script> tags in <head> so gtag fires on the first byte of
-            HTML, before React hydrates. That's the most compatible
-            rendering path: browsers with strict tracking settings, slow
-            connections that never hydrate, and search-engine crawlers that
-            don't execute React all still see the same tag.
-            A single dataLayer init + gtag() bootstrap covers both properties;
-            each gets its own config() call so events are tracked separately. */}
+        {/* GTM — fires the main-site GA4 property (G-4L9Y6DPEP6) so
+            earnings traffic appears in thecore.in reports. Same container
+            the main site uses, so tags and triggers are already configured. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','${GTM_ID}');`,
+          }}
+        />
+        {/* Direct GA4 for the earnings-specific property (G-RBFXGWE6YW). */}
         <script
           async
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
@@ -259,13 +264,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', '${GA_MEASUREMENT_ID}',  { cookie_domain: '.thecore.in' });
-              gtag('config', '${GA_MEASUREMENT_ID2}', { cookie_domain: '.thecore.in' });
+              gtag('config', '${GA_MEASUREMENT_ID}', { cookie_domain: '.thecore.in' });
             `,
           }}
         />
       </head>
       <body>
+        <noscript>
+          <iframe
+            src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+            height="0" width="0"
+            style={{ display: "none", visibility: "hidden" }}
+          />
+        </noscript>
         <Header />
         <main className="min-h-[calc(100vh-140px)]">{children}</main>
         <Footer />
