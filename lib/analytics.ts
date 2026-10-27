@@ -58,6 +58,7 @@ export function trackPdfClick(params: {
     | "homepage_table"
     | "homepage_live_band"
     | "q4_page"
+    | "results_page"
     | "company_detail"
     | "company_quarters_table";
   url: string;
