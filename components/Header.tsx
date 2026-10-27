@@ -2,38 +2,46 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ACTIVE_QUARTER } from "@/lib/seo";
-
-// Top bar. Left: The Core logo + app wordmark. Right: desktop = inline nav;
-// mobile = hamburger that slides a sheet down from the top. No dot-dash
-// divider under the header — kept the chrome clean.
 
 export default function Header() {
   const pathname = usePathname() || "/";
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const [menuOpen, setMenuOpen] = useState(false);
-  // Live quarter label — fetched from the API so the nav tab updates
-  // automatically when a new quarter rolls over, with no redeploy needed.
-  // Falls back to the build-time constant while loading or on error.
-  const [activeQuarter, setActiveQuarter] = useState(ACTIVE_QUARTER);
+  const [dropOpen, setDropOpen] = useState(false);
+  const [quarters, setQuarters] = useState<string[]>([ACTIVE_QUARTER]);
+  const dropRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     fetch("/api/quarters?v=2")
       .then((r) => r.json())
-      .then((j) => { if (j.ok && j.data?.length) setActiveQuarter(j.data[0]); })
+      .then((j) => { if (j.ok && j.data?.length) setQuarters(j.data); })
       .catch(() => {});
   }, []);
 
-  const quarterSlug = activeQuarter.replace(/ /g, "-");
-  const NAV = [
-    { href: "/",                           label: "Dashboard" },
-    { href: `/results/${quarterSlug}`,     label: activeQuarter },
-    { href: "/sectors",                    label: "Sectors" },
-    { href: "/upcoming",                   label: "Upcoming" },
-  ];
+  // Close dropdown on outside click.
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+        setDropOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
-  // Close the mobile menu whenever the route changes.
-  useEffect(() => { setMenuOpen(false); }, [pathname]);
+  // Close everything on route change.
+  useEffect(() => { setMenuOpen(false); setDropOpen(false); }, [pathname]);
+
+  const isOnResults = pathname.startsWith("/results");
+  const labelToSlug = (q: string) => q.replace(/ /g, "-");
+
+  const SIMPLE_NAV = [
+    { href: "/",         label: "Dashboard" },
+    { href: "/sectors",  label: "Sectors" },
+    { href: "/upcoming", label: "Upcoming" },
+  ];
 
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-core-line">
@@ -57,20 +65,77 @@ export default function Header() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1 text-sm">
-          {NAV.map((n) => (
+          {/* Dashboard */}
+          <Link
+            href="/"
+            className={`relative px-3 py-2 text-[13px] font-medium tracking-tight transition-colors
+              ${isActive("/") ? "text-core-ink" : "text-core-muted hover:text-core-ink"}`}
+          >
+            Dashboard
+            {isActive("/") && (
+              <span className="absolute left-3 right-3 -bottom-[9px] h-[2px] bg-core-pink" aria-hidden />
+            )}
+          </Link>
+
+          {/* Quarters dropdown */}
+          <div ref={dropRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setDropOpen((v) => !v)}
+              className={`relative flex items-center gap-1 px-3 py-2 text-[13px] font-medium tracking-tight transition-colors
+                ${isOnResults ? "text-core-ink" : "text-core-muted hover:text-core-ink"}`}
+            >
+              Quarters
+              <svg
+                width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden
+                className={`transition-transform duration-150 ${dropOpen ? "rotate-180" : ""}`}
+              >
+                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {isOnResults && (
+                <span className="absolute left-3 right-3 -bottom-[9px] h-[2px] bg-core-pink" aria-hidden />
+              )}
+            </button>
+
+            {dropOpen && (
+              <div className="absolute top-full left-0 mt-2 w-36 bg-white border border-core-line rounded-lg shadow-lg py-1 z-50">
+                {quarters.map((q) => {
+                  const slug = labelToSlug(q);
+                  const href = `/results/${slug}`;
+                  const active = pathname === href;
+                  return (
+                    <Link
+                      key={q}
+                      href={href}
+                      className={`block px-4 py-2 text-[13px] font-medium transition-colors
+                        ${active
+                          ? "text-core-pink bg-core-pink/5"
+                          : "text-core-ink hover:bg-core-bg hover:text-core-pink"
+                        }`}
+                    >
+                      {q}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Sectors + Upcoming */}
+          {SIMPLE_NAV.slice(1).map((n) => (
             <Link
               key={n.href}
               href={n.href}
               className={`relative px-3 py-2 text-[13px] font-medium tracking-tight transition-colors
-                ${isActive(n.href) ? "text-core-ink" : "text-core-muted hover:text-core-ink"}
-              `}
+                ${isActive(n.href) ? "text-core-ink" : "text-core-muted hover:text-core-ink"}`}
             >
               {n.label}
-              {isActive(n.href) ? (
+              {isActive(n.href) && (
                 <span className="absolute left-3 right-3 -bottom-[9px] h-[2px] bg-core-pink" aria-hidden />
-              ) : null}
+              )}
             </Link>
           ))}
+
           <a
             href="https://www.thecore.in"
             target="_blank"
@@ -104,19 +169,52 @@ export default function Header() {
       </div>
 
       {/* Mobile drop-down sheet */}
-      {menuOpen ? (
+      {menuOpen && (
         <div className="md:hidden border-t border-core-line bg-white">
           <nav className="container-core py-3 flex flex-col">
-            {NAV.map((n) => (
-              <Link
-                key={n.href}
-                href={n.href}
-                className={`py-3 text-[15px] font-medium border-b border-core-line last:border-none
-                  ${isActive(n.href) ? "text-core-pink" : "text-core-ink"}`}
-              >
-                {n.label}
-              </Link>
-            ))}
+            <Link
+              href="/"
+              className={`py-3 text-[15px] font-medium border-b border-core-line
+                ${isActive("/") ? "text-core-pink" : "text-core-ink"}`}
+            >
+              Dashboard
+            </Link>
+
+            {/* Quarters section — always expanded on mobile */}
+            <div className="border-b border-core-line">
+              <div className="py-2 text-[11px] uppercase tracking-[0.14em] text-core-muted">
+                Quarters
+              </div>
+              {quarters.map((q) => {
+                const href = `/results/${labelToSlug(q)}`;
+                return (
+                  <Link
+                    key={q}
+                    href={href}
+                    className={`py-2.5 pl-3 text-[15px] font-medium flex items-center gap-2
+                      ${pathname === href ? "text-core-pink" : "text-core-ink"}`}
+                  >
+                    <span className="w-1 h-1 rounded-full bg-current opacity-40" />
+                    {q}
+                  </Link>
+                );
+              })}
+            </div>
+
+            <Link
+              href="/sectors"
+              className={`py-3 text-[15px] font-medium border-b border-core-line
+                ${isActive("/sectors") ? "text-core-pink" : "text-core-ink"}`}
+            >
+              Sectors
+            </Link>
+            <Link
+              href="/upcoming"
+              className={`py-3 text-[15px] font-medium border-b border-core-line
+                ${isActive("/upcoming") ? "text-core-pink" : "text-core-ink"}`}
+            >
+              Upcoming
+            </Link>
             <a
               href="https://www.thecore.in"
               target="_blank"
@@ -127,7 +225,7 @@ export default function Header() {
             </a>
           </nav>
         </div>
-      ) : null}
+      )}
     </header>
   );
 }
