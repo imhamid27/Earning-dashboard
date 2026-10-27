@@ -24,11 +24,12 @@ export default function Header() {
       .catch(() => {});
   }, []);
 
+  const quarterSlug = activeQuarter.replace(/ /g, "-");
   const NAV = [
-    { href: "/",         label: "Dashboard" },
-    { href: "/q4",       label: activeQuarter },
-    { href: "/sectors",  label: "Sectors" },
-    { href: "/upcoming", label: "Upcoming" },
+    { href: "/",                           label: "Dashboard" },
+    { href: `/results/${quarterSlug}`,     label: activeQuarter },
+    { href: "/sectors",                    label: "Sectors" },
+    { href: "/upcoming",                   label: "Upcoming" },
   ];
 
   // Close the mobile menu whenever the route changes.
