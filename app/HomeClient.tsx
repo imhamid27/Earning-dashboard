@@ -126,7 +126,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/quarters").then((r) => r.json())
+    fetch("/api/quarters?v=2").then((r) => r.json())
       .then((j) => {
         if (j.ok && j.data?.length) {
           setAvailableQuarters(j.data);
