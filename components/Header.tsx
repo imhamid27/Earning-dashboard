@@ -9,17 +9,27 @@ import { ACTIVE_QUARTER } from "@/lib/seo";
 // mobile = hamburger that slides a sheet down from the top. No dot-dash
 // divider under the header — kept the chrome clean.
 
-const NAV = [
-  { href: "/",         label: "Dashboard" },
-  { href: "/q4",       label: ACTIVE_QUARTER },
-  { href: "/sectors",  label: "Sectors" },
-  { href: "/upcoming", label: "Upcoming" }
-];
-
 export default function Header() {
   const pathname = usePathname() || "/";
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const [menuOpen, setMenuOpen] = useState(false);
+  // Live quarter label — fetched from the API so the nav tab updates
+  // automatically when a new quarter rolls over, with no redeploy needed.
+  // Falls back to the build-time constant while loading or on error.
+  const [activeQuarter, setActiveQuarter] = useState(ACTIVE_QUARTER);
+  useEffect(() => {
+    fetch("/api/quarters?v=2")
+      .then((r) => r.json())
+      .then((j) => { if (j.ok && j.data?.length) setActiveQuarter(j.data[0]); })
+      .catch(() => {});
+  }, []);
+
+  const NAV = [
+    { href: "/",         label: "Dashboard" },
+    { href: "/q4",       label: activeQuarter },
+    { href: "/sectors",  label: "Sectors" },
+    { href: "/upcoming", label: "Upcoming" },
+  ];
 
   // Close the mobile menu whenever the route changes.
   useEffect(() => { setMenuOpen(false); }, [pathname]);
