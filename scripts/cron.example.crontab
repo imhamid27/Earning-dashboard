@@ -33,3 +33,10 @@ EARNINGS_APP=/path/to/Earning-Dashboard
 # during the week.
 # ---------------------------------------------------------------------------
 0 18 * * 0  $EARNINGS_APP/scripts/cron.example.sh backfill
+
+# ---------------------------------------------------------------------------
+# Daily EOD price history — 10:15 UTC = 15:45 IST (30 min after NSE close).
+# Appends the day's official close to stock_price_history for all ~1,080
+# tickers. Powers the Market Winners & Losers feature period returns.
+# ---------------------------------------------------------------------------
+15 10 * * 1-5  $EARNINGS_APP/scripts/cron.example.sh eod

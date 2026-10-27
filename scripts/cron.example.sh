@@ -63,6 +63,12 @@ case "$MODE" in
     "$PY" scripts/nse_results.py --all --quarters 2  >> "$LOG_FILE" 2>&1
     "$PY" scripts/screener_results.py --missing      >> "$LOG_FILE" 2>&1
     ;;
+  eod)
+    # Run once after NSE close (15:45 IST = 10:15 UTC weekdays).
+    # Appends today's official closing OHLCV to stock_price_history.
+    # crontab entry: 15 10 * * 1-5  .../cron.example.sh eod
+    "$PY" scripts/eod_price_history.py >> "$LOG_FILE" 2>&1
+    ;;
   *)
     echo "usage: $0 {daily|hourly|backfill}" >&2
     exit 2

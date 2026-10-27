@@ -8,7 +8,7 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("daily", "hourly", "backfill")]
+    [ValidateSet("daily", "hourly", "backfill", "eod")]
     [string]$Mode = "hourly"
 )
 
@@ -60,6 +60,11 @@ try {
         "backfill" {
             & $py scripts\nse_results.py --all --quarters 2 2>&1 | Tee-Object -FilePath $logFile -Append
             & $py scripts\screener_results.py --missing     2>&1 | Tee-Object -FilePath $logFile -Append
+        }
+        "eod" {
+            # Run once after NSE close (15:45 IST). Appends today's OHLCV
+            # to stock_price_history for the Market Winners & Losers feature.
+            & $py scripts\eod_price_history.py 2>&1 | Tee-Object -FilePath $logFile -Append
         }
     }
 } catch {
