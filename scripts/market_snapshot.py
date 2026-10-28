@@ -46,29 +46,58 @@ INDICES = [
 
 
 def snapshot_one(symbol: str) -> tuple[float, float] | None:
-    """Return (last_price, change_pct) where `last` is the current
-    quote and `change_pct` is (last - prev_close)/prev_close as a
-    decimal. None if Yahoo doesn't return usable values.
+    """Return (last_price, change_pct) as a decimal.
 
-    yfinance's fast_info is the reliable source for indices — it
-    exposes Yahoo's regularMarket fields (which match NSE's official
-    day close) rather than the stale `chartPreviousClose` you get
-    from the v8/chart endpoint.
+    Strategy — two-pass to work around Yahoo's caching behaviour on
+    non-Indian IPs (GitHub Actions runners in the US):
+
+    1. fast_info: gets regularMarketPreviousClose (reliable for prev close)
+       and lastPrice (sometimes stale = prev close before market fully syncs).
+    2. history(period="2d", interval="1m"): the intraday minute feed is
+       much fresher from Yahoo's CDN and gives the real last traded price
+       even from non-Indian IPs.  We prefer the history close if it is
+       meaningfully different from the fast_info prev close.
     """
     try:
         t = yf.Ticker(symbol)
         fi = t.fast_info
-        # fast_info uses camelCase keys. `lastPrice` = current quote;
-        # `regularMarketPreviousClose` = the true previous-session close
-        # that matches NSE's own day-over-day calculation.
-        last = fi["lastPrice"] if "lastPrice" in fi.keys() else None
-        prev = fi["regularMarketPreviousClose"] if "regularMarketPreviousClose" in fi.keys() else None
-        if last is None or prev is None:
+
+        # Previous close is reliable from fast_info at all times.
+        prev = getattr(fi, "previous_close", None) or getattr(fi, "regularMarketPreviousClose", None)
+        if prev is None:
+            try:
+                prev = fi["regularMarketPreviousClose"]
+            except Exception:
+                pass
+        if not prev:
             return None
-        last_f, prev_f = float(last), float(prev)
+        prev_f = float(prev)
         if prev_f == 0:
             return None
+
+        # Try history first — it gives the real last traded price.
+        last_f: float | None = None
+        try:
+            hist = t.history(period="2d", interval="1m", timeout=8)
+            if not hist.empty:
+                last_f = float(hist["Close"].iloc[-1])
+        except Exception as he:
+            print(f"[warn] {symbol} history: {he}", file=sys.stderr)
+
+        # Fall back to fast_info lastPrice if history failed.
+        if last_f is None:
+            raw = getattr(fi, "last_price", None)
+            if raw is None:
+                try:
+                    raw = fi["lastPrice"]
+                except Exception:
+                    pass
+            if raw is None:
+                return None
+            last_f = float(raw)
+
         return last_f, (last_f - prev_f) / prev_f
+
     except Exception as e:
         print(f"[warn] {symbol}: {e}", file=sys.stderr)
         return None
