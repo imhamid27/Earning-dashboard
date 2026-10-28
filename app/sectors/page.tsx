@@ -188,10 +188,13 @@ export default function SectorsPage() {
   const [openDive, setOpenDive]     = useState<string | null>(null);
   const [loading,  setLoading]      = useState(true);
 
-  // Quarter list — default is always the current active quarter (DEFAULT_QUARTER)
+  // Quarter list — always default to the most-recent available quarter
   useEffect(() => {
     fetch("/api/quarters").then((r) => r.json()).then((qs) => {
-      if (qs.ok && qs.data?.length) setQuarters(qs.data);
+      if (qs.ok && qs.data?.length) {
+        setQuarters(qs.data);
+        setQuarter(qs.data[0]); // API returns most-recent first
+      }
     });
   }, []);
 
