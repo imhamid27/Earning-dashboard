@@ -35,12 +35,14 @@ function fmtPct(v: number | null, digits = 1): string {
   if (v == null) return "—";
   if (Math.abs(v) > 9.99) return v > 0 ? "+high" : "−high";
   const abs  = (Math.abs(v) * 100).toFixed(digits);
+  if (parseFloat(abs) === 0) return `0.${"0".repeat(digits)}%`;
   const sign = v > 0 ? "+" : "−";
   return `${sign}${abs}%`;
 }
 
 function fmtStockPct(v: number): string {
   const abs  = Math.abs(v).toFixed(1);
+  if (parseFloat(abs) === 0) return "0.0%";
   const sign = v >= 0 ? "+" : "−";
   return `${sign}${abs}%`;
 }
