@@ -38,10 +38,11 @@ export default function Header() {
   const labelToSlug = (q: string) => q.replace(/ /g, "-");
 
   const SIMPLE_NAV = [
-    { href: "/",              label: "Dashboard" },
-    { href: "/sectors",       label: "Sectors"   },
-    { href: "/market-movers", label: "Movers"    },
-    { href: "/upcoming",      label: "Upcoming"  },
+    { href: "/",                    label: "Dashboard"  },
+    { href: "/sectors",             label: "Sectors"    },
+    { href: "/market-movers",       label: "Movers"     },
+    { href: "/upcoming",            label: "Upcoming"   },
+    { href: "/year-in-review/2026", label: "2026 Review"},
   ];
 
   return (
@@ -222,6 +223,13 @@ export default function Header() {
                 ${isActive("/upcoming") ? "text-core-pink" : "text-core-ink"}`}
             >
               Upcoming
+            </Link>
+            <Link
+              href="/year-in-review/2026"
+              className={`py-3 text-[15px] font-medium border-b border-core-line
+                ${isActive("/year-in-review") ? "text-core-pink" : "text-core-ink"}`}
+            >
+              2026 Review
             </Link>
             <a
               href="https://www.thecore.in"

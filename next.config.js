@@ -24,13 +24,17 @@ const GA_SCRIPT_SRC  = "https://www.googletagmanager.com";
 const GA_CONNECT_SRC = "https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net";
 const GA_IMG_SRC     = "https://www.google-analytics.com https://www.googletagmanager.com";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  `script-src 'self' 'unsafe-inline' ${GA_SCRIPT_SRC}`,   // Next hydration + gtag.js
+  // 'unsafe-eval' is required by Turbopack in dev mode for inline source maps.
+  // Excluded from production — React/Next never need it there.
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${GA_SCRIPT_SRC}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   `img-src 'self' data: https://www.thecore.in ${GA_IMG_SRC}`,
@@ -61,6 +65,8 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Allow the dev server to be accessed via 127.0.0.1 (browser blocks localhost HMR).
+  allowedDevOrigins: ["127.0.0.1"],
   reactStrictMode: true,
   poweredByHeader: false,    // drop the `X-Powered-By: Next.js` fingerprint
   output: "standalone",
