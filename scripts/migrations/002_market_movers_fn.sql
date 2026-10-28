@@ -1,4 +1,10 @@
--- Migration 002: market_movers() Postgres function
+-- Migration 002: market_movers() Postgres function + performance index
+--
+-- Also run after the function:
+--   CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_sph_ticker_date
+--   ON stock_price_history (ticker, date DESC);
+-- This composite index is required — without it the DISTINCT ON scans the
+-- full table and hits Supabase's statement timeout on ~500k rows.
 -- Run once in Supabase SQL Editor.
 --
 -- Returns top N gainers and top N losers for a given look-back period
