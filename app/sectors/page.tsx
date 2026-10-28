@@ -177,11 +177,9 @@ const SECTORS_LD = {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q2 FY27";
-
 export default function SectorsPage() {
   const [quarters, setQuarters]     = useState<string[]>([]);
-  const [quarter,  setQuarter]      = useState<string>(DEFAULT_QUARTER);
+  const [quarter,  setQuarter]      = useState<string>("");
   const [rawSectors, setRawSectors] = useState<ApiSector[]>([]);
   const [dashRows,   setDashRows]   = useState<DashRow[]>([]);
   const [sort,    setSort]          = useState<SortKey>("profit");
@@ -343,14 +341,14 @@ export default function SectorsPage() {
           </h1>
           <p className="text-[13px] text-core-muted mt-2 max-w-xl leading-snug">
             Where earnings strength or weakness is concentrated — profit and revenue growth by sector,{" "}
-            {quarter ?? "current quarter"}.
+            {quarter || "current quarter"}.
           </p>
         </div>
         <label className="flex items-center gap-2.5 text-[10px] uppercase tracking-[0.14em] text-core-muted shrink-0">
           Quarter
           <select
             value={quarter}
-            onChange={(e) => setQuarter(e.target.value || DEFAULT_QUARTER)}
+            onChange={(e) => setQuarter(e.target.value)}
             className="border border-core-line bg-white text-xs px-3 py-2 rounded-md normal-case text-core-ink font-semibold focus:outline-none focus:border-core-pink"
           >
             {quarters.map((q) => <option key={q} value={q}>{q}</option>)}
@@ -412,7 +410,7 @@ export default function SectorsPage() {
             </button>
           ))}
           <span className="ml-auto text-[11px] text-core-muted tabular-nums">
-            {sorted.length} sectors · {quarter}
+            {sorted.length} sectors · {quarter || "…"}
           </span>
         </div>
       ) : null}
