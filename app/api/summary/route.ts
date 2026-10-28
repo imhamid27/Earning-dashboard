@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
 
   const revGrowths: number[] = [];
   const profGrowths: number[] = [];
-  type SectorAgg = { rev: number; revPrev: number; reported: number };
+  type SectorAgg = { rev: number; revPrev: number; prof: number; profPrev: number; reported: number };
   const bySector = new Map<string, SectorAgg>();
 
   for (const row of cur) {
@@ -111,9 +111,11 @@ export async function GET(req: NextRequest) {
 
     const sector = (row as any).companies?.sector ?? null;
     if (sector) {
-      const s = bySector.get(sector) ?? { rev: 0, revPrev: 0, reported: 0 };
-      s.rev += row.revenue ?? 0;
-      s.revPrev += p?.rev ?? 0;
+      const s = bySector.get(sector) ?? { rev: 0, revPrev: 0, prof: 0, profPrev: 0, reported: 0 };
+      s.rev      += row.revenue    ?? 0;
+      s.revPrev  += p?.rev         ?? 0;
+      s.prof     += row.net_profit ?? 0;
+      s.profPrev += p?.prof        ?? 0;
       s.reported += 1;
       bySector.set(sector, s);
     }
@@ -135,6 +137,18 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => (b.revenue_yoy! - a.revenue_yoy!))
     .slice(0, 5);
 
+  // Top and bottom sector by aggregate profit YoY (exclude sentinels + low-base).
+  const sectorsByProfit = Array.from(bySector.entries())
+    .map(([sector, s]) => ({ sector, profit_yoy: pctChange(s.prof, s.profPrev) }))
+    .filter((s) => s.profit_yoy != null
+      && s.profit_yoy !== TURNED_PROFITABLE
+      && s.profit_yoy !== TURNED_LOSS_MAKING
+      && Math.abs(s.profit_yoy) <= 9.99)
+    .sort((a, b) => b.profit_yoy! - a.profit_yoy!);
+
+  const top_sector_by_profit    = sectorsByProfit[0]                          ?? null;
+  const bottom_sector_by_profit = sectorsByProfit[sectorsByProfit.length - 1] ?? null;
+
   return jsonOk({
     quarter: targetQuarter,
     companies_tracked: universeCount ?? 0,
@@ -142,6 +156,8 @@ export async function GET(req: NextRequest) {
     avg_revenue_yoy: mean(revGrowths),
     avg_profit_yoy: mean(profGrowths),
     top_sectors_by_rev_growth: topSectors,
+    top_sector_by_profit,
+    bottom_sector_by_profit,
     last_refreshed_at: lastFetched.data?.fetched_at ?? null
   });
 }

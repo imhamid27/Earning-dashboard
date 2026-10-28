@@ -101,6 +101,8 @@ interface SummaryResp {
   avg_revenue_yoy: number | null;
   avg_profit_yoy: number | null;
   top_sectors_by_rev_growth: Array<{ sector: string; revenue_yoy: number | null; companies_reported: number }>;
+  top_sector_by_profit:    { sector: string; profit_yoy: number } | null;
+  bottom_sector_by_profit: { sector: string; profit_yoy: number } | null;
   last_refreshed_at: string | null;
 }
 interface UpcomingItem { ticker: string; company_name: string; sector: string | null; next_result_date: string }
@@ -747,6 +749,61 @@ export default function DashboardPage() {
         biggestLoser={surpriseMovers?.down ?? null}
         heaviestFiler={todayReporters[0] ?? null}
       />
+
+      {/* ==== SECONDARY STAT ROW — net profit + sector leaders ==== */}
+      {summary ? (
+        <div className="grid grid-cols-3 divide-x divide-core-line border border-core-line rounded-xl mb-6 overflow-hidden">
+          {/* Avg net profit YoY */}
+          <div className="px-3.5 py-3 md:px-5 md:py-3.5 min-w-0">
+            <div className="text-[9px] uppercase tracking-[0.18em] text-core-muted font-semibold">
+              Avg net profit
+            </div>
+            <div className="mt-1 text-[20px] md:text-[26px] leading-tight font-bold tracking-tightest">
+              {summary.avg_profit_yoy != null ? (
+                <span className={summary.avg_profit_yoy >= 0 ? "text-core-teal" : "text-core-negative"}>
+                  {summary.avg_profit_yoy >= 0 ? "+" : ""}
+                  {(summary.avg_profit_yoy * 100).toFixed(1)}%
+                </span>
+              ) : (
+                <span className="text-core-muted">—</span>
+              )}
+            </div>
+            <div className="mt-1.5 text-[11px] text-core-muted leading-snug">
+              YoY · season average
+            </div>
+          </div>
+
+          {/* Top performing sector */}
+          <div className="px-3.5 py-3 md:px-5 md:py-3.5 min-w-0">
+            <div className="text-[9px] uppercase tracking-[0.18em] text-core-muted font-semibold">
+              Top sector · profit
+            </div>
+            <div className="mt-1 text-[15px] md:text-[18px] leading-tight font-bold tracking-tightest text-core-teal truncate">
+              {summary.top_sector_by_profit?.sector ?? "—"}
+            </div>
+            <div className="mt-1.5 text-[11px] text-core-muted leading-snug">
+              {summary.top_sector_by_profit
+                ? `+${(summary.top_sector_by_profit.profit_yoy * 100).toFixed(1)}% profit YoY`
+                : "No data yet"}
+            </div>
+          </div>
+
+          {/* Under performing sector */}
+          <div className="px-3.5 py-3 md:px-5 md:py-3.5 min-w-0">
+            <div className="text-[9px] uppercase tracking-[0.18em] text-core-muted font-semibold">
+              Weakest sector · profit
+            </div>
+            <div className="mt-1 text-[15px] md:text-[18px] leading-tight font-bold tracking-tightest text-core-negative truncate">
+              {summary.bottom_sector_by_profit?.sector ?? "—"}
+            </div>
+            <div className="mt-1.5 text-[11px] text-core-muted leading-snug">
+              {summary.bottom_sector_by_profit
+                ? `${(summary.bottom_sector_by_profit.profit_yoy * 100).toFixed(1)}% profit YoY`
+                : "No data yet"}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* =================================================================
           2. LIVE BAND — inverted black newsroom panel. Today's lead
