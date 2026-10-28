@@ -46,8 +46,11 @@ export function formatPct(value: number | null | undefined, digits = 1): string 
   if (value === TURNED_LOSS_MAKING) return "Turned loss-making";
   // Extreme ratios from a near-zero base — still not meaningful as a number.
   if (Math.abs(value) > 9.99) return "n/m";
+  const formatted = (value * 100).toFixed(digits);
+  // Avoid "-0.0%" — if rounding produces zero, drop the negative sign.
+  if (parseFloat(formatted) === 0) return `0.${"0".repeat(digits)}%`;
   const sign = value > 0 ? "+" : "";
-  return `${sign}${(value * 100).toFixed(digits)}%`;
+  return `${sign}${formatted}%`;
 }
 
 // Format a YoY/QoQ ratio for data-table cells, prepending ▲/▼ so direction

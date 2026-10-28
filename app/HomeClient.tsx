@@ -698,8 +698,11 @@ export default function DashboardPage() {
               they all fit side-by-side naturally. */}
           <div className="flex flex-nowrap items-baseline gap-x-5 overflow-x-auto scrollbar-thin text-[13px] -mx-1 px-1">
             {market.indices.map((ix, i) => {
-              const up   = (ix.change_pct ?? 0) > 0;
-              const down = (ix.change_pct ?? 0) < 0;
+              // Use the rounded value (1 decimal %) so a raw -0.003% that
+              // displays as "0.0%" doesn't trigger a red ▼ arrow.
+              const rounded = ix.change_pct != null ? parseFloat((ix.change_pct * 100).toFixed(1)) : 0;
+              const up   = rounded > 0;
+              const down = rounded < 0;
               const arrow = ix.change_pct == null ? "" : up ? "▲" : down ? "▼" : "■";
               const cls = ix.change_pct == null
                 ? "text-core-muted"
