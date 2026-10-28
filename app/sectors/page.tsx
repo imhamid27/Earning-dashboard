@@ -72,6 +72,7 @@ function fmtPct(v: number | null, digits = 1): string {
   if (v === TURNED_LOSS_MAKING) return "Turned loss-making";
   if (Math.abs(v) > 9.99) return "*low base";
   const abs = (Math.abs(v) * 100).toFixed(digits);
+  if (parseFloat(abs) === 0) return `0.${"0".repeat(digits)}%`;
   return v > 0 ? `+${abs}%` : `−${abs}%`;
 }
 
