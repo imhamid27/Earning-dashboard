@@ -38,9 +38,10 @@ export default function Header() {
   const labelToSlug = (q: string) => q.replace(/ /g, "-");
 
   const SIMPLE_NAV = [
-    { href: "/",         label: "Dashboard" },
-    { href: "/sectors",  label: "Sectors" },
-    { href: "/upcoming", label: "Upcoming" },
+    { href: "/",              label: "Dashboard" },
+    { href: "/sectors",       label: "Sectors"   },
+    { href: "/market-movers", label: "Movers"    },
+    { href: "/upcoming",      label: "Upcoming"  },
   ];
 
   return (
@@ -207,6 +208,13 @@ export default function Header() {
                 ${isActive("/sectors") ? "text-core-pink" : "text-core-ink"}`}
             >
               Sectors
+            </Link>
+            <Link
+              href="/market-movers"
+              className={`py-3 text-[15px] font-medium border-b border-core-line
+                ${isActive("/market-movers") ? "text-core-pink" : "text-core-ink"}`}
+            >
+              Movers
             </Link>
             <Link
               href="/upcoming"
