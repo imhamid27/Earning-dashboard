@@ -705,7 +705,7 @@ export default function DashboardPage() {
               const rounded = ix.change_pct != null ? parseFloat((ix.change_pct * 100).toFixed(1)) : 0;
               const up   = rounded > 0;
               const down = rounded < 0;
-              const arrow = ix.change_pct == null ? "" : up ? "▲" : down ? "▼" : "■";
+              const arrow = ix.change_pct == null ? "" : up ? "▲" : down ? "▼" : "";
               const cls = ix.change_pct == null
                 ? "text-core-muted"
                 : up ? "text-core-teal"
