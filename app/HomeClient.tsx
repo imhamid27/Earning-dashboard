@@ -742,7 +742,7 @@ export default function DashboardPage() {
       <IntelligenceStrip
         quarter={summary?.quarter ?? quarter}
         companies_tracked={summary?.companies_tracked ?? 0}
-        companies_reported={filed.length}
+        companies_reported={summary?.companies_reported ?? filed.length}
         avg_revenue_yoy={summary?.avg_revenue_yoy ?? null}
         avg_profit_yoy={summary?.avg_profit_yoy ?? null}
         top_sector_by_profit={summary?.top_sector_by_profit ?? null}
