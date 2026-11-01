@@ -191,9 +191,19 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const idx = hist.findIndex((r) => r.quarter_end_date === latest.quarter_end_date);
-    const prevQ = idx >= 1 ? hist[idx - 1] : null;
-    const prevY = idx >= 4 ? hist[idx - 4] : null;
+    // Match prior quarters by fiscal_year/fiscal_quarter, not array index.
+    // Index-based lookup breaks whenever a company has a gap in history
+    // (missed filing, new listing, data hole) — causing YoY to compare
+    // against the wrong period.
+    const prevY = hist.find(
+      (r) => r.fiscal_year === latest.fiscal_year - 1 && r.fiscal_quarter === latest.fiscal_quarter
+    ) ?? null;
+    // QoQ: prior fiscal quarter, wrapping Q1 → Q4 of previous year.
+    const prevFQ = latest.fiscal_quarter === 1 ? 4 : latest.fiscal_quarter - 1;
+    const prevFY = latest.fiscal_quarter === 1 ? latest.fiscal_year - 1 : latest.fiscal_year;
+    const prevQ = hist.find(
+      (r) => r.fiscal_year === prevFY && r.fiscal_quarter === prevFQ
+    ) ?? null;
     const hasNumbers = latest.revenue != null && latest.net_profit != null;
     // Prefer the fetched-event date — it's the real filing day tracked from
     // exchange calendars. Fall back to raw_json/fetched_at only if no event
