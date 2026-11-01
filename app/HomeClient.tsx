@@ -351,7 +351,9 @@ export default function DashboardPage() {
   // 6. Surprise movers — biggest up / biggest down profit YoY for the
   //    quarter. Guards against absurd ±500% from tiny prior-year bases.
   const surpriseMovers = useMemo(() => {
-    const clean = filed.filter((r) => r.profit_yoy != null && Math.abs(r.profit_yoy!) <= 5);
+    // Cap at ±200% — companies beyond this almost always have a tiny prior-year
+    // base (newly listed, turned profitable) and mislead rather than inform.
+    const clean = filed.filter((r) => r.profit_yoy != null && Math.abs(r.profit_yoy!) <= 2.0);
     if (clean.length < 2) return null;
     const sorted = [...clean].sort((a, b) => (b.profit_yoy ?? 0) - (a.profit_yoy ?? 0));
     const up = sorted[0];
@@ -443,12 +445,11 @@ export default function DashboardPage() {
       else if (p === TURNED_LOSS_MAKING || p < -0.05) declining++;
       else flat++;
     }
-    return {
-      growingPct:   Math.round((growing  / meaningful.length) * 100),
-      decliningPct: Math.round((declining / meaningful.length) * 100),
-      flatPct:      Math.round((flat      / meaningful.length) * 100),
-      total:        meaningful.length,
-    };
+    // Compute two buckets normally; derive the third so they always sum to 100.
+    const growingPct   = Math.round((growing   / meaningful.length) * 100);
+    const decliningPct = Math.round((declining / meaningful.length) * 100);
+    const flatPct      = 100 - growingPct - decliningPct;
+    return { growingPct, decliningPct, flatPct, total: meaningful.length };
   }, [filed]);
 
   // EARNINGS NARRATIVE — single evolving sentence from breadth + sector + avg.

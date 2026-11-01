@@ -81,7 +81,11 @@ export async function GET(req: NextRequest) {
 
   if (error) {
     console.error("[market-movers]", error);
-    return jsonError(error.message ?? "rpc failed", 500);
+    const isTimeout = /timeout|canceling statement/i.test(error.message ?? "");
+    return jsonError(
+      isTimeout ? "Price data is temporarily unavailable — please try again in a moment." : (error.message ?? "rpc failed"),
+      isTimeout ? 503 : 500
+    );
   }
 
   const rows = (data ?? []) as MoverRow[];

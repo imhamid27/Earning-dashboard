@@ -45,7 +45,10 @@ const COMPANY_BASE = siteUrl();
 
 export default function CompanyDetail() {
   const params = useParams<{ ticker: string }>();
-  const ticker = decodeURIComponent(params.ticker);
+  const rawTicker = decodeURIComponent(params.ticker);
+  // Bare tickers like "RELIANCE" won't match the DB — silently append .NS so
+  // users who type or share links without the suffix still land correctly.
+  const ticker = rawTicker.includes(".") ? rawTicker : `${rawTicker}.NS`;
   const [data, setData] = useState<DetailResp | null>(null);
   const [price, setPrice] = useState<PriceInfo | null>(null);
   const [priceStatus, setPriceStatus] = useState<"open" | "closed" | "stale" | null>(null);

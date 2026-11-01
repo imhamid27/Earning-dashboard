@@ -285,7 +285,15 @@ export default function MarketMoversPage() {
 
       {/* ── Error ── */}
       {error ? (
-        <div className="py-16 text-center text-core-negative text-[14px]">{error}</div>
+        <div className="py-16 text-center space-y-3">
+          <p className="text-[14px] text-core-muted">{error}</p>
+          <button
+            onClick={() => load(period, sector)}
+            className="text-[13px] font-medium text-core-ink underline underline-offset-2 hover:text-core-pink"
+          >
+            Try again
+          </button>
+        </div>
       ) : null}
 
       {/* ── Two-column grid ── */}

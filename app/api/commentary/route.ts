@@ -18,10 +18,15 @@ export async function GET(req: NextRequest) {
   const sp    = req.nextUrl.searchParams;
   const limit = Math.min(20, Math.max(1, Number(sp.get("limit") || "5")));
 
+  // Only show entries from the last 180 days — prevents stale articles from
+  // prior fiscal years surfacing in the current-season commentary feed.
+  const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+
   const sb = supabaseServer();
   const { data, error } = await sb
     .from("live_commentary")
     .select("id, company, ticker, quarter, text, source, created_at, updated_at")
+    .gte("created_at", cutoff)
     .order("created_at", { ascending: false })
     .limit(limit);
 

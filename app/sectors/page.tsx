@@ -29,6 +29,8 @@ import { TURNED_PROFITABLE, TURNED_LOSS_MAKING } from "@/lib/growth";
 interface ApiSector {
   sector: string;
   companies_reported: number;
+  revenue_pairs: number;
+  profit_pairs: number;
   total_revenue: number;
   total_net_profit: number;
   revenue_yoy: number | null;
@@ -53,6 +55,7 @@ interface EnrichedSector extends ApiSector {
   verdict: Verdict;
   insight: string;
   lowBase: boolean;
+  isPartial: boolean; // fewer than 5 companies with matched YoY pairs
   totalTracked: number;
   scheduledCount: number;
   topMovers: DashRow[];
@@ -262,11 +265,14 @@ export default function SectorsPage() {
         (s.profit_yoy != null && !SENTINELS.has(s.profit_yoy) && Math.abs(s.profit_yoy) > 3) ||
         (s.revenue_yoy != null && Math.abs(s.revenue_yoy) > 3);
 
+      const isPartial = (s.profit_pairs ?? 0) < 5;
+
       return {
         ...s,
         verdict,
         insight: genInsight(s.revenue_yoy, s.profit_yoy, verdict),
         lowBase,
+        isPartial,
         totalTracked,
         scheduledCount,
         topMovers,
@@ -580,6 +586,13 @@ function SectorCard({
           )}
         </div>
       </div>
+
+      {/* Partial-data warning — shown when <5 companies have matched YoY pairs */}
+      {s.isPartial ? (
+        <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3 leading-snug">
+          Early season — only {s.profit_pairs} {s.profit_pairs === 1 ? "company" : "companies"} with prior-year data. Numbers may shift significantly.
+        </p>
+      ) : null}
 
       {/* Insight line */}
       <p className="text-[12px] text-core-muted leading-snug mb-4 italic">

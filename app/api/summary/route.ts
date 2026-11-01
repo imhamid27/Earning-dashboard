@@ -31,12 +31,13 @@ export async function GET(req: NextRequest) {
     sb.from("quarterly_financials").select("fetched_at").order("fetched_at", { ascending: false }).limit(1).maybeSingle()
   ]);
 
-  // "Reported" = distinct companies whose Q4 announcement has been picked
-  // up by any of our calendar scrapers (status='fetched'). Matches the /q4
-  // tab counts, which also source from announcement_events. Previously we
-  // used rows.length from quarterly_financials — that only counts companies
-  // whose NUMBERS have landed, undercounting by a factor of 3–4× during the
-  // first wave of a reporting season.
+  // "Reported" = distinct companies that announced results this season.
+  // For the CURRENT season we prefer announcement_events (catches companies
+  // that announced but whose PDF hasn't been parsed yet — avoids 3–4× undercount
+  // in the first wave). For PAST seasons the 90-day window misses old announcements
+  // entirely, so we fall back to the quarterly_financials count for that quarter.
+  // We take max(announcement_events count, quarterly_financials count) so the
+  // current season gets the higher number and past seasons get their real total.
   const todayIso = todayIST();
   const ninetyDaysAgo = daysAgoIST(90);
   const { data: announcedEvents } = await sb
@@ -67,11 +68,18 @@ export async function GET(req: NextRequest) {
     .eq("quarter_label", targetQuarter);
   if (error) return jsonError(error.message, 500);
 
+  // Count distinct tickers that filed for this quarter (definitive for past seasons).
+  const qfCount = new Set(cur?.map((r) => r.ticker) ?? []).size;
+  // Use the higher of announcement_events (better for current season) vs
+  // quarterly_financials count (better for past seasons where the 90-day
+  // announcement_events window returns 0).
+  const reportedCount = Math.max(announcedTickers.size, qfCount);
+
   if (!cur || cur.length === 0) {
     return jsonOk({
       quarter: targetQuarter,
       companies_tracked: universeCount ?? 0,
-      companies_reported: announcedTickers.size,
+      companies_reported: reportedCount,
       avg_revenue_yoy: null,
       avg_profit_yoy: null,
       top_sectors_by_rev_growth: [],
@@ -181,7 +189,7 @@ export async function GET(req: NextRequest) {
   return jsonOk({
     quarter: targetQuarter,
     companies_tracked: universeCount ?? 0,
-    companies_reported: announcedTickers.size,
+    companies_reported: reportedCount,
     avg_revenue_yoy: aggYoy(totalRev, totalRevPrev, revPairs),
     avg_profit_yoy: aggYoy(totalProf, totalProfPrev, profPairs),
     top_sectors_by_rev_growth: topSectors,
