@@ -83,23 +83,23 @@ export default function IntelligenceStrip({
         </div>
       </Tile>
 
-      {/* T2 · Avg revenue YoY */}
-      <Tile label="Avg revenue · YoY">
+      {/* T2 · Revenue YoY aggregate */}
+      <Tile label="Revenue · YoY">
         <div className={`mt-1 text-[20px] md:text-[26px] leading-tight font-bold tabular-nums tracking-tightest ${pctClass(avg_revenue_yoy)}`}>
           {fmtPct(avg_revenue_yoy)}
         </div>
         <div className="mt-1.5 text-[11px] text-core-muted leading-snug">
-          Season average across filed companies
+          Aggregate across filed companies
         </div>
       </Tile>
 
-      {/* T3 · Median net profit YoY */}
-      <Tile label="Median net profit · YoY">
+      {/* T3 · Net profit YoY aggregate */}
+      <Tile label="Net profit · YoY">
         <div className={`mt-1 text-[20px] md:text-[26px] leading-tight font-bold tabular-nums tracking-tightest ${pctClass(avg_profit_yoy)}`}>
           {fmtPct(avg_profit_yoy)}
         </div>
         <div className="mt-1.5 text-[11px] text-core-muted leading-snug">
-          Season median across filed companies
+          Aggregate across filed companies
         </div>
       </Tile>
 

@@ -92,25 +92,28 @@ export async function GET(req: NextRequest) {
   const priorByTicker = new Map<string, { rev: number | null; prof: number | null }>();
   for (const r of prev ?? []) priorByTicker.set(r.ticker, { rev: r.revenue, prof: r.net_profit });
 
-  const revGrowths: number[] = [];
-  const profGrowths: number[] = [];
+  // Aggregate totals for size-weighted YoY (same methodology as Moneycontrol / industry standard).
+  // Only include companies that have both current and prior year data.
+  let totalRev = 0, totalRevPrev = 0;
+  let totalProf = 0, totalProfPrev = 0;
+  let revPairs = 0, profPairs = 0;
+
   type SectorAgg = { rev: number; revPrev: number; prof: number; profPrev: number; reported: number };
   const bySector = new Map<string, SectorAgg>();
 
   for (const row of cur) {
     const p = priorByTicker.get(row.ticker);
-    const rYoy = pctChange(row.revenue, p?.rev ?? null);
-    const pYoy = pctChange(row.net_profit, p?.prof ?? null);
-    // Exclude sentinel values (sign-flip events) from averages — including
-    // 9999 or -9999 in a mean would make avg_revenue_yoy / avg_profit_yoy
-    // wildly misleading. The IntelligenceStrip shows the mean as a season
-    // barometer; sign-flips are outliers, not representative trends.
-    const isSentinel = (v: number) => v === TURNED_PROFITABLE || v === TURNED_LOSS_MAKING;
-    if (rYoy != null && !isSentinel(rYoy)) revGrowths.push(rYoy);
-    // Cap profit YoY at ±999% (|v| ≤ 9.99) before including in the median —
-    // low-base companies (e.g. ₹1 Cr → ₹50 Cr = +4900%) are mathematically
-    // correct but distort the season picture.
-    if (pYoy != null && !isSentinel(pYoy) && Math.abs(pYoy) <= 9.99) profGrowths.push(pYoy);
+
+    if (row.revenue != null && p?.rev != null) {
+      totalRev     += row.revenue;
+      totalRevPrev += p.rev;
+      revPairs++;
+    }
+    if (row.net_profit != null && p?.prof != null) {
+      totalProf     += row.net_profit;
+      totalProfPrev += p.prof;
+      profPairs++;
+    }
 
     const sector = (row as any).companies?.sector ?? null;
     if (sector) {
@@ -124,13 +127,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const mean   = (xs: number[]) => (xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length);
-  const median = (xs: number[]) => {
-    if (xs.length === 0) return null;
-    const s = [...xs].sort((a, b) => a - b);
-    const m = Math.floor(s.length / 2);
-    return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
-  };
+  // Aggregate YoY: total this quarter / total prior quarter - 1.
+  // Weights each company by its absolute size so large caps don't get
+  // drowned out by dozens of tiny companies — matches industry reporting.
+  const aggYoy = (curr: number, prev: number, pairs: number) =>
+    pairs === 0 || prev === 0 ? null : (curr - prev) / Math.abs(prev);
 
   const topSectors = Array.from(bySector.entries())
     .map(([sector, s]) => ({
@@ -162,8 +163,8 @@ export async function GET(req: NextRequest) {
     quarter: targetQuarter,
     companies_tracked: universeCount ?? 0,
     companies_reported: announcedTickers.size,
-    avg_revenue_yoy: mean(revGrowths),
-    avg_profit_yoy: median(profGrowths),
+    avg_revenue_yoy: aggYoy(totalRev, totalRevPrev, revPairs),
+    avg_profit_yoy: aggYoy(totalProf, totalProfPrev, profPairs),
     top_sectors_by_rev_growth: topSectors,
     top_sector_by_profit,
     bottom_sector_by_profit,
