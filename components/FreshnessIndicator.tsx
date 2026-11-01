@@ -6,7 +6,7 @@ export default function FreshnessIndicator({ fetchedAt }: { fetchedAt: string | 
   const ageHours = fetchedAt ? (Date.now() - new Date(fetchedAt).getTime()) / 36e5 : Infinity;
   let cls = "bg-core-surface text-core-muted border-core-line";
   if (ageHours > 24 * 7)  cls = "bg-red-50 text-red-700 border-red-200";
-  else if (ageHours > 24) cls = "bg-amber-50 text-amber-800 border-amber-200";
+  else if (ageHours > 72) cls = "bg-amber-50 text-amber-800 border-amber-200";
   else if (fetchedAt)     cls = "bg-[#E7F7F2] text-core-teal border-[#BFE9DD]";
   return (
     <span className={`chip ${cls}`} title={fetchedAt ?? "no data"}>
