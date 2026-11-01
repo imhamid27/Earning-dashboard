@@ -458,8 +458,9 @@ export default function DashboardPage() {
     const { companies_tracked: tracked, avg_profit_yoy: avg } = summary;
     const parts: string[] = [];
 
-    if (filed.length > 0 && tracked > 0)
-      parts.push(`${filed.length} of ${tracked} companies in ${quarter}`);
+    const reported = summary.companies_reported ?? filed.length;
+    if (reported > 0 && tracked > 0)
+      parts.push(`${reported} of ${tracked} companies in ${quarter}`);
 
     if (avg != null && Math.abs(avg) <= 9.99) {
       const absStr = `${Math.abs(avg * 100).toFixed(1)}%`;
@@ -784,7 +785,7 @@ export default function DashboardPage() {
             Earnings breadth · {quarter}
             {earningsBreadth ? (
               <span className="hidden sm:inline ml-3 normal-case tracking-normal text-core-muted/70">
-                ({earningsBreadth.total} companies with profit data)
+                ({earningsBreadth.total} with comparable profit YoY)
               </span>
             ) : null}
           </div>
