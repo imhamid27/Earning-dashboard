@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
   let totalProf = 0, totalProfPrev = 0;
   let revPairs = 0, profPairs = 0;
 
-  type SectorAgg = { rev: number; revPrev: number; prof: number; profPrev: number; reported: number };
+  type SectorAgg = { rev: number; revPrev: number; prof: number; profPrev: number; reported: number; revPairs: number; profPairs: number };
   const bySector = new Map<string, SectorAgg>();
 
   for (const row of cur) {
@@ -117,11 +117,19 @@ export async function GET(req: NextRequest) {
 
     const sector = (row as any).companies?.sector ?? null;
     if (sector) {
-      const s = bySector.get(sector) ?? { rev: 0, revPrev: 0, prof: 0, profPrev: 0, reported: 0 };
-      s.rev      += row.revenue    ?? 0;
-      s.revPrev  += p?.rev         ?? 0;
-      s.prof     += row.net_profit ?? 0;
-      s.profPrev += p?.prof        ?? 0;
+      const s = bySector.get(sector) ?? { rev: 0, revPrev: 0, prof: 0, profPrev: 0, reported: 0, revPairs: 0, profPairs: 0 };
+      // Only include in sector aggregate when both years exist — avoids inflating
+      // YoY by treating missing prior-year as zero.
+      if (row.revenue != null && p?.rev != null) {
+        s.rev     += row.revenue;
+        s.revPrev += p.rev;
+        s.revPairs++;
+      }
+      if (row.net_profit != null && p?.prof != null) {
+        s.prof     += row.net_profit;
+        s.profPrev += p.prof;
+        s.profPairs++;
+      }
       s.reported += 1;
       bySector.set(sector, s);
     }
@@ -133,27 +141,38 @@ export async function GET(req: NextRequest) {
   const aggYoy = (curr: number, prev: number, pairs: number) =>
     pairs === 0 || prev === 0 ? null : (curr - prev) / Math.abs(prev);
 
+  // Sector-level cap: ±200% — sector aggregates should be stable; anything
+  // beyond this is a base-effect artefact (tiny prior-year profits), not signal.
+  // Also require ≥3 companies with YoY pairs to avoid single-stock sectors.
+  const SECTOR_CAP = 2.0;
+  const SECTOR_MIN_PAIRS = 3;
+
   const topSectors = Array.from(bySector.entries())
     .map(([sector, s]) => ({
       sector,
       companies_reported: s.reported,
-      revenue_yoy: pctChange(s.rev, s.revPrev)
+      revenue_yoy: s.revPairs > 0 && s.revPrev !== 0
+        ? (s.rev - s.revPrev) / Math.abs(s.revPrev)
+        : null
     }))
-    // Exclude nulls and sentinels — sector aggregates are sums so sentinels
-    // are rare, but guard anyway to keep the sort numerically clean.
     .filter((s) => s.revenue_yoy != null
-      && s.revenue_yoy !== TURNED_PROFITABLE
-      && s.revenue_yoy !== TURNED_LOSS_MAKING)
+      && Math.abs(s.revenue_yoy) <= SECTOR_CAP
+      && (bySector.get(s.sector)?.revPairs ?? 0) >= SECTOR_MIN_PAIRS)
     .sort((a, b) => (b.revenue_yoy! - a.revenue_yoy!))
     .slice(0, 5);
 
-  // Top and bottom sector by aggregate profit YoY (exclude sentinels + low-base).
+  // Top and bottom sector by aggregate profit YoY.
   const sectorsByProfit = Array.from(bySector.entries())
-    .map(([sector, s]) => ({ sector, profit_yoy: pctChange(s.prof, s.profPrev) }))
+    .map(([sector, s]) => ({
+      sector,
+      profit_yoy: s.profPairs > 0 && s.profPrev !== 0
+        ? (s.prof - s.profPrev) / Math.abs(s.profPrev)
+        : null,
+      profPairs: s.profPairs
+    }))
     .filter((s) => s.profit_yoy != null
-      && s.profit_yoy !== TURNED_PROFITABLE
-      && s.profit_yoy !== TURNED_LOSS_MAKING
-      && Math.abs(s.profit_yoy) <= 9.99)
+      && Math.abs(s.profit_yoy) <= SECTOR_CAP
+      && s.profPairs >= SECTOR_MIN_PAIRS)
     .sort((a, b) => b.profit_yoy! - a.profit_yoy!);
 
   const top_sector_by_profit    = sectorsByProfit[0]                          ?? null;
