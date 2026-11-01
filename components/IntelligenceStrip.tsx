@@ -93,13 +93,13 @@ export default function IntelligenceStrip({
         </div>
       </Tile>
 
-      {/* T3 · Avg net profit YoY */}
-      <Tile label="Avg net profit · YoY">
+      {/* T3 · Median net profit YoY */}
+      <Tile label="Median net profit · YoY">
         <div className={`mt-1 text-[20px] md:text-[26px] leading-tight font-bold tabular-nums tracking-tightest ${pctClass(avg_profit_yoy)}`}>
           {fmtPct(avg_profit_yoy)}
         </div>
         <div className="mt-1.5 text-[11px] text-core-muted leading-snug">
-          Season average across filed companies
+          Season median across filed companies
         </div>
       </Tile>
 
