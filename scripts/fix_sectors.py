@@ -35,6 +35,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("NE
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true", help="Write changes to DB (default: dry run)")
+    ap.add_argument("--diagnose", action="store_true", help="Show industry labels still mapping to Other after fix")
     args = ap.parse_args()
 
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -61,10 +62,14 @@ def main() -> int:
 
     changes: list[dict] = []
     sector_counts: dict[str, int] = {}
+    other_industries: dict[str, int] = {}
     for row in all_rows:
         new_sector = pick_sector(row.get("industry"))
         old_sector = row.get("sector") or "Other"
         sector_counts[new_sector] = sector_counts.get(new_sector, 0) + 1
+        if new_sector == "Other":
+            ind = row.get("industry") or "(blank)"
+            other_industries[ind] = other_industries.get(ind, 0) + 1
         if new_sector != old_sector:
             changes.append({
                 "id":        row["id"],
@@ -77,6 +82,11 @@ def main() -> int:
     print(f"\nSector distribution after fix:")
     for s, n in sorted(sector_counts.items(), key=lambda x: -x[1]):
         print(f"  {s:<35} {n}")
+
+    if args.diagnose:
+        print(f"\nIndustry labels still mapping to 'Other' ({sum(other_industries.values())} companies):")
+        for ind, n in sorted(other_industries.items(), key=lambda x: -x[1]):
+            print(f"  {n:4}  {ind}")
 
     print(f"\n{len(changes)} companies need sector update:")
     # Show top changes

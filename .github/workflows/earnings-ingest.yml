@@ -57,7 +57,7 @@ on:
         required: true
         default: 'hourly'
         type: choice
-        options: [daily, hourly, backfill, commentary, coverage, fix-sectors]
+        options: [daily, hourly, backfill, commentary, coverage, fix-sectors, diagnose-sectors]
 
 # Serialise runs of this workflow — queued, not dropped. Previously a
 # long-running schedule tick would cause GitHub Actions to skip any
@@ -191,6 +191,10 @@ jobs:
               # One-time sector reclassification fix. Re-runs pick_sector()
               # against every company's industry field and updates the DB.
               python scripts/fix_sectors.py --apply
+              ;;
+            diagnose-sectors)
+              # Show industry labels still mapping to Other — no DB writes.
+              python scripts/fix_sectors.py --diagnose
               ;;
             commentary)
               # Lightweight commentary-only pass. Use this when you want
