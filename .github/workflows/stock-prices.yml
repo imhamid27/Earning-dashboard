@@ -6,12 +6,10 @@ name: stock-prices
 # one stock_price snapshot per ticker to fetch_logs.
 #
 # Cadence:
-#   Every 10 min, 03:00–10:59 UTC (= 08:30–16:29 IST) weekdays — covers
+#   Every 15 min, 03:00–10:59 UTC (= 08:30–16:29 IST) weekdays — covers
 #   NSE/BSE regular session (09:15-15:30) with a buffer on each side.
-#   GitHub Actions scheduled triggers routinely lag 5-15 min under
-#   load, so a 10-min cron interval means worst-case staleness during
-#   trading is ~20 min. Tighter than that starts to push runtime risk
-#   because each sweep takes 60-90s.
+#   Each sweep takes 60-90s; 15-min cadence keeps runner minutes low
+#   while worst-case staleness stays under 25 min during trading.
 #
 # Runtime budget: ~60-90 seconds per run (6 batches × 10-15s). Well
 # under GitHub Actions' 5-min timeout configured below.
@@ -22,7 +20,7 @@ name: stock-prices
 
 on:
   schedule:
-    - cron: '*/10 3-10 * * 1-5'
+    - cron: '*/15 3-10 * * 1-5'
   workflow_dispatch:
 
 # Only one price sweep at a time — if the previous run is still going
