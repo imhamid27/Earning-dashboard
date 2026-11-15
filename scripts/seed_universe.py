@@ -113,17 +113,46 @@ def fetch_bse_isin_map(bse) -> dict[str, str]:
 SECTOR_MAP = [
     # "Bank" (singular) matches "Private Sector Bank", "Public Sector Bank",
     # "Banking", etc. The original "Banks" (plural) missed all bank names.
-    ("Financials",                ["Bank", "Finance", "Insurance", "Diversified Financial", "Financial Services", "NBFC"]),
-    ("Information Technology",    ["IT-", "Information Technology", "Software", "Computer"]),
-    ("Energy",                    ["Oil", "Gas", "Petroleum", "Refineries", "Coal", "Energy"]),
-    ("Utilities",                 ["Utilities", "Electric", "Power"]),
-    ("Consumer Staples",          ["FMCG", "Fast Moving Consumer Goods", "Consumer Food", "Personal Care", "Tobacco", "Dairy", "Household"]),
-    ("Healthcare",                ["Pharma", "Healthcare", "Hospital", "Diagnostic"]),
-    ("Consumer Discretionary",    ["Auto", "Consumer Services", "Consumer Durables", "Retail", "Apparel", "Textile", "Diversified FMCG", "Leisure"]),
-    ("Materials",                 ["Cement", "Steel", "Chemical", "Metal", "Paper", "Fertilizer", "Paint", "Mining", "Forest"]),
-    ("Industrials",               ["Capital Goods", "Construction", "Engineering", "Infrastructure", "Logistics", "Aerospace", "Defence"]),
-    ("Communication Services",    ["Telecom", "Media", "Entertainment"]),
-    ("Real Estate",               ["Realty", "Real Estate"]),
+    ("Financials", [
+        "Bank", "Finance", "Insurance", "Diversified Financial", "Financial Services", "NBFC",
+        "Financial Institution", "Stockbroking", "Investment", "Asset Management", "Fintech", "Exchange",
+    ]),
+    ("Information Technology", [
+        "IT-", "Information Technology", "Software", "Computer",
+        "IT Enabled", "BPO", "KPO",
+    ]),
+    ("Energy", [
+        "Oil", "Gas", "Petroleum", "Refineries", "Coal", "Energy",
+        "LPG", "CNG", "Lubricant",
+    ]),
+    ("Utilities",             ["Utilities", "Electric", "Power"]),
+    ("Consumer Staples", [
+        "FMCG", "Fast Moving Consumer Goods", "Consumer Food", "Personal Care", "Tobacco", "Dairy", "Household",
+        "Packaged Food", "Food", "Beverage", "Tea", "Coffee", "Breweries", "Distill", "Sugar", "Agricultural",
+    ]),
+    ("Healthcare", [
+        "Pharma", "Healthcare", "Hospital", "Diagnostic",
+        "Biotechnology", "Medical Equipment",
+    ]),
+    ("Consumer Discretionary", [
+        "Auto", "Consumer Services", "Consumer Durables", "Retail", "Apparel", "Textile", "Diversified FMCG", "Leisure",
+        "Hotel", "Restaurant", "Wheeler", "Passenger Car", "Consumer Electronics", "Tour", "Jewellery", "Gems",
+        "Footwear", "Tractor", "Airline", "Film",
+    ]),
+    # Materials before Industrials so "Industrial Minerals" matches "Mineral" here
+    # rather than "Industrial" in Industrials.
+    ("Materials", [
+        "Cement", "Steel", "Chemical", "Metal", "Paper", "Fertilizer", "Paint", "Mining", "Forest",
+        "Alumin", "Plastic", "Tyre", "Rubber", "Carbon Black", "Electrode", "Mineral", "Copper", "Zinc",
+        "Ceramic", "Casting", "Abrasive", "Bearing",
+    ]),
+    ("Industrials", [
+        "Capital Goods", "Construction", "Engineering", "Infrastructure", "Logistics", "Aerospace", "Defence",
+        "Industrial", "Shipping", "Port", "Ship Build", "Railway", "Compressor", "Pump", "Airport",
+        "Explosive", "Commercial Vehicle",
+    ]),
+    ("Communication Services", ["Telecom", "Media", "Entertainment"]),
+    ("Real Estate",            ["Realty", "Real Estate", "Residential"]),
 ]
 
 
