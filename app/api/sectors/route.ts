@@ -85,17 +85,29 @@ export async function GET(req: NextRequest) {
   const aggYoy = (curr: number, prev: number, pairs: number): number | null =>
     pairs === 0 || prev === 0 ? null : (curr - prev) / Math.abs(prev);
 
+  // Suppress YoY for sectors with too few matched pairs — avoids publishing
+  // extreme base-effect artefacts (e.g. Telecom +12825% from one company pair).
+  const SECTOR_MIN_PAIRS = 3;
+  const SECTOR_CAP = 2.0; // ±200%
+
+  const clamp = (v: number | null): number | null =>
+    v == null ? null : Math.max(-SECTOR_CAP, Math.min(SECTOR_CAP, v));
+
   const sectors = Array.from(bySector.entries())
-    .map(([sector, s]) => ({
-      sector,
-      companies_reported: s.reported,
-      revenue_pairs:      s.revPairs,
-      profit_pairs:       s.profPairs,
-      total_revenue:      s.rev,
-      total_net_profit:   s.prof,
-      revenue_yoy:        aggYoy(s.rev,  s.revPrev,  s.revPairs),
-      profit_yoy:         aggYoy(s.prof, s.profPrev, s.profPairs),
-    }))
+    .map(([sector, s]) => {
+      const revYoy  = s.revPairs  >= SECTOR_MIN_PAIRS ? clamp(aggYoy(s.rev,  s.revPrev,  s.revPairs))  : null;
+      const profYoy = s.profPairs >= SECTOR_MIN_PAIRS ? clamp(aggYoy(s.prof, s.profPrev, s.profPairs)) : null;
+      return {
+        sector,
+        companies_reported: s.reported,
+        revenue_pairs:      s.revPairs,
+        profit_pairs:       s.profPairs,
+        total_revenue:      s.rev,
+        total_net_profit:   s.prof,
+        revenue_yoy:        revYoy,
+        profit_yoy:         profYoy,
+      };
+    })
     .sort((a, b) => b.total_revenue - a.total_revenue);
 
   return jsonOk({ quarter: targetQuarter, sectors });

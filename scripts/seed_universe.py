@@ -111,13 +111,15 @@ def fetch_bse_isin_map(bse) -> dict[str, str]:
 # the dashboard groups them into ~10 sectors. Keep it simple — anything
 # unmatched is "Other".
 SECTOR_MAP = [
-    ("Financials",                ["Banks", "Finance", "Insurance", "Diversified Financial", "Financial Services"]),
-    ("Information Technology",    ["IT ", "IT-"]),
-    ("Energy",                    ["Oil", "Gas", "Petroleum", "Power", "Refineries", "Coal", "Energy"]),
+    # "Bank" (singular) matches "Private Sector Bank", "Public Sector Bank",
+    # "Banking", etc. The original "Banks" (plural) missed all bank names.
+    ("Financials",                ["Bank", "Finance", "Insurance", "Diversified Financial", "Financial Services", "NBFC"]),
+    ("Information Technology",    ["IT-", "Information Technology", "Software", "Computer"]),
+    ("Energy",                    ["Oil", "Gas", "Petroleum", "Refineries", "Coal", "Energy"]),
     ("Utilities",                 ["Utilities", "Electric", "Power"]),
     ("Consumer Staples",          ["FMCG", "Consumer Food", "Personal Care", "Tobacco", "Dairy", "Household"]),
-    ("Consumer Discretionary",    ["Auto", "Retail", "Apparel", "Entertainment", "Textile", "Diversified FMCG", "Leisure", "Realty"]),
     ("Healthcare",                ["Pharma", "Healthcare", "Hospital", "Diagnostic"]),
+    ("Consumer Discretionary",    ["Auto", "Retail", "Apparel", "Textile", "Diversified FMCG", "Leisure"]),
     ("Materials",                 ["Cement", "Steel", "Chemical", "Metal", "Paper", "Fertilizer", "Paint", "Mining"]),
     ("Industrials",               ["Capital Goods", "Construction", "Engineering", "Infrastructure", "Logistics", "Aerospace", "Defence"]),
     ("Communication Services",    ["Telecom", "Media", "Entertainment"]),

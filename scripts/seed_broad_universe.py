@@ -41,6 +41,7 @@ except Exception:
 
 from curl_cffi import requests as cffi_requests
 from supabase import create_client
+from seed_universe import pick_sector
 
 
 SUPABASE_URL = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
@@ -173,7 +174,8 @@ def main() -> int:
         master.append({
             "ticker":       n["symbol"] + ".NS",
             "company_name": n["company_name"],
-            "sector":       n["sector"],
+            "sector":       pick_sector(n["sector"]),
+            "industry":     n["sector"],
             "exchange":     "NSE",
             "bse_scrip":    bse["scrip"] if bse else None,
             "isin":         isin,
