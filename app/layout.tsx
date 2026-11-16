@@ -256,6 +256,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })(window,document,'script','dataLayer','${GTM_ID}');`,
           }}
         />
+        {/* Google AdSense */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2627122621294264"
+          crossOrigin="anonymous"
+        />
+
         {/* Direct GA4 for the earnings-specific property (G-RBFXGWE6YW). */}
         <script
           async

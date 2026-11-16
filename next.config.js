@@ -24,6 +24,11 @@ const GA_SCRIPT_SRC  = "https://www.googletagmanager.com";
 const GA_CONNECT_SRC = "https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net";
 const GA_IMG_SRC     = "https://www.google-analytics.com https://www.googletagmanager.com";
 
+// Google AdSense hosts
+const ADS_SCRIPT_SRC = "https://pagead2.googlesyndication.com https://adservice.google.com https://googleads.g.doubleclick.net";
+const ADS_FRAME_SRC  = "https://googleads.g.doubleclick.net https://tpc.googlesyndication.com";
+const ADS_IMG_SRC    = "https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net";
+
 const isDev = process.env.NODE_ENV === "development";
 
 const csp = [
@@ -34,11 +39,12 @@ const csp = [
   "form-action 'self'",
   // 'unsafe-eval' is required by Turbopack in dev mode for inline source maps.
   // Excluded from production — React/Next never need it there.
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${GA_SCRIPT_SRC}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${GA_SCRIPT_SRC} ${ADS_SCRIPT_SRC}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
-  `img-src 'self' data: https://www.thecore.in ${GA_IMG_SRC}`,
+  `img-src 'self' data: https://www.thecore.in ${GA_IMG_SRC} ${ADS_IMG_SRC}`,
   `connect-src 'self' ${SUPABASE_HOST} ${GA_CONNECT_SRC}`,
+  `frame-src ${ADS_FRAME_SRC}`,
   "upgrade-insecure-requests"
 ].join("; ");
 
