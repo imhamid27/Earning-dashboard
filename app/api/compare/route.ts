@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       sb
         .from("quarterly_financials")
         .select(
-          "ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps"
+          "ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps,source,data_quality_status"
         )
         .in("ticker", tickers)
         .order("quarter_end_date", { ascending: true }),

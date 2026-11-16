@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tic
       .eq("ticker", ticker)
       .maybeSingle(),
     sb.from("quarterly_financials")
-      .select("id,ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps,currency,data_quality_status,fetched_at")
+      .select("id,ticker,quarter_label,quarter_end_date,fiscal_year,fiscal_quarter,revenue,net_profit,operating_profit,eps,currency,source,data_quality_status,fetched_at")
       .eq("ticker", ticker)
       .order("quarter_end_date", { ascending: true }),
     // Pull every fetched announcement for this ticker so we can stitch a

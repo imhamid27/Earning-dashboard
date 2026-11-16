@@ -27,7 +27,7 @@ interface DetailResp {
     revenue: number | null; net_profit: number | null; operating_profit: number | null;
     eps: number | null; currency: string; data_quality_status: any;
     fetched_at: string;
-    revenue_qoq: number | null; revenue_yoy: number | null;
+    source: string; revenue_qoq: number | null; revenue_yoy: number | null;
     profit_qoq: number | null; profit_yoy: number | null;
     filing_url: string | null;
   }>;
@@ -420,12 +420,13 @@ export default function CompanyDetail() {
                     <th className="text-right">Profit YoY</th>
                     <th className="text-right hidden sm:table-cell">Op. profit</th>
                     <th className="text-right hidden sm:table-cell">EPS</th>
+                    <th className="text-right hidden sm:table-cell">Source</th>
                     <th className="text-right">Filing</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[...data.quarters].reverse().map((q) => (
-                    <tr key={q.id}>
+                    <tr key={q.id} className={q.data_quality_status === "missing" ? "opacity-50" : ""}>
                       <td className="font-semibold tabular-nums">{q.quarter_label}</td>
                       <td className="hidden sm:table-cell text-sm text-core-muted tabular-nums">{formatDate(q.quarter_end_date)}</td>
                       <td className="text-right tabular-nums font-semibold">{formatINR(q.revenue)}</td>
@@ -435,6 +436,9 @@ export default function CompanyDetail() {
                       <td className={`text-right tabular-nums font-semibold whitespace-nowrap ${pctToneClass(q.profit_yoy)}`}>{formatYoY(q.profit_yoy)}</td>
                       <td className="hidden sm:table-cell text-right tabular-nums">{formatINR(q.operating_profit)}</td>
                       <td className="hidden sm:table-cell text-right tabular-nums">{q.eps != null ? q.eps.toFixed(2) : "—"}</td>
+                      <td className="hidden sm:table-cell text-right">
+                        <SourceChip source={q.source} quality={q.data_quality_status} />
+                      </td>
                       <td className="text-right">
                         <PdfLink
                           url={q.filing_url}
