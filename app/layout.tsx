@@ -140,7 +140,10 @@ export const metadata: Metadata = {
       "en-IN": "/"
     }
   },
-  category: "finance"
+  category: "finance",
+  other: {
+    "google-adsense-account": "ca-pub-2627122621294264",
+  },
 };
 
 // G-RBFXGWE6YW is the earnings-site GA4 property (direct gtag).
