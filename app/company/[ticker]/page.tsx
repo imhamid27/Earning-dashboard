@@ -43,6 +43,27 @@ type PriceInfo = {
 // Resolved once at module load — avoids re-calling siteUrl() on every render.
 const COMPANY_BASE = siteUrl();
 
+function SourceChip({ source, quality }: { source: string; quality: string }) {
+  const labels: Record<string, string> = {
+    nse: "NSE XBRL", bse: "BSE", bse_pdf: "BSE PDF",
+    screener: "Screener", yahoo: "Yahoo",
+  };
+  const label = labels[source] ?? source;
+  const isPartial = quality === "partial";
+  const isMissing = quality === "missing";
+  return (
+    <span
+      title={isMissing ? "Data incomplete" : isPartial ? "Some fields missing" : `Source: ${label}`}
+      className={`inline-block text-[9px] font-semibold uppercase tracking-[0.1em] px-1.5 py-0.5 rounded
+        ${isMissing || isPartial
+          ? "bg-amber-50 text-amber-700 border border-amber-200"
+          : "bg-core-surface text-core-muted border border-core-line"}`}
+    >
+      {label}{isPartial ? " ·partial" : ""}
+    </span>
+  );
+}
+
 export default function CompanyDetail() {
   const params = useParams<{ ticker: string }>();
   const rawTicker = decodeURIComponent(params.ticker);

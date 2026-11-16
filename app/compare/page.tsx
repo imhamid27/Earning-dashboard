@@ -23,6 +23,8 @@ interface QRow {
   eps: number | null;
   revenue_yoy: number | null;
   profit_yoy: number | null;
+  source: string;
+  data_quality_status: string;
 }
 
 interface CompanyData {
@@ -259,8 +261,18 @@ function CompareTable({
                     : metric === "net_profit"
                     ? q?.profit_yoy
                     : null;
+                const sourceLabels: Record<string, string> = {
+                  nse: "NSE", bse: "BSE", bse_pdf: "BSE PDF",
+                  screener: "Screener", yahoo: "Yahoo",
+                };
+                const srcLabel = q ? (sourceLabels[q.source] ?? q.source) : null;
+                const isPartial = q?.data_quality_status === "partial";
+                const isMissing = q?.data_quality_status === "missing";
                 return (
-                  <td key={co.company.ticker} className="text-right tabular-nums">
+                  <td
+                    key={co.company.ticker}
+                    className={`text-right tabular-nums${isMissing ? " opacity-50" : ""}`}
+                  >
                     <div className="font-semibold">
                       {val == null
                         ? "—"
@@ -273,6 +285,11 @@ function CompareTable({
                         {formatYoY(yoy)}
                       </div>
                     ) : null}
+                    {srcLabel && (
+                      <div className={`text-[9px] font-semibold uppercase tracking-[0.08em] mt-0.5 ${isPartial || isMissing ? "text-amber-600" : "text-core-muted"}`}>
+                        {srcLabel}{isPartial ? " ·partial" : ""}
+                      </div>
+                    )}
                   </td>
                 );
               })}
@@ -465,7 +482,7 @@ export default function ComparePage() {
                       href={`/company/${encodeURIComponent(co.company.ticker)}`}
                       className="shrink-0 text-[11px] text-core-muted hover:text-core-pink"
                     >
-                      View →
+                      View details & filings →
                     </a>
                   </div>
 
