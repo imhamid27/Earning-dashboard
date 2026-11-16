@@ -249,22 +249,33 @@ def main() -> int:
         print("No targets — pass --ticker or --all or --missing.")
         return 0
 
+    # Screener.in uses NSE symbols — skip BSE-only (.BO) tickers upfront.
+    bse_only = [c for c in targets if c["ticker"].endswith(".BO")]
+    targets   = [c for c in targets if not c["ticker"].endswith(".BO")]
+    if bse_only:
+        print(f"Skipping {len(bse_only)} BSE-only (.BO) tickers — not on Screener.in")
+
+    if not targets:
+        print("No NSE targets remaining.")
+        return 0
+
     print(f"Scraping Screener.in for {len(targets)} companies...")
     ok_count = 0
-    fail_count = 0
+    fail_count = 0   # hard errors (network/parse exceptions)
+    skip_count = 0   # expected misses (not listed on Screener)
     for i, c in enumerate(targets, 1):
         symbol = c["ticker"].replace(".NS", "")
         try:
             html = fetch_company_html(session, symbol)
             if not html:
                 log_fetch(sb, c["ticker"], "failed", "page not found on Screener (404)")
-                fail_count += 1
+                skip_count += 1
                 print(f"[{i:3d}/{len(targets)}] {c['ticker']:<16} not on Screener")
                 continue
             quarters, metrics = extract_quarters_table(html)
             if not quarters:
                 log_fetch(sb, c["ticker"], "failed", "no quarters section")
-                fail_count += 1
+                skip_count += 1
                 print(f"[{i:3d}/{len(targets)}] {c['ticker']:<16} no #quarters section")
                 continue
             written = upsert_company(sb, c, quarters, metrics)
@@ -273,7 +284,7 @@ def main() -> int:
                 log_fetch(sb, c["ticker"], "success", f"wrote {written} quarters from screener")
                 print(f"[{i:3d}/{len(targets)}] {c['ticker']:<16} wrote {written} (screener)")
             else:
-                fail_count += 1
+                skip_count += 1
                 log_fetch(sb, c["ticker"], "failed", "no writable rows")
                 print(f"[{i:3d}/{len(targets)}] {c['ticker']:<16} no writable rows")
         except Exception as e:
@@ -281,7 +292,7 @@ def main() -> int:
             log_fetch(sb, c["ticker"], "failed", str(e))
             print(f"[{i:3d}/{len(targets)}] {c['ticker']:<16} ERROR {e}", file=sys.stderr)
 
-    print(f"\nDone. {ok_count} ok, {fail_count} failed.")
+    print(f"\nDone. {ok_count} ok, {skip_count} not on Screener, {fail_count} errors.")
     return 0 if fail_count == 0 else 1
 
 
