@@ -77,10 +77,9 @@ jobs:
     # Raised from 30 → 40 → 55 → 75 min. During peak earnings season
     # nse_results alone (hundreds of pending events at NSE_RPS=2) runs 35+
     # min; the 8-script daily phase needs headroom for coverage + PDF parsing
-    # after that. 75 min keeps backfill slots safe (they run the Sunday
-    # cron only) and doesn't starve the Mon–Fri hourly slots which are
-    # on a separate concurrency group slot (~25 min).
-    timeout-minutes: 75
+    # after that. Raised from 75 → 120 min: peak earnings season full sweeps
+    # were consistently hitting the 75-min cap and being cancelled mid-run.
+    timeout-minutes: 120
     env:
       TZ: Asia/Kolkata
       NEXT_PUBLIC_SUPABASE_URL:  ${{ secrets.SUPABASE_URL }}
