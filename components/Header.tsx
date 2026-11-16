@@ -40,6 +40,7 @@ export default function Header() {
   const SIMPLE_NAV = [
     { href: "/",                    label: "Dashboard"  },
     { href: "/sectors",             label: "Sectors"    },
+    { href: "/compare",             label: "Compare"    },
     { href: "/market-movers",       label: "Movers"     },
     { href: "/upcoming",            label: "Upcoming"   },
     { href: "/year-in-review/2026", label: "2026 Review"},
@@ -209,6 +210,13 @@ export default function Header() {
                 ${isActive("/sectors") ? "text-core-pink" : "text-core-ink"}`}
             >
               Sectors
+            </Link>
+            <Link
+              href="/compare"
+              className={`py-3 text-[15px] font-medium border-b border-core-line
+                ${isActive("/compare") ? "text-core-pink" : "text-core-ink"}`}
+            >
+              Compare
             </Link>
             <Link
               href="/market-movers"
