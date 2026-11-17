@@ -992,6 +992,19 @@ export default function DashboardPage() {
 
       <DotDashDivider />
 
+      {/* AdSense — Earnings site ad unit (auto-format, full-width responsive) */}
+      <div className="my-4">
+        <ins
+          className="adsbygoogle"
+          style={{ display: "block" }}
+          data-ad-client="ca-pub-2627122621294264"
+          data-ad-slot="3163703934"
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        />
+        <script dangerouslySetInnerHTML={{ __html: "(adsbygoogle = window.adsbygoogle || []).push({});" }} />
+      </div>
+
       {/* =================================================================
           3. FIND A COMPANY — search + full table. Primary content
           after the live band. Quarter selector lives here (only place
