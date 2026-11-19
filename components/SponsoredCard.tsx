@@ -45,21 +45,23 @@ export default function SponsoredCard({ inline = false }: { inline?: boolean }) 
 
   if (!card || skip) return null;
   return (
-    <aside className={inline ? "my-5 md:my-6" : "container-core mt-10"} aria-label="Sponsored">
-      <div className="relative overflow-hidden rounded-xl border border-core-line bg-white shadow-sm">
-        <span className="absolute inset-y-0 left-0 w-1 bg-core-pink" aria-hidden="true" />
-        <div className="flex flex-col gap-4 py-5 pl-6 pr-5 md:flex-row md:items-center md:justify-between md:gap-8 md:py-6 md:pl-7 md:pr-7">
-          <div className="min-w-0 max-w-2xl">
-            <span className="inline-block rounded bg-core-surface px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-core-muted">Sponsored</span>
-            <h3 className="mt-2 text-lg font-extrabold leading-snug tracking-tight text-core-ink md:text-xl">{card.title}</h3>
-            <p className="mt-1 text-[14px] leading-relaxed text-core-muted">{card.text}</p>
-            {card.note ? <p className="mt-2 text-[11.5px] text-core-muted/80">{card.note}</p> : null}
+    <aside className={inline ? "my-3" : "container-core mt-8"} aria-label="Sponsored">
+      <div className="relative overflow-hidden rounded-lg border border-core-line bg-white">
+        <span className="absolute inset-y-0 left-0 w-[3px] bg-core-pink" aria-hidden="true" />
+        <div className="flex flex-col gap-2.5 py-3 pl-5 pr-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-core-surface px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.14em] text-core-muted">Sponsored</span>
+              <h3 className="text-[15px] font-bold leading-snug text-core-ink">{card.title}</h3>
+            </div>
+            <p className="mt-0.5 text-[13px] leading-snug text-core-muted">{card.text}</p>
+            {card.note ? <p className="mt-0.5 text-[11px] text-core-muted/80">{card.note}</p> : null}
           </div>
           <a
             href={card.url}
             target="_blank"
             rel="sponsored nofollow noopener noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-core-pink px-6 py-3 text-[15px] font-bold text-white shadow-sm transition hover:brightness-95 md:min-w-[190px]"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-core-pink px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-95"
           >
             {card.cta} <span aria-hidden="true">&rarr;</span>
           </a>
