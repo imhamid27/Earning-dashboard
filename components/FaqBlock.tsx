@@ -13,6 +13,7 @@
  *   • All open by default on first paint so the page reads as a long
  *     editorial block; users can collapse the ones they've read
  */
+import { Fragment } from "react";
 import { buildFaqLd } from "@/lib/seo";
 import JsonLd from "@/components/JsonLd";
 import SponsoredFaqRow from "@/components/SponsoredFaqRow";
@@ -67,13 +68,13 @@ export default function FaqBlock({
           render so search engines see the answer copy without needing
           to simulate a click, and so readers immediately see what kind
           of answers live in this section. */}
-      <div className="border border-core-line rounded-md divide-y divide-core-line bg-white">
+      <div className="border border-core-line rounded-md divide-y divide-core-line bg-white [counter-reset:faq]">
         {items.map((item, i) => (
+          <Fragment key={i}>
           <details
-            key={i}
             // eslint-disable-next-line react/no-unknown-property
             open={i === 0 ? true : undefined}
-            className="group faq-row"
+            className="group faq-row [counter-increment:faq]"
           >
             <summary
               className="
@@ -85,8 +86,8 @@ export default function FaqBlock({
             >
               {/* Question number — small mono badge, gives the list a
                   scannable spine on long FAQs. */}
-              <span className="mt-0.5 shrink-0 inline-flex items-center justify-center w-7 h-7 text-[11px] font-bold tabular-nums rounded-full border border-core-line text-core-muted group-open:border-core-pink group-open:text-core-pink group-open:bg-[rgba(236,45,122,0.06)]">
-                {String(i + 1).padStart(2, "0")}
+              <span className="mt-0.5 shrink-0 inline-flex items-center justify-center w-7 h-7 text-[11px] font-bold tabular-nums rounded-full border border-core-line text-core-muted after:content-[counter(faq,decimal-leading-zero)] group-open:border-core-pink group-open:text-core-pink group-open:bg-[rgba(236,45,122,0.06)]">
+                
               </span>
 
               {/* Question text — colour shifts to pink on hover and on
@@ -122,8 +123,9 @@ export default function FaqBlock({
               </div>
             </div>
           </details>
+          {i === Math.ceil(items.length / 2) - 1 ? <SponsoredFaqRow /> : null}
+          </Fragment>
         ))}
-        <SponsoredFaqRow />
       </div>
 
       {/* Footer line — tiny "ask anything else" link signals this is a
