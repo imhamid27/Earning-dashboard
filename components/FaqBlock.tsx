@@ -15,6 +15,7 @@
  */
 import { buildFaqLd } from "@/lib/seo";
 import JsonLd from "@/components/JsonLd";
+import SponsoredFaqRow from "@/components/SponsoredFaqRow";
 
 export interface FaqItem {
   q: string;
@@ -122,6 +123,7 @@ export default function FaqBlock({
             </div>
           </details>
         ))}
+        <SponsoredFaqRow />
       </div>
 
       {/* Footer line — tiny "ask anything else" link signals this is a
