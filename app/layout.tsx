@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import SponsoredCard from "@/components/SponsoredCard";
 import { siteUrl } from "@/lib/site";
 
 // The Core's web CSS uses Mona Sans (body + UI) + Arvo (serif accent). We
@@ -290,6 +291,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </noscript>
         <Header />
         <main className="min-h-[calc(100vh-140px)]">{children}</main>
+        {/* Sponsored card: one per page, from the ad tracker. Empty until offers are switched on. */}
+        <SponsoredCard />
         <Footer />
       </body>
     </html>

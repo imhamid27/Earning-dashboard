@@ -32,6 +32,7 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { basicAuthOk, unauthorized } from "@/lib/ads/auth";
 
 // Cache-Control values mirror the tiers in lib/api.ts so origin pages
 // and their downstream API calls share a coherent freshness policy.
@@ -48,8 +49,19 @@ const TIER_LONG = "public, max-age=120, s-maxage=600, stale-while-revalidate=180
 const EXACT_PATHS = new Set<string>(["/", "/q4", "/sectors", "/upcoming"]);
 
 export function middleware(req: NextRequest) {
-  const res = NextResponse.next();
   const path = req.nextUrl.pathname;
+
+  // Ad tracker dashboard and its private API: password only (AD_TRACKER_PASSWORD, runtime env var).
+  // Locked for everyone while the variable is unset. Never cached, never indexed.
+  if (path.startsWith("/private/") || path.startsWith("/api/private/")) {
+    if (!basicAuthOk(req.headers.get("authorization"))) return unauthorized();
+    const r = NextResponse.next();
+    r.headers.set("Cache-Control", "no-store");
+    r.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    return r;
+  }
+
+  const res = NextResponse.next();
 
   const shouldRewrite =
     EXACT_PATHS.has(path) ||
@@ -80,5 +92,7 @@ export const config = {
     "/upcoming",
     "/company/:path*",
     "/earnings/:path*",
+    "/private/:path*",
+    "/api/private/:path*",
   ],
 };
