@@ -14,6 +14,7 @@ import { trackLiveBandTab } from "@/lib/analytics";
 import { formatINR, formatDate, formatPct, formatYoY, pctToneClass } from "@/lib/format";
 import { TURNED_PROFITABLE, TURNED_LOSS_MAKING } from "@/lib/growth";
 import RelatedCoverage from "@/components/RelatedCoverage";
+import SponsoredCard from "@/components/SponsoredCard";
 import type { LatestQuarterRow } from "@/lib/types";
 
 const DEFAULT_QUARTER = process.env.NEXT_PUBLIC_DEFAULT_QUARTER || "Q2 FY27";
@@ -989,6 +990,8 @@ export default function DashboardPage() {
           ) : null}
         </div>
       ) : null}
+
+      <SponsoredCard inline />
 
       <DotDashDivider />
 

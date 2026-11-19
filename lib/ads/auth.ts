@@ -32,5 +32,5 @@ export function writeHeadersOk(req: Request): boolean {
 export const unauthorized = () =>
   new Response("Sign in required", {
     status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Ad tracker", charset="UTF-8"', "Cache-Control": "no-store" },
+    headers: { "WWW-Authenticate": 'Basic realm="Ad tracker", charset="UTF-8"', "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow, noarchive" },
   });

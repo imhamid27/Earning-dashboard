@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import InfoTooltip from "@/components/InfoTooltip";
+import SponsoredCard from "@/components/SponsoredCard";
 import JsonLd from "@/components/JsonLd";
 import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
 import { siteUrl } from "@/lib/site";
@@ -394,6 +395,8 @@ export default function SectorsPage() {
           </span>
         </div>
       ) : null}
+
+      <SponsoredCard inline />
 
       {/* ── Sort controls ── */}
       {!loading ? (
