@@ -2,7 +2,6 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import Script from "next/script";
 import SponsoredCard from "@/components/SponsoredCard";
 import { siteUrl } from "@/lib/site";
 
@@ -291,9 +290,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             style={{ display: "none", visibility: "hidden" }}
           />
         </noscript>
-        {/* Cuelinks: turns outbound merchant links into affiliate links. Channel id 336975. */}
-        <Script id="cuelinks-cid" strategy="beforeInteractive">{`var cId = "336975";`}</Script>
-        <Script id="cuelinks" strategy="afterInteractive" src="https://cdn0.cuelinks.com/js/cuelinksv2.js" />
+        {/* Cuelinks: turns outbound merchant links into affiliate links. Channel id 336975. Plain inline script inside <body> so the Cuelinks verifier finds it in the raw HTML. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `var cId = "336975"; (function(d, t) { var s = document.createElement("script"); s.type = "text/javascript"; s.async = true; s.src = (document.location.protocol == "https:" ? "https://cdn0.cuelinks.com/js/" : "http://cdn0.cuelinks.com/js/") + "cuelinksv2.js"; document.getElementsByTagName("body")[0].appendChild(s); }());`,
+          }}
+        />
         <Header />
         <main className="min-h-[calc(100vh-140px)]">{children}</main>
         {/* Sponsored card: one per page, from the ad tracker. Empty until offers are switched on. */}
