@@ -368,8 +368,6 @@ export default function ComparePage() {
         </p>
       </section>
 
-      <SponsoredCard />
-
       {/* Company selector row */}
       <section className="flex flex-wrap items-start gap-3">
         {/* Chips for selected companies */}
@@ -397,6 +395,8 @@ export default function ComparePage() {
           <CompanyPicker onAdd={addCompany} disabledTickers={selectedTickers} />
         )}
       </section>
+
+      <SponsoredCard />
 
       {/* Empty state */}
       {companies.length === 0 && !loading && (
