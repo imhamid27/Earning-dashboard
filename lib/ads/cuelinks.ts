@@ -58,8 +58,14 @@ export async function syncCuelinks(store: Store): Promise<{ ok: boolean; failed:
   // 3. suggestions: open and approved campaigns for India, best earners first
   const merged: Record<string, any> = {}; let bad = false;
   for (const acc of ["open", "approved"]) {
-    const r = await api(`/campaigns?access_status=${acc}&country_id=252&per_page=500&sort=epc_90d&order=desc`);
-    if (r.status === 200) list(r.body).forEach((c) => { merged[c.id] = c; }); else bad = true;
+    // The API returns one page at a time (about 30 rows whatever per_page says), so walk the pages until one adds nothing new.
+    for (let page = 1; page <= 30; page++) {
+      const r = await api(`/campaigns?access_status=${acc}&country_id=252&per_page=100&page=${page}&sort=epc_90d&order=desc`);
+      if (r.status !== 200) { if (page === 1) bad = true; break; }
+      const rows = list(r.body); let fresh = 0;
+      rows.forEach((c) => { if (c && c.id != null && !merged[c.id]) { merged[c.id] = c; fresh++; } });
+      if (!rows.length || !fresh) break;
+    }
   }
   if (!Object.keys(merged).length) failed.push("campaign list");
   else {
