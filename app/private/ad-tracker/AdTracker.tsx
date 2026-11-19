@@ -145,13 +145,13 @@ function OfferCard({ o, pages, act }: { o: Offer; pages: PageDef[]; act: (b: any
 
 function Suggestions({ st, pages, added, act }: { st: State; pages: PageDef[]; added: Set<string>; act: (b: any) => Promise<void> }) {
   const [net, setNet] = useState<"admitad" | "cuelinks">("admitad");
-  const [q, setQ] = useState(""); const [cat, setCat] = useState(""); const [fin, setFin] = useState(true);
+  const [q, setQ] = useState(""); const [cat, setCat] = useState(""); const [fin, setFin] = useState(true); const [only, setOnly] = useState(true);
   const [adding, setAdding] = useState<number | null>(null);
   const data = net === "admitad" ? st.adSug : st.cuSug;
   const items: Cand[] = data?.items || [];
   const cats = useMemo(() => [...new Set(items.flatMap((c) => c.categories))].sort(), [items]);
   const ready = (c: Cand) => (joined(c) && c.link ? 0 : 1);
-  const shown = items.filter((c) => (!fin || isFin(c)) && (!cat || c.categories.includes(cat)) && (!q || c.name.toLowerCase().includes(q.toLowerCase()))).sort((a, b) => ready(a) - ready(b));
+  const shown = items.filter((c) => (!only || (joined(c) && !!c.link)) && (!fin || isFin(c)) && (!cat || c.categories.includes(cat)) && (!q || c.name.toLowerCase().includes(q.toLowerCase()))).sort((a, b) => ready(a) - ready(b));
   return (
     <div className="space-y-4">
       <p className="max-w-3xl text-sm text-core-muted">Every campaign the network offers for India. Ones this site has joined and that have a tracking link come first; for the rest, apply on the network before using them.</p>
@@ -159,12 +159,12 @@ function Suggestions({ st, pages, added, act }: { st: State; pages: PageDef[]; a
         <div className="flex gap-2"><button className={net === "admitad" ? btnInk : btn} onClick={() => setNet("admitad")}>Admitad</button><button className={net === "cuelinks" ? btnInk : btn} onClick={() => setNet("cuelinks")}>Cuelinks</button></div>
         <input className={field + " max-w-xs"} placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
         <select className={field + " max-w-[200px]"} value={cat} onChange={(e) => setCat(e.target.value)}><option value="">All categories</option>{cats.map((c) => <option key={c}>{c}</option>)}</select>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={fin} onChange={(e) => setFin(e.target.checked)} />Finance only</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={only} onChange={(e) => setOnly(e.target.checked)} />Joined with a live link only</label><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={fin} onChange={(e) => setFin(e.target.checked)} />Finance only</label>
       </div>
       {!data ? <p className="rounded-xl border border-core-line bg-white p-6 text-center text-sm text-core-muted">No suggestions yet. Run a sync from the Setup tab.</p> : (
         <div className="overflow-hidden rounded-xl border border-core-line bg-white">
           <div className="border-b border-core-line px-4 py-2 text-xs text-core-muted">{shown.length} shown of {items.length} · updated {when(data.updated)}</div>
-          {shown.length === 0 ? <p className="p-6 text-center text-sm text-core-muted">Nothing matches. {fin ? "Untick Finance only to see every category. " : ""}</p> : shown.slice(0, 150).map((c) => {
+          {shown.length === 0 ? <p className="p-6 text-center text-sm text-core-muted">Nothing matches. {only ? "Untick Joined with a live link only to see campaigns you have not joined yet. " : ""}{fin ? "Untick Finance only to see every category. " : ""}</p> : shown.slice(0, 150).map((c) => {
             const id = (net === "admitad" ? "a" : "x") + c.id, done = added.has(id);
             return (
               <div key={c.id} className="border-b border-core-line px-4 py-3 last:border-0">
