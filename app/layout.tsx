@@ -290,6 +290,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             style={{ display: "none", visibility: "hidden" }}
           />
         </noscript>
+        <Header />
+        <main className="min-h-[calc(100vh-140px)]">{children}</main>
+        {/* Sponsored card: one per page, from the ad tracker. Empty until offers are switched on. */}
+        <SponsoredCard />
+        <Footer />
         {/* Cuelinks: turns outbound merchant links into affiliate links. Channel id 336975. Plain inline script inside <body> so the Cuelinks verifier finds it in the raw HTML. */}
         <script
           type="text/javascript"
@@ -307,11 +312,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 `,
           }}
         />
-        <Header />
-        <main className="min-h-[calc(100vh-140px)]">{children}</main>
-        {/* Sponsored card: one per page, from the ad tracker. Empty until offers are switched on. */}
-        <SponsoredCard />
-        <Footer />
       </body>
     </html>
   );
