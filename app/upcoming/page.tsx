@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/format";
 import { simplifyPurpose } from "@/lib/purpose";
 import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
 import { siteUrl } from "@/lib/site";
+import SponsoredCard from "@/components/SponsoredCard";
 
 interface Row {
   company_name: string;
@@ -134,6 +135,8 @@ export default function UpcomingPage() {
           </div>
         </div>
       </section>
+
+      <SponsoredCard />
 
       {/* ============ BELLWETHERS PENDING ============ */}
       {bellwethersPending.length > 0 ? (

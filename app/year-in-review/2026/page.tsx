@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import SponsoredCard from "@/components/SponsoredCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -353,6 +354,8 @@ export default function YearInReview2026() {
             />
           </div>
         )}
+
+        <SponsoredCard />
 
         {/* ── Quarterly timeline ── */}
         <section>

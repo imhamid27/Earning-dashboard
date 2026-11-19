@@ -13,6 +13,7 @@ import { formatINR, formatPct, formatYoY, formatDate, pctToneClass } from "@/lib
 import { DISCLAIMER_SHORT, DISCLAIMER_PRICE } from "@/lib/disclaimer";
 import { trackCompanyView } from "@/lib/analytics";
 import { siteUrl } from "@/lib/site";
+import SponsoredCard from "@/components/SponsoredCard";
 
 interface DetailResp {
   company: {
@@ -373,6 +374,8 @@ export default function CompanyDetail() {
               sub={prevY ? `vs ${prevY.quarter_label}` : undefined}
             />
           </section>
+
+          <SponsoredCard />
 
           {/* About this company — compact metadata card. Kept deliberately
               factual + verifiable: what we can source from exchange filings,

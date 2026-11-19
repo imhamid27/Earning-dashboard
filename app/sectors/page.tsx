@@ -396,7 +396,7 @@ export default function SectorsPage() {
         </div>
       ) : null}
 
-      <SponsoredCard inline />
+      <SponsoredCard className="mb-6" />
 
       {/* ── Sort controls ── */}
       {!loading ? (

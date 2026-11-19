@@ -7,6 +7,7 @@ import {
   CartesianGrid, Legend,
 } from "recharts";
 import { formatINR, formatYoY, pctToneClass } from "@/lib/format";
+import SponsoredCard from "@/components/SponsoredCard";
 
 // ── brand-safe palette: 5 distinct colours that look fine on white ────────
 const COLORS = ["#E8365D", "#17AB8C", "#0A0A0A", "#F59E0B", "#6366F1"];
@@ -366,6 +367,8 @@ export default function ComparePage() {
           side by side. Add companies below and switch between chart and table views.
         </p>
       </section>
+
+      <SponsoredCard />
 
       {/* Company selector row */}
       <section className="flex flex-wrap items-start gap-3">

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import InfoTooltip from "@/components/InfoTooltip";
 import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
+import SponsoredCard from "@/components/SponsoredCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -282,6 +283,8 @@ export default function MarketMoversPage() {
           </span>
         )}
       </div>
+
+      <SponsoredCard className="mb-6" />
 
       {/* ── Error ── */}
       {error ? (

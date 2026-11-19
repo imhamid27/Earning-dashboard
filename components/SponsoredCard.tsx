@@ -1,27 +1,27 @@
 "use client";
 
-// Sponsored card. "inline" = placed mid-page by a page (home, sectors); default = above the footer on the other pages.
-// Sponsored "next step" card. Always labelled "Sponsored". Shows one offer chosen for the current page;
-// when several offers match, it rotates between them on each visit (a per-page counter in localStorage).
+// Sponsored slot. One component, two shapes, both built from the site's own parts (hairline rules,
+// pink-dot eyebrow, bold title, muted copy) so it reads as part of the page. Always labelled "Sponsored".
+//   <SponsoredCard />         a ruled "next step" strip, placed by each page after its first block of content
+//   <SponsoredCard tile=".." /> a tile that sits in a card grid (extra class sets how many columns it spans)
+// One offer is chosen per page; when several match it rotates on each visit (a counter in localStorage).
 // Renders nothing until offers arrive, and nothing at all when none are switched on.
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { pageKeyForPath } from "@/lib/ads/pages";
 
-// Pages that place the card themselves with <SponsoredCard inline />; the footer one skips these.
-export const INLINE_PAGES = ["home", "sectors"];
-
 type Card = { id: string; title: string; text: string; cta: string; note: string; url: string };
 
-export default function SponsoredCard({ inline = false, tile = "" }: { inline?: boolean; tile?: string }) {
+const REL = "sponsored nofollow noopener noreferrer";
+
+export default function SponsoredCard({ tile, className = "" }: { tile?: string; className?: string }) {
   const pathname = usePathname() || "/";
   const page = pageKeyForPath(pathname);
   const [card, setCard] = useState<Card | null>(null);
-  const skip = !inline && !tile && !!page && INLINE_PAGES.includes(page);
 
   useEffect(() => {
     setCard(null);
-    if (!page || skip) return;
+    if (!page) return;
     let gone = false;
     fetch(`/api/ads?page=${encodeURIComponent(page)}`)
       .then((r) => (r.ok ? r.json() : { offers: [] }))
@@ -41,55 +41,49 @@ export default function SponsoredCard({ inline = false, tile = "" }: { inline?: 
       })
       .catch(() => {});
     return () => { gone = true; };
-  }, [page, skip]);
+  }, [page]);
 
-  if (!card || skip) return null;
-  if (tile !== "") {
+  if (!card) return null;
+
+  const label = (
+    <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-core-muted">
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-core-pink" aria-hidden="true" />
+      Sponsored
+    </span>
+  );
+
+  if (tile !== undefined) {
     return (
       <aside className={"h-full " + tile} aria-label="Sponsored">
-        <div className="flex h-full flex-col gap-2 rounded-lg border border-core-pink/30 bg-core-pink/[0.04] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+        <div className="flex h-full flex-col gap-3 rounded-lg border border-core-line bg-core-pink/[0.03] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
           <div className="min-w-0">
-            <div className="mb-0.5 flex items-center gap-2">
-              <span className="text-[12px] font-bold text-core-pink">{card.title}</span>
-              <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-core-muted">Sponsored</span>
-            </div>
-            <p className="text-[12px] leading-snug text-core-muted">{card.text}</p>
-            {card.note ? <p className="mt-0.5 text-[10.5px] text-core-muted/80">{card.note}</p> : null}
+            {label}
+            <div className="mt-1 text-[13px] font-bold leading-snug text-core-ink">{card.title}</div>
+            <p className="mt-0.5 text-[12px] leading-snug text-core-muted">{card.text}</p>
           </div>
-          <a
-            href={card.url}
-            target="_blank"
-            rel="sponsored nofollow noopener noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-1 self-start rounded-md bg-core-pink px-3.5 py-1.5 text-[12px] font-bold text-white hover:brightness-95 sm:self-auto"
-          >
+          <a href={card.url} target="_blank" rel={REL} className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-md bg-core-pink px-4 text-[13px] font-bold text-white active:brightness-90 sm:h-9">
             {card.cta} <span aria-hidden="true">&rarr;</span>
           </a>
         </div>
+        {card.note ? <p className="mt-1 px-1 text-[10.5px] text-core-muted/80">{card.note}</p> : null}
       </aside>
     );
   }
+
   return (
-    <aside className={inline ? "my-3" : "container-core mt-8"} aria-label="Sponsored">
-      <div className="relative overflow-hidden rounded-lg border border-core-line bg-white">
-        <span className="absolute inset-y-0 left-0 w-[3px] bg-core-pink" aria-hidden="true" />
-        <div className="flex flex-col gap-2.5 py-3 pl-5 pr-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="rounded bg-core-surface px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.14em] text-core-muted">Sponsored</span>
-              <h3 className="text-[15px] font-bold leading-snug text-core-ink">{card.title}</h3>
-            </div>
+    <aside className={className} aria-label="Sponsored">
+      <div className="border-y border-core-line bg-core-pink/[0.03] py-4 md:py-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-8">
+          <div className="min-w-0 max-w-2xl">
+            {label}
+            <h3 className="mt-1 text-[15px] font-bold leading-snug tracking-tight text-core-ink md:text-base">{card.title}</h3>
             <p className="mt-0.5 text-[13px] leading-snug text-core-muted">{card.text}</p>
-            {card.note ? <p className="mt-0.5 text-[11px] text-core-muted/80">{card.note}</p> : null}
           </div>
-          <a
-            href={card.url}
-            target="_blank"
-            rel="sponsored nofollow noopener noreferrer"
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-core-pink px-4 py-2 text-[13px] font-bold text-white transition hover:brightness-95"
-          >
+          <a href={card.url} target="_blank" rel={REL} className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-md bg-core-pink px-5 text-[14px] font-bold text-white active:brightness-90 md:h-10 md:min-w-[170px]">
             {card.cta} <span aria-hidden="true">&rarr;</span>
           </a>
         </div>
+        {card.note ? <p className="mt-2 text-[11px] text-core-muted/80">{card.note}</p> : null}
       </div>
     </aside>
   );

@@ -992,7 +992,7 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      {outliers.length === 0 ? <SponsoredCard inline /> : null}
+      {outliers.length === 0 ? <SponsoredCard className="my-4" /> : null}
 
       <DotDashDivider />
 
