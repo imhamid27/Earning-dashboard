@@ -180,6 +180,12 @@ function Suggestions({ st, pages, added, act }: { st: State; pages: PageDef[]; a
                 </div>
                 {adding === c.id ? (
                   <div>
+                    {!joined(c) || !c.link ? (
+                      <p className="mt-2 rounded-lg bg-amber-100 p-3 text-xs text-amber-900">
+                        <b>This campaign is not joined{c.access ? " (status: " + c.access + ")" : ""}{joined(c) && !c.link ? " and has no tracking link yet" : ""}.</b>{" "}
+                        Its link may be expired or may not pay. Apply on {net === "admitad" ? "Admitad" : "Cuelinks"} first, then open the link and check it lands on a live page before switching the card on.
+                      </p>
+                    ) : null}
                     <p className="mt-2 text-xs text-core-muted">The card is pre-filled from the campaign name. Open the link, check where it lands, and edit the wording. A draft is not shown on the site until you switch it on.</p>
                     <CopyForm pages={pages} init={draftCopy(c, pages.map((p) => p.key))} submitLabel="Add draft" onCancel={() => setAdding(null)}
                       onSubmit={async (v) => { await act({ op: "add", network: net, campaignId: c.id, name: c.name, domain: c.domain, ...v }); setAdding(null); }} />
