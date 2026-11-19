@@ -55,7 +55,7 @@ export default function SponsoredCard({ tile, className = "" }: { tile?: string;
   if (tile !== undefined) {
     return (
       <aside className={"h-full " + tile} aria-label="Sponsored">
-        <div className={"flex h-full flex-col gap-3 rounded-lg border border-core-line bg-core-pink/[0.03] px-4 py-3" + (tile.includes("wide") ? " sm:flex-row sm:items-center sm:justify-between sm:gap-5" : "")}>
+        <div className={"flex h-full flex-col justify-between gap-3 rounded-lg border border-core-line bg-core-pink/[0.03] px-4 py-3" + (tile.includes("wide") ? " sm:flex-row sm:items-center sm:justify-between sm:gap-5" : "")}>
           <div className="min-w-0">
             {label}
             <div className="mt-1 text-[13px] font-bold leading-snug text-core-ink">{card.title}</div>
@@ -72,18 +72,18 @@ export default function SponsoredCard({ tile, className = "" }: { tile?: string;
 
   return (
     <aside className={className} aria-label="Sponsored">
-      <div className="border-y border-core-line bg-core-pink/[0.03] py-4 md:py-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-8">
-          <div className="min-w-0 max-w-2xl">
+      <div className="max-w-3xl border-l-2 border-core-pink py-0.5 pl-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+          <div className="min-w-0 flex-1">
             {label}
-            <h3 className="mt-1 text-[15px] font-bold leading-snug tracking-tight text-core-ink md:text-base">{card.title}</h3>
+            <h3 className="mt-1 text-[15px] font-bold leading-snug tracking-tight text-core-ink">{card.title}</h3>
             <p className="mt-0.5 text-[13px] leading-snug text-core-muted">{card.text}</p>
           </div>
-          <a href={card.url} target="_blank" rel={REL} className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-md bg-core-pink px-5 text-[14px] font-bold text-white active:brightness-90 md:h-10 md:min-w-[170px]">
+          <a href={card.url} target="_blank" rel={REL} className="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-md bg-core-pink px-5 text-[14px] font-bold text-white active:brightness-90 sm:h-10">
             {card.cta} <span aria-hidden="true">&rarr;</span>
           </a>
         </div>
-        {card.note ? <p className="mt-2 text-[11px] text-core-muted/80">{card.note}</p> : null}
+        {card.note ? <p className="mt-1.5 text-[11px] text-core-muted/80">{card.note}</p> : null}
       </div>
     </aside>
   );

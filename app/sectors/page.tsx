@@ -16,7 +16,7 @@
  *   [Sector deep-dive panels — collapsed; scroll-to on card click]
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import InfoTooltip from "@/components/InfoTooltip";
 import SponsoredCard from "@/components/SponsoredCard";
@@ -396,8 +396,6 @@ export default function SectorsPage() {
         </div>
       ) : null}
 
-      <SponsoredCard className="mb-6" />
-
       {/* ── Sort controls ── */}
       {!loading ? (
         <div className="mb-6 flex items-center flex-wrap gap-2">
@@ -455,13 +453,15 @@ export default function SectorsPage() {
       {/* ── Sector card grid ── */}
       {!loading && sorted.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-10">
-          {sorted.map((s) => (
-            <SectorCard
-              key={s.sector}
-              s={s}
-              isOpen={openDive === s.sector}
-              onClick={() => handleCardClick(s.sector)}
-            />
+          {sorted.map((s, i) => (
+            <Fragment key={s.sector}>
+              <SectorCard
+                s={s}
+                isOpen={openDive === s.sector}
+                onClick={() => handleCardClick(s.sector)}
+              />
+              {i === 2 ? <SponsoredCard tile="" /> : null}
+            </Fragment>
           ))}
         </div>
       ) : null}
