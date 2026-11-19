@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Script from "next/script";
 import SponsoredCard from "@/components/SponsoredCard";
 import { siteUrl } from "@/lib/site";
 
@@ -290,6 +291,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             style={{ display: "none", visibility: "hidden" }}
           />
         </noscript>
+        {/* Cuelinks: turns outbound merchant links into affiliate links. Channel id 336975. */}
+        <Script id="cuelinks-cid" strategy="beforeInteractive">{`var cId = "336975";`}</Script>
+        <Script id="cuelinks" strategy="afterInteractive" src="https://cdn0.cuelinks.com/js/cuelinksv2.js" />
         <Header />
         <main className="min-h-[calc(100vh-140px)]">{children}</main>
         {/* Sponsored card: one per page, from the ad tracker. Empty until offers are switched on. */}

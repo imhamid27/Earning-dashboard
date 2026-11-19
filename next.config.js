@@ -29,6 +29,9 @@ const ADS_SCRIPT_SRC = "https://pagead2.googlesyndication.com https://adservice.
 const ADS_FRAME_SRC  = "https://googleads.g.doubleclick.net https://tpc.googlesyndication.com";
 const ADS_IMG_SRC    = "https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net";
 
+// Cuelinks (affiliate link converter + verification). Script comes from cdn0.cuelinks.com; it may also call/pixel *.cuelinks.com.
+const CL_HOSTS = "https://*.cuelinks.com";
+
 const isDev = process.env.NODE_ENV === "development";
 
 const csp = [
@@ -39,11 +42,11 @@ const csp = [
   "form-action 'self'",
   // 'unsafe-eval' is required by Turbopack in dev mode for inline source maps.
   // Excluded from production — React/Next never need it there.
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${GA_SCRIPT_SRC} ${ADS_SCRIPT_SRC}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} ${GA_SCRIPT_SRC} ${ADS_SCRIPT_SRC} ${CL_HOSTS}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
-  `img-src 'self' data: https://www.thecore.in ${GA_IMG_SRC} ${ADS_IMG_SRC}`,
-  `connect-src 'self' ${SUPABASE_HOST} ${GA_CONNECT_SRC}`,
+  `img-src 'self' data: https://www.thecore.in ${GA_IMG_SRC} ${ADS_IMG_SRC} ${CL_HOSTS}`,
+  `connect-src 'self' ${SUPABASE_HOST} ${GA_CONNECT_SRC} ${CL_HOSTS}`,
   `frame-src ${ADS_FRAME_SRC}`,
   "upgrade-insecure-requests"
 ].join("; ");
