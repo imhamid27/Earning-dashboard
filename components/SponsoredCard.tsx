@@ -13,7 +13,7 @@ export const INLINE_PAGES = ["home", "sectors"];
 
 type Card = { id: string; title: string; text: string; cta: string; note: string; url: string };
 
-export default function SponsoredCard({ inline = false, tile = false }: { inline?: boolean; tile?: boolean }) {
+export default function SponsoredCard({ inline = false, tile = "" }: { inline?: boolean; tile?: string }) {
   const pathname = usePathname() || "/";
   const page = pageKeyForPath(pathname);
   const [card, setCard] = useState<Card | null>(null);
@@ -44,24 +44,26 @@ export default function SponsoredCard({ inline = false, tile = false }: { inline
   }, [page, skip]);
 
   if (!card || skip) return null;
-  if (tile) {
+  if (tile !== "") {
     return (
-      <aside className="h-full" aria-label="Sponsored">
-        <div className="flex h-full flex-col rounded-lg border border-core-pink/30 bg-core-pink/[0.04] px-4 py-3">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[12px] font-bold text-core-pink">{card.title}</span>
-            <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-core-muted">Sponsored</span>
+      <aside className={"h-full " + tile} aria-label="Sponsored">
+        <div className="flex h-full flex-col gap-2 rounded-lg border border-core-pink/30 bg-core-pink/[0.04] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+          <div className="min-w-0">
+            <div className="mb-0.5 flex items-center gap-2">
+              <span className="text-[12px] font-bold text-core-pink">{card.title}</span>
+              <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-core-muted">Sponsored</span>
+            </div>
+            <p className="text-[12px] leading-snug text-core-muted">{card.text}</p>
+            {card.note ? <p className="mt-0.5 text-[10.5px] text-core-muted/80">{card.note}</p> : null}
           </div>
-          <p className="text-[12px] leading-snug text-core-muted">{card.text}</p>
           <a
             href={card.url}
             target="_blank"
             rel="sponsored nofollow noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1 text-[12px] font-bold text-core-pink hover:underline"
+            className="inline-flex shrink-0 items-center justify-center gap-1 self-start rounded-md bg-core-pink px-3.5 py-1.5 text-[12px] font-bold text-white hover:brightness-95 sm:self-auto"
           >
             {card.cta} <span aria-hidden="true">&rarr;</span>
           </a>
-          {card.note ? <p className="mt-1 text-[10.5px] text-core-muted/80">{card.note}</p> : null}
         </div>
       </aside>
     );

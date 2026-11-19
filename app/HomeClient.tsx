@@ -954,7 +954,7 @@ export default function DashboardPage() {
                 </div>
               </Link>
             ))}
-            <SponsoredCard tile />
+            <SponsoredCard tile={`${outliers.length % 2 === 0 ? "sm:col-span-2" : ""} ${["lg:col-span-3", "lg:col-span-2", "lg:col-span-1"][outliers.length % 3]}`.trim() || " "} />
           </div>
 
         </div>
