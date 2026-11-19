@@ -65,6 +65,22 @@ function PagePicker({ pages, value, onChange }: { pages: PageDef[]; value: strin
   );
 }
 
+// Starting copy for a new draft, built from the campaign name and categories. Plain wording, no rates or promises.
+// It is only a starting point: open the link, see where it lands, then edit before switching the card on.
+function draftCopy(c: Cand, allPages: string[]) {
+  const name = c.name.replace(/\s*[-–(]?\s*\b(CPL|CPS|CPA|CPI|CPC|India|IN)\b\)?\s*$/i, "").trim() || c.name;
+  const hay = (c.categories.join(" ") + " " + c.name).toLowerCase();
+  let title = "Worth a look: " + name, text = "See what " + name + " offers and decide for yourself.", verb = "Visit";
+  if (/credit card/.test(hay)) { title = "Looking for a credit card?"; text = "Compare the benefits and fees, then apply on the " + name.replace(/\s*credit card\s*$/i, "") + " site if it suits you."; verb = "Apply on"; }
+  else if (/loan|emi|mortgage/.test(hay)) { title = "Need a loan?"; text = "Check eligibility and terms with " + name + " before you decide."; verb = "Check on"; }
+  else if (/demat|broker|trading|stock|share/.test(hay)) { title = "Want to start investing?"; text = "Open an account with " + name + " and read the charges before you begin."; verb = "Open with"; }
+  else if (/insur/.test(hay)) { title = "Comparing insurance?"; text = "See the plans from " + name + " and read the terms before you buy."; verb = "See"; }
+  else if (/mutual|fund|invest|wealth|saving/.test(hay)) { title = "Looking to invest?"; text = "See what " + name + " offers and read the details before you start."; verb = "Visit"; }
+  let cta = verb + " " + name;
+  if (cta.length > 30) cta = "Visit site";
+  return { title, text, cta, note: "Sponsored link. We may earn a commission if you apply.", url: c.link, pages: allPages };
+}
+
 function CopyForm({ pages, init, submitLabel, onSubmit, onCancel, extra }: {
   pages: PageDef[]; init: { title: string; text: string; cta: string; note: string; url: string; pages: string[] }; submitLabel: string;
   onSubmit: (v: any) => Promise<void>; onCancel?: () => void; extra?: React.ReactNode;
@@ -164,8 +180,8 @@ function Suggestions({ st, pages, added, act }: { st: State; pages: PageDef[]; a
                 </div>
                 {adding === c.id ? (
                   <div>
-                    <p className="mt-2 text-xs text-core-muted">Write the card after opening the link and seeing where it lands. A draft is not shown on the site until you switch it on.</p>
-                    <CopyForm pages={pages} init={{ title: "", text: "", cta: "", note: "", url: c.link, pages: [] }} submitLabel="Add draft" onCancel={() => setAdding(null)}
+                    <p className="mt-2 text-xs text-core-muted">The card is pre-filled from the campaign name. Open the link, check where it lands, and edit the wording. A draft is not shown on the site until you switch it on.</p>
+                    <CopyForm pages={pages} init={draftCopy(c, pages.map((p) => p.key))} submitLabel="Add draft" onCancel={() => setAdding(null)}
                       onSubmit={async (v) => { await act({ op: "add", network: net, campaignId: c.id, name: c.name, domain: c.domain, ...v }); setAdding(null); }} />
                   </div>
                 ) : null}
