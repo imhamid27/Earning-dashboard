@@ -13,11 +13,11 @@ export const INLINE_PAGES = ["home", "sectors"];
 
 type Card = { id: string; title: string; text: string; cta: string; note: string; url: string };
 
-export default function SponsoredCard({ inline = false }: { inline?: boolean }) {
+export default function SponsoredCard({ inline = false, tile = false }: { inline?: boolean; tile?: boolean }) {
   const pathname = usePathname() || "/";
   const page = pageKeyForPath(pathname);
   const [card, setCard] = useState<Card | null>(null);
-  const skip = !inline && !!page && INLINE_PAGES.includes(page);
+  const skip = !inline && !tile && !!page && INLINE_PAGES.includes(page);
 
   useEffect(() => {
     setCard(null);
@@ -44,6 +44,28 @@ export default function SponsoredCard({ inline = false }: { inline?: boolean }) 
   }, [page, skip]);
 
   if (!card || skip) return null;
+  if (tile) {
+    return (
+      <aside className="h-full" aria-label="Sponsored">
+        <div className="flex h-full flex-col rounded-lg border border-core-pink/30 bg-core-pink/[0.04] px-4 py-3">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="text-[12px] font-bold text-core-pink">{card.title}</span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-core-muted">Sponsored</span>
+          </div>
+          <p className="text-[12px] leading-snug text-core-muted">{card.text}</p>
+          <a
+            href={card.url}
+            target="_blank"
+            rel="sponsored nofollow noopener noreferrer"
+            className="mt-2 inline-flex items-center gap-1 text-[12px] font-bold text-core-pink hover:underline"
+          >
+            {card.cta} <span aria-hidden="true">&rarr;</span>
+          </a>
+          {card.note ? <p className="mt-1 text-[10.5px] text-core-muted/80">{card.note}</p> : null}
+        </div>
+      </aside>
+    );
+  }
   return (
     <aside className={inline ? "my-3" : "container-core mt-8"} aria-label="Sponsored">
       <div className="relative overflow-hidden rounded-lg border border-core-line bg-white">

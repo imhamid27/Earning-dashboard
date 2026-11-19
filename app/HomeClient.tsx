@@ -954,6 +954,7 @@ export default function DashboardPage() {
                 </div>
               </Link>
             ))}
+            <SponsoredCard tile />
           </div>
 
         </div>
@@ -991,7 +992,7 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      <SponsoredCard inline />
+      {outliers.length === 0 ? <SponsoredCard inline /> : null}
 
       <DotDashDivider />
 
