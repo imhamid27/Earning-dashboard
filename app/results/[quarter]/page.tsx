@@ -14,7 +14,7 @@ import { simplifyPurpose } from "@/lib/purpose";
 import { formatINR, formatYoY, formatDate, pctToneClass } from "@/lib/format";
 import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
 import { siteUrl } from "@/lib/site";
-import SponsoredCard from "@/components/SponsoredCard";
+import PageRail from "@/components/PageRail";
 
 type PriceMap = Record<string, { last_price: number | null; change_pct: number | null }>;
 interface Company {
@@ -154,7 +154,7 @@ export default function ResultsPage() {
         </div>
       </section>
 
-      <SponsoredCard />
+      <PageRail>
 
       {err ? (
         <EmptyState title="Couldn't load" message={err} />
@@ -358,6 +358,7 @@ export default function ResultsPage() {
           )}
         </>
       )}
+      </PageRail>
     </div>
   );
 }

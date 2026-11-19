@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import SponsoredCard from "@/components/SponsoredCard";
+import PageRail from "@/components/PageRail";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -355,7 +355,7 @@ export default function YearInReview2026() {
           </div>
         )}
 
-        <SponsoredCard />
+        <PageRail>
 
         {/* ── Quarterly timeline ── */}
         <section>
@@ -484,6 +484,7 @@ export default function YearInReview2026() {
           )}
         </section>
 
+        </PageRail>
       </div>
     </div>
   );

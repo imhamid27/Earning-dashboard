@@ -460,7 +460,7 @@ export default function SectorsPage() {
                 isOpen={openDive === s.sector}
                 onClick={() => handleCardClick(s.sector)}
               />
-              {i === 2 ? <SponsoredCard tile="" /> : null}
+              {i === 2 ? <div className="self-start"><SponsoredCard tile="" /></div> : null}
             </Fragment>
           ))}
         </div>

@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/format";
 import { simplifyPurpose } from "@/lib/purpose";
 import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
 import { siteUrl } from "@/lib/site";
-import SponsoredCard from "@/components/SponsoredCard";
+import PageRail from "@/components/PageRail";
 
 interface Row {
   company_name: string;
@@ -136,7 +136,7 @@ export default function UpcomingPage() {
         </div>
       </section>
 
-      <SponsoredCard />
+      <PageRail>
 
       {/* ============ BELLWETHERS PENDING ============ */}
       {bellwethersPending.length > 0 ? (
@@ -283,6 +283,7 @@ export default function UpcomingPage() {
           })}
         </section>
       )}
+      </PageRail>
     </div>
   );
 }

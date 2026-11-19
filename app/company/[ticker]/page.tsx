@@ -375,13 +375,13 @@ export default function CompanyDetail() {
             />
           </section>
 
-          <SponsoredCard />
 
           {/* About this company — compact metadata card. Kept deliberately
               factual + verifiable: what we can source from exchange filings,
               not marketing blurbs. A future enrichment pass will add a
               one-paragraph business summary from yfinance (committed in a
               follow-up migration). */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
           <section className="card p-5">
             <h3 className="text-sm font-bold tracking-tightest mb-3 text-core-ink uppercase">
               About
@@ -404,6 +404,8 @@ export default function CompanyDetail() {
               />
             </dl>
           </section>
+            <div><SponsoredCard tile="" /></div>
+          </div>
 
           {/* Charts */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">

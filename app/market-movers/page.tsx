@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import InfoTooltip from "@/components/InfoTooltip";
 import { DISCLAIMER_SHORT } from "@/lib/disclaimer";
-import SponsoredCard from "@/components/SponsoredCard";
+import PageRail from "@/components/PageRail";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -284,7 +284,7 @@ export default function MarketMoversPage() {
         )}
       </div>
 
-      <SponsoredCard className="mb-6" />
+      <PageRail>
 
       {/* ── Error ── */}
       {error ? (
@@ -361,6 +361,7 @@ export default function MarketMoversPage() {
           Past returns do not indicate future performance.
         </p>
       )}
+      </PageRail>
     </div>
   );
 }
