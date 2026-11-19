@@ -260,7 +260,7 @@ export default function AdTracker() {
       ) : null}
       {tab === "offers" ? <div className="space-y-4">{offers.length ? offers.map((o) => <OfferCard key={o.id} o={o} pages={st.pages} act={act} />) : <p className="text-sm text-core-muted">Nothing added yet.</p>}
         <p className="max-w-3xl text-xs text-core-muted">When several live offers match a page, the card rotates between them on each visit. A paused card returns by itself on the next sync once its campaign is fine. Switching on or off takes effect on the site within about a minute.</p></div> : null}
-      {tab === "suggestions" ? <Suggestions st={st} pages={st.pages} added={new Set(offers.map((o) => o.id))} act={act} /> : null}
+      {tab === "suggestions" ? <Suggestions st={st} pages={st.pages} added={new Set(offers.flatMap((o) => [o.id, ...(o.campaignId ? [(o.network === "admitad" ? "a" : "x") + o.campaignId] : [])]))} act={act} /> : null}
       {tab === "earnings" ? <Earnings st={st} /> : null}
       {tab === "setup" ? <Setup st={st} reload={reload} /> : null}
     </div>
