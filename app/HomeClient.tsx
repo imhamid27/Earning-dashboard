@@ -935,7 +935,7 @@ export default function DashboardPage() {
           <div className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] text-core-ink font-bold mb-3">
             Outlier signals · {quarter}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${outliers.length % 3 === 0 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
             {outliers.map((o) => (
               <Link
                 key={o.ticker}
@@ -954,7 +954,7 @@ export default function DashboardPage() {
                 </div>
               </Link>
             ))}
-            <SponsoredCard tile={`${outliers.length % 2 === 0 ? "sm:col-span-2" : ""} ${["lg:col-span-3", "lg:col-span-2", "lg:col-span-1"][outliers.length % 3]}`.trim() || " "} />
+            <SponsoredCard tile={`${outliers.length % 2 === 0 ? "sm:col-span-2" : ""} ${outliers.length % 3 === 1 ? "lg:col-span-2 wide" : "lg:col-span-1"}`.trim()} />
           </div>
 
         </div>

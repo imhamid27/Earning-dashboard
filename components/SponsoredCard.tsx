@@ -55,13 +55,13 @@ export default function SponsoredCard({ tile, className = "" }: { tile?: string;
   if (tile !== undefined) {
     return (
       <aside className={"h-full " + tile} aria-label="Sponsored">
-        <div className="flex h-full flex-col gap-3 rounded-lg border border-core-line bg-core-pink/[0.03] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+        <div className={"flex h-full flex-col gap-3 rounded-lg border border-core-line bg-core-pink/[0.03] px-4 py-3" + (tile.includes("wide") ? " sm:flex-row sm:items-center sm:justify-between sm:gap-5" : "")}>
           <div className="min-w-0">
             {label}
             <div className="mt-1 text-[13px] font-bold leading-snug text-core-ink">{card.title}</div>
             <p className="mt-0.5 text-[12px] leading-snug text-core-muted">{card.text}</p>
           </div>
-          <a href={card.url} target="_blank" rel={REL} className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-md bg-core-pink px-4 text-[13px] font-bold text-white active:brightness-90 sm:h-9">
+          <a href={card.url} target="_blank" rel={REL} className={"inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-md bg-core-pink px-4 text-[13px] font-bold text-white active:brightness-90 sm:h-9" + (tile.includes("wide") ? "" : " w-full")}>
             {card.cta} <span aria-hidden="true">&rarr;</span>
           </a>
         </div>
