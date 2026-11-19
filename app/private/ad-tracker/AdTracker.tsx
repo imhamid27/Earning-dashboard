@@ -19,6 +19,8 @@ type State = {
 const num = (v: any) => (parseFloat(v) || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 const money = (v: any, cur?: string) => (cur === "USD" ? "USD " : "Rs ") + (parseFloat(v) || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const when = (iso?: string) => (iso ? new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "never");
+const FIN = /financ|bank|loan|credit|insur|invest|stock|share|trading|trader|demat|broker|mutual|fund|wealth|money|fintech|tax|saving|payment|upi|wallet|forex|crypto|gold|pension|mortgage|emi|cibil/i;
+const isFin = (c: Cand) => FIN.test(c.categories.join(" ") + " " + c.name);
 const joined = (c: Cand) => ["active", "approved"].includes(String(c.access).toLowerCase());
 
 async function call(path: string, body?: unknown) {
@@ -127,12 +129,12 @@ function OfferCard({ o, pages, act }: { o: Offer; pages: PageDef[]; act: (b: any
 
 function Suggestions({ st, pages, added, act }: { st: State; pages: PageDef[]; added: Set<string>; act: (b: any) => Promise<void> }) {
   const [net, setNet] = useState<"admitad" | "cuelinks">("admitad");
-  const [q, setQ] = useState(""); const [cat, setCat] = useState(""); const [all, setAll] = useState(false);
+  const [q, setQ] = useState(""); const [cat, setCat] = useState(""); const [all, setAll] = useState(false); const [fin, setFin] = useState(true);
   const [adding, setAdding] = useState<number | null>(null);
   const data = net === "admitad" ? st.adSug : st.cuSug;
   const items: Cand[] = data?.items || [];
   const cats = useMemo(() => [...new Set(items.flatMap((c) => c.categories))].sort(), [items]);
-  const shown = items.filter((c) => (all || (joined(c) && c.link)) && (!cat || c.categories.includes(cat)) && (!q || c.name.toLowerCase().includes(q.toLowerCase())));
+  const shown = items.filter((c) => (all || (joined(c) && c.link)) && (!fin || isFin(c)) && (!cat || c.categories.includes(cat)) && (!q || c.name.toLowerCase().includes(q.toLowerCase())));
   return (
     <div className="space-y-4">
       <p className="max-w-3xl text-sm text-core-muted">Campaigns the network offers for India. By default only campaigns this site has joined and that have a tracking link are listed, because the others cannot be used yet. Tick the box to browse the rest and apply on the network.</p>
@@ -140,12 +142,13 @@ function Suggestions({ st, pages, added, act }: { st: State; pages: PageDef[]; a
         <div className="flex gap-2"><button className={net === "admitad" ? btnInk : btn} onClick={() => setNet("admitad")}>Admitad</button><button className={net === "cuelinks" ? btnInk : btn} onClick={() => setNet("cuelinks")}>Cuelinks</button></div>
         <input className={field + " max-w-xs"} placeholder="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
         <select className={field + " max-w-[200px]"} value={cat} onChange={(e) => setCat(e.target.value)}><option value="">All categories</option>{cats.map((c) => <option key={c}>{c}</option>)}</select>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={fin} onChange={(e) => setFin(e.target.checked)} />Finance only</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />Show campaigns I have not joined or that have no link</label>
       </div>
       {!data ? <p className="rounded-xl border border-core-line bg-white p-6 text-center text-sm text-core-muted">No suggestions yet. Run a sync from the Setup tab.</p> : (
         <div className="overflow-hidden rounded-xl border border-core-line bg-white">
           <div className="border-b border-core-line px-4 py-2 text-xs text-core-muted">{shown.length} shown of {items.length} · updated {when(data.updated)}</div>
-          {shown.length === 0 ? <p className="p-6 text-center text-sm text-core-muted">Nothing joined with a link here. {all ? "" : "Tick the box above to browse the rest."}</p> : shown.slice(0, 150).map((c) => {
+          {shown.length === 0 ? <p className="p-6 text-center text-sm text-core-muted">Nothing matches. {fin ? "Untick Finance only to see every category. " : ""}{all ? "" : "Tick the other box to browse campaigns you have not joined."}</p> : shown.slice(0, 150).map((c) => {
             const id = (net === "admitad" ? "a" : "x") + c.id, done = added.has(id);
             return (
               <div key={c.id} className="border-b border-core-line px-4 py-3 last:border-0">
