@@ -1,4 +1,4 @@
--- Seed: Axis Credit Card (Cuelinks) sponsored card for Home and Sectors.
+-- Seed: Axis Credit Card (Cuelinks) sponsored card for every page.
 -- Run in the Supabase SQL editor after migration_ad_tracker.sql. Safe to re-run (does nothing if it exists).
 -- The link was opened and lands on Axis Bank's online credit card application form (web.axis.bank.in).
 -- It starts SWITCHED ON. To turn it off: Offers tab > Switch off, or run:
@@ -7,7 +7,7 @@ insert into public.ad_offers
   (id, network, campaign_id, name, domain, pages, title, body, cta, note, url, orig, live, live_at)
 values (
   'x-axis-credit-card', 'cuelinks', null, 'Axis Credit Card CPL', 'bank.in',
-  array['home','sectors'],
+  array['home','q4','sectors','upcoming','company','compare','market-movers','results','year-in-review'],
   'Looking for a credit card?',
   'Axis Bank has an online application for its credit cards. Check the fees and eligibility on the bank''s page before you apply.',
   'Apply on Axis Bank',
