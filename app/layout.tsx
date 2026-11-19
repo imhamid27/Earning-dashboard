@@ -292,8 +292,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </noscript>
         {/* Cuelinks: turns outbound merchant links into affiliate links. Channel id 336975. Plain inline script inside <body> so the Cuelinks verifier finds it in the raw HTML. */}
         <script
+          type="text/javascript"
           dangerouslySetInnerHTML={{
-            __html: `var cId = "336975"; (function(d, t) { var s = document.createElement("script"); s.type = "text/javascript"; s.async = true; s.src = (document.location.protocol == "https:" ? "https://cdn0.cuelinks.com/js/" : "http://cdn0.cuelinks.com/js/") + "cuelinksv2.js"; document.getElementsByTagName("body")[0].appendChild(s); }());`,
+            __html: `
+    var cId =  "336975";
+
+    (function(d, t) {
+      var s = document.createElement("script");
+      s.type = "text/javascript";
+      s.async = true;
+      s.src = (document.location.protocol == "https:" ? "https://cdn0.cuelinks.com/js/" : "http://cdn0.cuelinks.com/js/")  + "cuelinksv2.js";
+      document.getElementsByTagName("body")[0].appendChild(s);
+    }());
+`,
           }}
         />
         <Header />
