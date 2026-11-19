@@ -776,101 +776,14 @@ export default function DashboardPage() {
       />
 
       {/* ══════════════════════════════════════════════════════════════
-          EARNINGS BREADTH — typographic treatment.
-          The three % numbers are the primary visual; narrative and sector
-          signal are subordinate supporting text. Hides when < 10 companies.
+          SEASON ZONE — main column (leaders, outliers, coverage) + a
+          narrow rail (breadth, the sponsored card). On phones the rail
+          comes first, then the main column, so the page reads top-down.
           ══════════════════════════════════════════════════════════════ */}
-      {(earningsBreadth || earningsNarrative) ? (
-        <div className="mt-6 border-t border-core-line pt-5">
-          {/* Label row */}
-          <div className="text-[10px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-4">
-            Earnings breadth · {quarter}
-            {earningsBreadth ? (
-              <span className="hidden sm:inline ml-3 normal-case tracking-normal text-core-muted/70">
-                ({earningsBreadth.total} with comparable profit YoY)
-              </span>
-            ) : null}
-          </div>
-
-          {/* Big three numbers — the design is the data */}
-          {earningsBreadth ? (
-            <div className="flex items-stretch gap-0 mb-5">
-              <div className="flex-1 border-r border-core-line pr-3 sm:pr-5 md:pr-8">
-                <div className="text-[32px] sm:text-[38px] md:text-[46px] font-extrabold text-core-teal tabular-nums leading-none">
-                  {earningsBreadth.growingPct}%
-                </div>
-                <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
-                  Growing
-                </div>
-              </div>
-              <div className="flex-1 border-r border-core-line px-3 sm:px-5 md:px-8">
-                <div className="text-[32px] sm:text-[38px] md:text-[46px] font-extrabold text-core-negative tabular-nums leading-none">
-                  {earningsBreadth.decliningPct}%
-                </div>
-                <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
-                  Declining
-                </div>
-              </div>
-              <div className="flex-1 pl-3 sm:pl-5 md:pl-8">
-                <div className="text-[32px] sm:text-[38px] md:text-[46px] font-extrabold text-core-ink/25 tabular-nums leading-none">
-                  {earningsBreadth.flatPct}%
-                </div>
-                <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
-                  Flat
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {/* Narrative + sector signal + weekly summary — supporting row */}
-          {(earningsNarrative || earningsPulse || weeklySummary) ? (
-            <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 ${earningsBreadth ? "pt-4 border-t border-core-line" : ""}`}>
-              {/* Left: narrative + weekly */}
-              <div className="min-w-0 space-y-1.5">
-                {earningsNarrative ? (
-                  <p className="text-[12px] md:text-[13px] text-core-muted leading-snug max-w-2xl">
-                    {earningsNarrative}
-                  </p>
-                ) : null}
-                {weeklySummary ? (
-                  <p className="text-[12px] text-core-muted leading-snug">
-                    <span className="text-[9px] uppercase tracking-[0.2em] font-semibold mr-2">This week</span>
-                    <span className="text-core-ink font-semibold">{weeklySummary.count}</span> companies reported
-                    {weeklySummary.bestSector ? (
-                      <> · <span className="text-core-teal font-semibold">{weeklySummary.bestSector[0]}</span> led on profit</>
-                    ) : null}
-                    {weeklySummary.worstSector ? (
-                      <> · <span className="text-core-negative font-semibold">{weeklySummary.worstSector[0]}</span> lagged</>
-                    ) : null}
-                  </p>
-                ) : null}
-              </div>
-
-              {/* Right: sector leading / lagging chip-pair */}
-              {earningsPulse && !(/^other$/i.test(earningsPulse.top)) && !(/^other$/i.test(earningsPulse.bot)) ? (
-                <div className="shrink-0 flex items-stretch divide-x divide-core-line border border-core-line rounded-lg overflow-hidden">
-                  <div className="px-4 py-3">
-                    <div className="text-[9px] uppercase tracking-[0.2em] text-core-muted font-semibold mb-1.5">Leading</div>
-                    <div className="text-[12px] font-bold text-core-teal leading-tight">{earningsPulse.top}</div>
-                  </div>
-                  <div className="px-4 py-3">
-                    <div className="text-[9px] uppercase tracking-[0.2em] text-core-muted font-semibold mb-1.5">Lagging</div>
-                    <div className="text-[12px] font-bold text-core-negative leading-tight">{earningsPulse.bot}</div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* ══════════════════════════════════════════════════════════════
-          ROLLING LEADERS — top / weakest performers this quarter.
-          Each list gets a colour-dot section marker (teal / red) and
-          proper row dividers. Next big names sits below as a footer strip.
-          ══════════════════════════════════════════════════════════════ */}
+      <div className="mt-10 md:mt-12 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-x-10 gap-y-10 lg:items-start">
+        <div className="min-w-0 space-y-10 md:space-y-12 order-2 lg:order-1">
       {(rollingLeaders || nextBigNames.length > 0) ? (
-        <div className="mt-6 border-t border-core-line pt-5">
+        <div>
           {rollingLeaders ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-core-line gap-y-6">
               {/* Top performers */}
@@ -924,18 +837,10 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      {/* ══════════════════════════════════════════════════════════════
-          OUTLIER SIGNALS — 2–3 unusual margin divergences.
-          Each signal is a toned pill-card (teal / red background tint)
-          with company name as the headline and observation as body.
-          Excludes companies already shown in top/bottom leaders.
-          ══════════════════════════════════════════════════════════════ */}
       {outliers.length > 0 ? (
-        <div className="mt-6 border-t border-core-line pt-5">
-          <div className="text-[10px] md:text-[11px] uppercase tracking-[0.2em] text-core-ink font-bold mb-3">
-            Outlier signals · {quarter}
-          </div>
-          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${outliers.length % 3 === 0 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+        <div>
+          <SectionHead title={`Outlier signals · ${quarter}`} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {outliers.map((o) => (
               <Link
                 key={o.ticker}
@@ -954,23 +859,15 @@ export default function DashboardPage() {
                 </div>
               </Link>
             ))}
-            <SponsoredCard tile={`${outliers.length % 2 === 0 ? "sm:col-span-2" : ""} ${outliers.length % 3 === 1 ? "lg:col-span-2 wide" : "lg:col-span-1"}`.trim()} />
           </div>
 
         </div>
       ) : null}
 
-      {/* ══════════════════════════════════════════════════════════════
-          RELATED COVERAGE — contextual stories matching the sectors
-          and companies moving most this quarter. Fixed-height card
-          with internal vertical scroll; populated 3× daily by
-          scripts/fetch_related_coverage.py.
-          ══════════════════════════════════════════════════════════════ */}
-      <RelatedCoverage />
+          <RelatedCoverage />
 
-      {/* Watch Next — always below Related Coverage */}
       {watchNext ? (
-        <div className="mt-4 pt-3 border-t border-core-line flex flex-wrap items-center gap-x-1 gap-y-1 text-[13px]">
+        <div className="pt-5 border-t border-core-line flex flex-wrap items-center gap-x-1 gap-y-1 text-[13px]">
           <span className="text-[9px] uppercase tracking-[0.22em] font-semibold text-core-muted mr-2">Watch next</span>
           {watchNext.bellwethers.map((u, i) => (
             <span key={u.ticker}>
@@ -991,8 +888,89 @@ export default function DashboardPage() {
           ) : null}
         </div>
       ) : null}
+        </div>
 
-      {outliers.length === 0 ? <SponsoredCard className="my-4" /> : null}
+        <div className="order-1 lg:order-2 space-y-8 lg:sticky lg:top-20">
+      {(earningsBreadth || earningsNarrative) ? (
+        <div>
+          {/* Label row */}
+          <SectionHead title={`Earnings breadth · ${quarter}`} note={earningsBreadth ? `${earningsBreadth.total} with comparable profit YoY` : undefined} />
+
+          {/* Big three numbers — the design is the data */}
+          {earningsBreadth ? (
+            <div className="flex items-stretch gap-0 mb-5">
+              <div className="flex-1 border-r border-core-line pr-3">
+                <div className="text-[34px] font-extrabold text-core-teal tabular-nums leading-none">
+                  {earningsBreadth.growingPct}%
+                </div>
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
+                  Growing
+                </div>
+              </div>
+              <div className="flex-1 border-r border-core-line px-3">
+                <div className="text-[34px] font-extrabold text-core-negative tabular-nums leading-none">
+                  {earningsBreadth.decliningPct}%
+                </div>
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
+                  Declining
+                </div>
+              </div>
+              <div className="flex-1 pl-3">
+                <div className="text-[34px] font-extrabold text-core-ink/25 tabular-nums leading-none">
+                  {earningsBreadth.flatPct}%
+                </div>
+                <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.16em] text-core-muted mt-2">
+                  Flat
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Narrative + sector signal + weekly summary — supporting row */}
+          {(earningsNarrative || earningsPulse || weeklySummary) ? (
+            <div className={`flex flex-col gap-3 ${earningsBreadth ? "pt-4 border-t border-core-line" : ""}`}>
+              {/* Left: narrative + weekly */}
+              <div className="min-w-0 space-y-1.5">
+                {earningsNarrative ? (
+                  <p className="text-[12px] md:text-[13px] text-core-muted leading-snug max-w-2xl">
+                    {earningsNarrative}
+                  </p>
+                ) : null}
+                {weeklySummary ? (
+                  <p className="text-[12px] text-core-muted leading-snug">
+                    <span className="text-[9px] uppercase tracking-[0.2em] font-semibold mr-2">This week</span>
+                    <span className="text-core-ink font-semibold">{weeklySummary.count}</span> companies reported
+                    {weeklySummary.bestSector ? (
+                      <> · <span className="text-core-teal font-semibold">{weeklySummary.bestSector[0]}</span> led on profit</>
+                    ) : null}
+                    {weeklySummary.worstSector ? (
+                      <> · <span className="text-core-negative font-semibold">{weeklySummary.worstSector[0]}</span> lagged</>
+                    ) : null}
+                  </p>
+                ) : null}
+              </div>
+
+              {/* Right: sector leading / lagging chip-pair */}
+              {earningsPulse && !(/^other$/i.test(earningsPulse.top)) && !(/^other$/i.test(earningsPulse.bot)) ? (
+                <div className="self-start flex items-stretch divide-x divide-core-line border border-core-line rounded-lg overflow-hidden">
+                  <div className="px-4 py-3">
+                    <div className="text-[9px] uppercase tracking-[0.2em] text-core-muted font-semibold mb-1.5">Leading</div>
+                    <div className="text-[12px] font-bold text-core-teal leading-tight">{earningsPulse.top}</div>
+                  </div>
+                  <div className="px-4 py-3">
+                    <div className="text-[9px] uppercase tracking-[0.2em] text-core-muted font-semibold mb-1.5">Lagging</div>
+                    <div className="text-[12px] font-bold text-core-negative leading-tight">{earningsPulse.bot}</div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+          <div><SponsoredCard tile="" /></div>
+        </div>
+      </div>
 
       <DotDashDivider />
 
@@ -1178,6 +1156,15 @@ function LeaderRow({ r }: { r: LatestQuarterRow }) {
 // Dot-and-dash divider — a nod to The Core's signature pattern.
 // Used between major sections instead of a plain hairline so the
 // page has a visual rhythm.
+function SectionHead({ title, note }: { title: string; note?: string }) {
+  return (
+    <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-core-line pb-2">
+      <h2 className="text-[11px] font-bold uppercase tracking-[0.2em] text-core-ink">{title}</h2>
+      {note ? <span className="hidden text-[11px] text-core-muted sm:inline">{note}</span> : null}
+    </div>
+  );
+}
+
 function DotDashDivider() {
   return (
     <div
