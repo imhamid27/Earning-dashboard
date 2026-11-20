@@ -60,7 +60,8 @@ export function trackPdfClick(params: {
     | "q4_page"
     | "results_page"
     | "company_detail"
-    | "company_quarters_table";
+    | "company_quarters_table"
+    | "company_filings_tab";
   url: string;
 }) {
   gtag("event", "file_download", {

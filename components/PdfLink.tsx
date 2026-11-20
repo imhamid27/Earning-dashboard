@@ -42,7 +42,8 @@ export default function PdfLink({
     | "q4_page"
     | "results_page"
     | "company_detail"
-    | "company_quarters_table";
+    | "company_quarters_table"
+    | "company_filings_tab";
 }) {
   if (!url) {
     // Muted dash keeps the column width stable across rows.

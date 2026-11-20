@@ -65,6 +65,17 @@ function SourceChip({ source, quality }: { source: string; quality: string }) {
   );
 }
 
+type Tab = "overview" | "peers" | "filings";
+
+interface PeerCo {
+  ticker: string; company_name: string; exchange: string;
+  sector: string | null; industry: string | null; market_cap_bucket: string | null;
+  latest: {
+    quarter_label: string; quarter_end_date: string;
+    revenue: number | null; net_profit: number | null; eps: number | null; source: string;
+  } | null;
+}
+
 export default function CompanyDetail() {
   const params = useParams<{ ticker: string }>();
   const rawTicker = decodeURIComponent(params.ticker);
@@ -75,6 +86,10 @@ export default function CompanyDetail() {
   const [price, setPrice] = useState<PriceInfo | null>(null);
   const [priceStatus, setPriceStatus] = useState<"open" | "closed" | "stale" | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("overview");
+  const [peers, setPeers] = useState<PeerCo[] | null>(null);
+  const [peerSector, setPeerSector] = useState<string | null>(null);
+  const [peersLoading, setPeersLoading] = useState(false);
 
   // ── AEO structured data ────────────────────────────────────────────────
   // BreadcrumbList is stable once `data` arrives and never changes after
@@ -150,9 +165,56 @@ export default function CompanyDetail() {
       ]
     } : null;
 
+    // FAQPage schema — surfaces direct answers in Google AI Overviews / AEO.
+    const faqs = latest ? {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": `What is ${co.company_name} ${latest.quarter_label} revenue?`,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": `${co.company_name} reported revenue of ${formatINR(latest.revenue)} in ${latest.quarter_label}${latest.revenue_yoy != null ? `, a ${latest.revenue_yoy >= 0 ? "+" : ""}${(latest.revenue_yoy * 100).toFixed(1)}% change year-over-year` : ""}.`
+          }
+        },
+        {
+          "@type": "Question",
+          "name": `What is ${co.company_name} ${latest.quarter_label} net profit?`,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": `${co.company_name} reported net profit of ${formatINR(latest.net_profit)} in ${latest.quarter_label}${latest.profit_yoy != null ? `, a ${latest.profit_yoy >= 0 ? "+" : ""}${(latest.profit_yoy * 100).toFixed(1)}% change year-over-year` : ""}.`
+          }
+        },
+        ...(latest.eps != null ? [{
+          "@type": "Question",
+          "name": `What is ${co.company_name} EPS for ${latest.quarter_label}?`,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": `${co.company_name} reported EPS (earnings per share) of ₹${latest.eps.toFixed(2)} for ${latest.quarter_label}.`
+          }
+        }] : []),
+        {
+          "@type": "Question",
+          "name": `What sector is ${co.company_name} in?`,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": `${co.company_name} (${ticker}) is listed on ${co.exchange} in the ${co.sector ?? ""}${co.industry ? ` / ${co.industry}` : ""} sector.`
+          }
+        },
+        ...(co.next_result_date ? [{
+          "@type": "Question",
+          "name": `When does ${co.company_name} report next results?`,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": `${co.company_name} is expected to report its next quarterly results on ${new Date(co.next_result_date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.`
+          }
+        }] : [])
+      ]
+    } : null;
+
     return {
       "@context": "https://schema.org",
-      "@graph": [breadcrumb, corporation, ...(dataset ? [dataset] : [])]
+      "@graph": [breadcrumb, corporation, ...(dataset ? [dataset] : []), ...(faqs ? [faqs] : [])]
     };
   }, [data, ticker, BASE]);
   // ──────────────────────────────────────────────────────────────────────
@@ -186,6 +248,20 @@ export default function CompanyDetail() {
       })
       .catch(() => {});
   }, [ticker]);
+
+  // Lazy-load peers only when the Peers tab is first opened.
+  useEffect(() => {
+    if (tab !== "peers" || peers !== null) return;
+    setPeersLoading(true);
+    fetch(`/api/peers/${encodeURIComponent(ticker)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) { setPeers(j.data.peers); setPeerSector(j.data.sector); }
+        else setPeers([]);
+      })
+      .catch(() => setPeers([]))
+      .finally(() => setPeersLoading(false));
+  }, [tab, ticker, peers]);
 
   if (err) return (
     <div className="container-core py-10">
@@ -221,8 +297,7 @@ export default function CompanyDetail() {
           see the structured data without needing to execute additional JS. */}
       {companyJsonLd && <JsonLd data={companyJsonLd} />}
 
-      {/* Breadcrumb — flex-wrap prevents long sector/industry names from
-          causing horizontal overflow on narrow mobile viewports. */}
+      {/* Breadcrumb */}
       <div className="text-[11px] uppercase tracking-[0.14em] text-core-muted flex flex-wrap items-center gap-x-2 gap-y-1">
         <Link href="/" className="hover:text-core-pink shrink-0">Dashboard</Link>
         <span className="text-core-line-2 shrink-0">/</span>
@@ -487,6 +562,146 @@ export default function CompanyDetail() {
           </section>
         </>
       )}
+
+      {/* ── Tab bar ──────────────────────────────────────────────────── */}
+      {data.quarters.length > 0 && (
+        <div className="border-b border-core-line -mx-4 md:-mx-0 px-4 md:px-0 flex gap-0 overflow-x-auto scrollbar-none">
+          {(["overview", "peers", "filings"] as Tab[]).map((t) => {
+            const labels: Record<Tab, string> = {
+              overview: "Overview",
+              peers: "Peers",
+              filings: "Filings",
+            };
+            const counts: Record<Tab, string | null> = {
+              overview: null,
+              peers: peers != null ? String(peers.length) : null,
+              filings: String(data.quarters.filter((q) => q.filing_url).length) || null,
+            };
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`relative shrink-0 px-4 py-2.5 text-[13px] font-semibold tracking-tight transition-colors whitespace-nowrap
+                  ${tab === t ? "text-core-ink" : "text-core-muted hover:text-core-ink"}`}
+              >
+                {labels[t]}
+                {counts[t] ? (
+                  <span className="ml-1.5 text-[10px] font-bold text-core-muted">{counts[t]}</span>
+                ) : null}
+                {tab === t && (
+                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-core-pink rounded-t" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Peers tab ─────────────────────────────────────────────────── */}
+      {tab === "peers" && data.quarters.length > 0 && (
+        <section>
+          <header className="flex items-baseline justify-between mb-3">
+            <h2 className="text-xl font-bold tracking-tightest">
+              {peerSector ? `${peerSector} peers` : "Sector peers"}
+            </h2>
+            {peers && (
+              <span className="text-[11px] uppercase tracking-wide text-core-muted">
+                {peers.length} companies · ranked by revenue
+              </span>
+            )}
+          </header>
+          {peersLoading && (
+            <div className="card p-8 text-sm text-core-muted">Loading peers…</div>
+          )}
+          {!peersLoading && peers && peers.length === 0 && (
+            <div className="card p-8 text-sm text-core-muted">No sector peers found.</div>
+          )}
+          {!peersLoading && peers && peers.length > 0 && (
+            <div className="card overflow-x-auto">
+              <table className="data-table" style={{ minWidth: "640px" }}>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Company</th>
+                    <th className="hidden sm:table-cell">Quarter</th>
+                    <th className="text-right">Revenue</th>
+                    <th className="text-right">Net profit</th>
+                    <th className="text-right hidden sm:table-cell">EPS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {peers.map((p, i) => (
+                    <tr key={p.ticker}>
+                      <td className="text-core-muted tabular-nums">{i + 1}</td>
+                      <td>
+                        <Link
+                          href={`/company/${encodeURIComponent(p.ticker)}`}
+                          className="font-semibold hover:text-core-pink transition-colors"
+                        >
+                          {p.company_name}
+                        </Link>
+                        <div className="text-[10px] text-core-muted tabular-nums">{p.ticker}</div>
+                      </td>
+                      <td className="hidden sm:table-cell text-sm text-core-muted tabular-nums">
+                        {p.latest?.quarter_label ?? "—"}
+                      </td>
+                      <td className="text-right tabular-nums font-semibold">
+                        {formatINR(p.latest?.revenue ?? null)}
+                      </td>
+                      <td className="text-right tabular-nums font-semibold">
+                        {formatINR(p.latest?.net_profit ?? null)}
+                      </td>
+                      <td className="hidden sm:table-cell text-right tabular-nums">
+                        {p.latest?.eps != null ? `₹${p.latest.eps.toFixed(2)}` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Filings tab ───────────────────────────────────────────────── */}
+      {tab === "filings" && data.quarters.length > 0 && (() => {
+        const withFilings = [...data.quarters]
+          .reverse()
+          .filter((q) => q.filing_url);
+        return (
+          <section>
+            <header className="flex items-baseline justify-between mb-3">
+              <h2 className="text-xl font-bold tracking-tightest">Exchange filings</h2>
+              <span className="text-[11px] uppercase tracking-wide text-core-muted">
+                {withFilings.length} filing{withFilings.length !== 1 ? "s" : ""}
+              </span>
+            </header>
+            {withFilings.length === 0 ? (
+              <div className="card p-8 text-sm text-core-muted">No filing PDFs linked yet.</div>
+            ) : (
+              <div className="card divide-y divide-core-line">
+                {withFilings.map((q) => (
+                  <div key={q.id} className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-core-surface transition-colors">
+                    <div>
+                      <div className="font-semibold text-sm">{q.quarter_label}</div>
+                      <div className="text-[11px] text-core-muted tabular-nums mt-0.5">
+                        {formatDate(q.quarter_end_date)} · <SourceChip source={q.source} quality={q.data_quality_status} />
+                      </div>
+                    </div>
+                    <PdfLink
+                      url={q.filing_url}
+                      label="View filing"
+                      ticker={data.company.ticker}
+                      companyName={data.company.company_name}
+                      source="company_filings_tab"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })()}
     </div>
   );
 }
