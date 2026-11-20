@@ -157,6 +157,7 @@ jobs:
               # --quarters 1: current quarter only; Sunday backfill does history.
               python scripts/nse_results.py --quarters 1
               python scripts/bse_results.py
+              python scripts/bse_documents.py
               python scripts/bse_pdf_results.py --days 1
               python scripts/fetch_results.py
               ;;
@@ -180,6 +181,7 @@ jobs:
               # "--quarters 2" run could 4× the wall time when NSE or
               # Screener throttled, starving cron.
               python scripts/nse_results.py --all --quarters 1
+              python scripts/bse_documents.py
               python scripts/screener_results.py --missing
               # Full commentary refresh on Sunday — regenerates all rows
               # for the current quarter so any data corrections from the
