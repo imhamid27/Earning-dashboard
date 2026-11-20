@@ -353,19 +353,11 @@ export default async function CompanyLayout({
       <JsonLd data={breadcrumbLd} />
       {corporationLd ? <JsonLd data={corporationLd} /> : null}
 
-      {/* SSR-rendered "About" sentence — runs on the server so it
-          appears in the first byte of HTML. Visible to readers too
-          (acts as a brief intro while the live charts/data hydrate
-          below). Per-company unique content that breaks Google's
-          duplicate-page detection. */}
+      {/* SSR-only about sentence: invisible to readers, present in HTML for
+          Google dedup signal. sr-only keeps it out of the visual layout. */}
       {aboutSentence ? (
-        <aside
-          className="container-core pt-6 md:pt-8 pb-2"
-          aria-label="Company summary"
-        >
-          <p className="text-[13px] md:text-sm text-core-muted leading-relaxed max-w-3xl">
-            {aboutSentence}
-          </p>
+        <aside className="sr-only" aria-label="Company summary">
+          <p>{aboutSentence}</p>
         </aside>
       ) : null}
 

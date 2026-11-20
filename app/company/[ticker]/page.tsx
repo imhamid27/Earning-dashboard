@@ -47,7 +47,7 @@ const COMPANY_BASE = siteUrl();
 function SourceChip({ source, quality }: { source: string; quality: string }) {
   const labels: Record<string, string> = {
     nse: "NSE XBRL", bse: "BSE", bse_pdf: "BSE PDF",
-    screener: "Screener", yahoo: "Yahoo",
+    screener: "Exchange", yahoo: "Market data",
   };
   const label = labels[source] ?? source;
   const isPartial = quality === "partial";
@@ -291,7 +291,7 @@ export default function CompanyDetail() {
   const prevY  = data.quarters.length >= 5 ? data.quarters[data.quarters.length - 5] : null;
 
   return (
-    <div className="container-core py-8 md:py-12 space-y-10">
+    <div className="container-core py-4 md:py-6 space-y-5">
       {/* AEO: BreadcrumbList + Corporation + Dataset schemas.
           Rendered as part of the initial HTML so Google + AI answer engines
           see the structured data without needing to execute additional JS. */}
@@ -309,7 +309,7 @@ export default function CompanyDetail() {
       </div>
 
       {/* Editorial header */}
-      <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-core-line pb-6">
+      <section className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 border-b border-core-line pb-4">
         <div className="min-w-0">
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tightest leading-[1.05]">
             {data.company.company_name}
@@ -343,11 +343,46 @@ export default function CompanyDetail() {
         {latest ? <FreshnessIndicator fetchedAt={latest.fetched_at} /> : null}
       </section>
 
+      {/* Tab bar — right under the company header so the reader can switch
+          context immediately without scrolling past charts and tables. */}
+      {data.quarters.length > 0 && (
+        <div className="border-b border-core-line -mx-4 md:-mx-0 px-4 md:px-0 flex gap-0 overflow-x-auto scrollbar-none">
+          {(["overview", "peers", "filings"] as Tab[]).map((t) => {
+            const labels: Record<Tab, string> = {
+              overview: "Overview",
+              peers: "Peers",
+              filings: "Filings",
+            };
+            const counts: Record<Tab, string | null> = {
+              overview: null,
+              peers: peers != null ? String(peers.length) : null,
+              filings: String(data.quarters.filter((q) => q.filing_url).length) || null,
+            };
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`relative shrink-0 px-4 py-2.5 text-[13px] font-semibold tracking-tight transition-colors whitespace-nowrap
+                  ${tab === t ? "text-core-ink" : "text-core-muted hover:text-core-ink"}`}
+              >
+                {labels[t]}
+                {counts[t] ? (
+                  <span className="ml-1.5 text-[10px] font-bold text-core-muted">{counts[t]}</span>
+                ) : null}
+                {tab === t && (
+                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-core-pink rounded-t" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Trading price card — always visible if we have a price, regardless
           of whether quarterly data exists. Separates "what the market thinks
           right now" from "what the company last reported". */}
       {price && price.last_price != null ? (
-        <section className="card p-5 md:p-6">
+        <section className="card p-4 md:p-5">
           {/* Row 1: label + LIVE/CLOSED badge. Always on its own line — a
               clean header slug that the big price hangs off. */}
           <div className="text-[11px] uppercase tracking-[0.16em] text-core-ink font-bold flex items-center gap-2">
@@ -409,7 +444,7 @@ export default function CompanyDetail() {
           {/* Row 3: disclaimer — ALWAYS on its own line below the grid.
               The old layout tried to squeeze it into the flex row which
               made the text overlap the sub-stats at awkward widths. */}
-          <div className="mt-5 pt-3 border-t border-core-line text-[11px] leading-relaxed text-core-muted italic">
+          <div className="mt-3 pt-3 border-t border-core-line text-[11px] leading-relaxed text-core-muted italic">
             {DISCLAIMER_PRICE}
           </div>
         </section>
@@ -420,7 +455,7 @@ export default function CompanyDetail() {
           title="No quarterly data for this company yet"
           message="Run the ingestion script to pull historical financials."
         />
-      ) : (
+      ) : tab !== "overview" ? null : (
         <>
           {/* KPI row — hairline-separated cells (matches homepage) */}
           <section className="grid grid-cols-2 md:grid-cols-4 divide-x divide-core-line border-y border-core-line">
@@ -457,9 +492,9 @@ export default function CompanyDetail() {
               one-paragraph business summary from yfinance (committed in a
               follow-up migration). */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-          <section className="card p-5">
-            <h3 className="text-sm font-bold tracking-tightest mb-3 text-core-ink uppercase">
-              About
+          <section className="card p-4">
+            <h3 className="text-xs font-bold tracking-widest mb-3 text-core-muted uppercase">
+              Company info
             </h3>
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
               <AboutField label="Exchange" value={data.company.exchange} />
@@ -484,27 +519,27 @@ export default function CompanyDetail() {
 
           {/* Charts */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="card p-5">
-              <header className="flex items-baseline justify-between mb-3">
-                <h3 className="text-lg font-semibold tracking-tightest">Revenue by quarter</h3>
-                <span className="text-[11px] uppercase tracking-wide text-core-muted">Last {data.quarters.length}</span>
+            <div className="card p-4">
+              <header className="flex items-baseline justify-between mb-2">
+                <h3 className="text-sm font-semibold tracking-tight">Revenue trend</h3>
+                <span className="text-[10px] uppercase tracking-wide text-core-muted">{data.quarters.length}Q</span>
               </header>
-              <TrendChart rows={data.quarters} metric="revenue" height={280} />
+              <TrendChart rows={data.quarters} metric="revenue" height={220} />
             </div>
-            <div className="card p-5">
-              <header className="flex items-baseline justify-between mb-3">
-                <h3 className="text-lg font-semibold tracking-tightest">Net profit by quarter</h3>
-                <span className="text-[11px] uppercase tracking-wide text-core-muted">Last {data.quarters.length}</span>
+            <div className="card p-4">
+              <header className="flex items-baseline justify-between mb-2">
+                <h3 className="text-sm font-semibold tracking-tight">Net profit trend</h3>
+                <span className="text-[10px] uppercase tracking-wide text-core-muted">{data.quarters.length}Q</span>
               </header>
-              <TrendChart rows={data.quarters} metric="net_profit" height={280} />
+              <TrendChart rows={data.quarters} metric="net_profit" height={220} />
             </div>
           </section>
 
           {/* Quarterly table */}
           <section>
-            <header className="flex items-baseline justify-between mb-3">
-              <h2 className="text-xl font-bold tracking-tightest">Quarter-by-Quarter</h2>
-              <span className="text-[11px] uppercase tracking-wide text-core-muted">
+            <header className="flex items-baseline justify-between mb-2">
+              <h2 className="text-base font-bold tracking-tight">Quarter-by-quarter</h2>
+              <span className="text-[10px] uppercase tracking-wide text-core-muted">
                 {data.quarters.length} quarters
               </span>
             </header>
@@ -563,50 +598,16 @@ export default function CompanyDetail() {
         </>
       )}
 
-      {/* ── Tab bar ──────────────────────────────────────────────────── */}
-      {data.quarters.length > 0 && (
-        <div className="border-b border-core-line -mx-4 md:-mx-0 px-4 md:px-0 flex gap-0 overflow-x-auto scrollbar-none">
-          {(["overview", "peers", "filings"] as Tab[]).map((t) => {
-            const labels: Record<Tab, string> = {
-              overview: "Overview",
-              peers: "Peers",
-              filings: "Filings",
-            };
-            const counts: Record<Tab, string | null> = {
-              overview: null,
-              peers: peers != null ? String(peers.length) : null,
-              filings: String(data.quarters.filter((q) => q.filing_url).length) || null,
-            };
-            return (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`relative shrink-0 px-4 py-2.5 text-[13px] font-semibold tracking-tight transition-colors whitespace-nowrap
-                  ${tab === t ? "text-core-ink" : "text-core-muted hover:text-core-ink"}`}
-              >
-                {labels[t]}
-                {counts[t] ? (
-                  <span className="ml-1.5 text-[10px] font-bold text-core-muted">{counts[t]}</span>
-                ) : null}
-                {tab === t && (
-                  <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-core-pink rounded-t" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* ── Peers tab ─────────────────────────────────────────────────── */}
       {tab === "peers" && data.quarters.length > 0 && (
         <section>
-          <header className="flex items-baseline justify-between mb-3">
-            <h2 className="text-xl font-bold tracking-tightest">
+          <header className="flex items-baseline justify-between mb-2">
+            <h2 className="text-base font-bold tracking-tight">
               {peerSector ? `${peerSector} peers` : "Sector peers"}
             </h2>
             {peers && (
-              <span className="text-[11px] uppercase tracking-wide text-core-muted">
-                {peers.length} companies · ranked by revenue
+              <span className="text-[10px] uppercase tracking-wide text-core-muted">
+                {peers.length} companies · by revenue
               </span>
             )}
           </header>
@@ -670,9 +671,9 @@ export default function CompanyDetail() {
           .filter((q) => q.filing_url);
         return (
           <section>
-            <header className="flex items-baseline justify-between mb-3">
-              <h2 className="text-xl font-bold tracking-tightest">Exchange filings</h2>
-              <span className="text-[11px] uppercase tracking-wide text-core-muted">
+            <header className="flex items-baseline justify-between mb-2">
+              <h2 className="text-base font-bold tracking-tight">Exchange filings</h2>
+              <span className="text-[10px] uppercase tracking-wide text-core-muted">
                 {withFilings.length} filing{withFilings.length !== 1 ? "s" : ""}
               </span>
             </header>
@@ -708,9 +709,9 @@ export default function CompanyDetail() {
 
 function KPI({ label, value, sub }: { label: string; value: string; sub?: React.ReactNode }) {
   return (
-    <div className="px-5 py-4 md:px-6 md:py-5">
+    <div className="px-4 py-3 md:px-5 md:py-4">
       <div className="text-[10px] uppercase tracking-[0.14em] text-core-muted">{label}</div>
-      <div className="mt-2 text-2xl md:text-3xl font-bold tabular-nums tracking-tightest leading-none">
+      <div className="mt-1.5 text-xl md:text-2xl font-bold tabular-nums tracking-tightest leading-none">
         {value}
       </div>
       {sub ? <div className="mt-2 text-[11px]">{sub}</div> : null}
