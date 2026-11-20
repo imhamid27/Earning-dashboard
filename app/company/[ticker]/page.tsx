@@ -65,7 +65,23 @@ function SourceChip({ source, quality }: { source: string; quality: string }) {
   );
 }
 
-type Tab = "overview" | "peers" | "filings";
+type Tab = "overview" | "peers" | "filings" | "announcements" | "annual-reports";
+
+interface Announcement {
+  id: string;
+  date: string;
+  subject: string;
+  category: string;
+  subcategory: string;
+  pdf_url: string | null;
+}
+
+interface AnnualReport {
+  id: string;
+  year: string;
+  title: string;
+  pdf_url: string | null;
+}
 
 interface PeerCo {
   ticker: string; company_name: string; exchange: string;
@@ -90,6 +106,10 @@ export default function CompanyDetail() {
   const [peers, setPeers] = useState<PeerCo[] | null>(null);
   const [peerSector, setPeerSector] = useState<string | null>(null);
   const [peersLoading, setPeersLoading] = useState(false);
+  const [announcements, setAnnouncements] = useState<Announcement[] | null>(null);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  const [annualReports, setAnnualReports] = useState<AnnualReport[] | null>(null);
+  const [annualReportsLoading, setAnnualReportsLoading] = useState(false);
 
   // ── AEO structured data ────────────────────────────────────────────────
   // BreadcrumbList is stable once `data` arrives and never changes after
@@ -263,6 +283,26 @@ export default function CompanyDetail() {
       .finally(() => setPeersLoading(false));
   }, [tab, ticker, peers]);
 
+  useEffect(() => {
+    if (tab !== "announcements" || announcements !== null) return;
+    setAnnouncementsLoading(true);
+    fetch(`/api/announcements/${encodeURIComponent(ticker)}`)
+      .then((r) => r.json())
+      .then((j) => setAnnouncements(j.ok ? j.data.announcements : []))
+      .catch(() => setAnnouncements([]))
+      .finally(() => setAnnouncementsLoading(false));
+  }, [tab, ticker, announcements]);
+
+  useEffect(() => {
+    if (tab !== "annual-reports" || annualReports !== null) return;
+    setAnnualReportsLoading(true);
+    fetch(`/api/annual-reports/${encodeURIComponent(ticker)}`)
+      .then((r) => r.json())
+      .then((j) => setAnnualReports(j.ok ? j.data.reports : []))
+      .catch(() => setAnnualReports([]))
+      .finally(() => setAnnualReportsLoading(false));
+  }, [tab, ticker, annualReports]);
+
   if (err) return (
     <div className="container-core py-10">
       <EmptyState title="Company not found" message={err} cta={<Link href="/" className="link-pink text-sm">← Back to dashboard</Link>} />
@@ -347,16 +387,20 @@ export default function CompanyDetail() {
           context immediately without scrolling past charts and tables. */}
       {data.quarters.length > 0 && (
         <div className="border-b border-core-line -mx-4 md:-mx-0 px-4 md:px-0 flex gap-0 overflow-x-auto scrollbar-none">
-          {(["overview", "peers", "filings"] as Tab[]).map((t) => {
+          {(["overview", "peers", "filings", "announcements", "annual-reports"] as Tab[]).map((t) => {
             const labels: Record<Tab, string> = {
               overview: "Overview",
               peers: "Peers",
               filings: "Filings",
+              announcements: "Announcements",
+              "annual-reports": "Annual Reports",
             };
             const counts: Record<Tab, string | null> = {
               overview: null,
               peers: peers != null ? String(peers.length) : null,
               filings: String(data.quarters.filter((q) => q.filing_url).length) || null,
+              announcements: announcements != null ? String(announcements.length) : null,
+              "annual-reports": annualReports != null ? String(annualReports.length) : null,
             };
             return (
               <button
@@ -659,6 +703,138 @@ export default function CompanyDetail() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Announcements tab ────────────────────────────────────────── */}
+      {tab === "announcements" && data.quarters.length > 0 && (
+        <section>
+          <header className="flex items-baseline justify-between mb-2">
+            <h2 className="text-base font-bold tracking-tight">BSE announcements</h2>
+            {announcements && (
+              <span className="text-[10px] uppercase tracking-wide text-core-muted">
+                {announcements.length} recent
+              </span>
+            )}
+          </header>
+          {announcementsLoading && (
+            <div className="card p-8 text-sm text-core-muted">Loading announcements…</div>
+          )}
+          {!announcementsLoading && announcements && announcements.length === 0 && (
+            <div className="card p-8 text-sm text-core-muted">
+              No announcements found. BSE scrip code may not be linked yet.
+            </div>
+          )}
+          {!announcementsLoading && announcements && announcements.length > 0 && (
+            <div className="card divide-y divide-core-line">
+              {announcements.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-start justify-between gap-4 px-4 py-3 hover:bg-core-surface transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                      <span className="text-[10px] tabular-nums text-core-muted shrink-0">
+                        {a.date}
+                      </span>
+                      {a.subcategory && (
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.1em] px-1.5 py-0.5 rounded bg-core-surface text-core-muted border border-core-line">
+                          {a.subcategory}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-core-ink leading-snug line-clamp-2">
+                      {a.subject}
+                    </p>
+                    {a.category && (
+                      <p className="text-[10px] text-core-muted mt-0.5 truncate">{a.category}</p>
+                    )}
+                  </div>
+                  {a.pdf_url ? (
+                    <a
+                      href={a.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 text-[11px] font-medium text-core-pink hover:text-core-ink hover:underline underline-offset-2 inline-flex items-center gap-1 mt-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden className="shrink-0">
+                        <path d="M3 1h6l3 3v9a0.5 0.5 0 0 1-0.5 0.5h-8.5a0.5 0.5 0 0 1-0.5-0.5v-11.5a0.5 0.5 0 0 1 0.5-0.5z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+                        <path d="M9 1v3h3" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+                        <rect x="3.5" y="7" width="7" height="1" fill="currentColor" rx="0.5"/>
+                        <rect x="3.5" y="9" width="5" height="1" fill="currentColor" rx="0.5"/>
+                      </svg>
+                      PDF
+                    </a>
+                  ) : (
+                    <span className="shrink-0 text-[11px] text-core-line-2 mt-1">—</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Annual Reports tab ────────────────────────────────────────── */}
+      {tab === "annual-reports" && data.quarters.length > 0 && (
+        <section>
+          <header className="flex items-baseline justify-between mb-2">
+            <h2 className="text-base font-bold tracking-tight">Annual reports</h2>
+            {annualReports && (
+              <span className="text-[10px] uppercase tracking-wide text-core-muted">
+                {annualReports.length} years
+              </span>
+            )}
+          </header>
+          {annualReportsLoading && (
+            <div className="card p-8 text-sm text-core-muted">Loading annual reports…</div>
+          )}
+          {!annualReportsLoading && annualReports && annualReports.length === 0 && (
+            <div className="card p-8 text-sm text-core-muted">
+              No annual reports found. BSE scrip code may not be linked yet.
+            </div>
+          )}
+          {!annualReportsLoading && annualReports && annualReports.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {annualReports.map((r) => (
+                <div
+                  key={r.id}
+                  className="card p-4 flex flex-col gap-3 hover:border-core-pink/40 transition-colors"
+                >
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-core-muted">
+                      Annual Report
+                    </div>
+                    <div className="text-xl font-bold tracking-tight tabular-nums mt-1 leading-none">
+                      {r.year || r.title}
+                    </div>
+                    {r.year && r.title && r.title !== r.year && (
+                      <div className="text-[11px] text-core-muted mt-0.5 truncate">{r.title}</div>
+                    )}
+                  </div>
+                  {r.pdf_url ? (
+                    <a
+                      href={r.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-auto text-[11px] font-semibold text-core-pink hover:text-core-ink inline-flex items-center gap-1 hover:underline underline-offset-2"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden className="shrink-0">
+                        <path d="M3 1h6l3 3v9a0.5 0.5 0 0 1-0.5 0.5h-8.5a0.5 0.5 0 0 1-0.5-0.5v-11.5a0.5 0.5 0 0 1 0.5-0.5z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+                        <path d="M9 1v3h3" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" fill="none"/>
+                        <rect x="3.5" y="7" width="7" height="1" fill="currentColor" rx="0.5"/>
+                        <rect x="3.5" y="9" width="5" height="1" fill="currentColor" rx="0.5"/>
+                      </svg>
+                      Download PDF
+                    </a>
+                  ) : (
+                    <span className="mt-auto text-[11px] text-core-line-2">Not linked</span>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </section>
