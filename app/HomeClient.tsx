@@ -1148,34 +1148,37 @@ function TopMoversStrip({ gainers, losers }: { gainers: MoverRow[]; losers: Move
           View all →
         </Link>
       </div>
-      <div className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
-        {gainers.map((r) => (
-          <Link
-            key={r.ticker}
-            href={`/company/${encodeURIComponent(r.ticker)}`}
-            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full border border-core-teal/20 bg-core-teal/[0.04] hover:bg-core-teal/[0.09] transition-colors"
-          >
-            <span className="text-[12px] font-semibold text-core-ink whitespace-nowrap">{shortName(r.company_name)}</span>
-            <span className="text-[11px] font-bold text-core-teal tabular-nums whitespace-nowrap">
-              ▲{(r.return_pct).toFixed(1)}%
-            </span>
-          </Link>
-        ))}
-        {gainers.length > 0 && losers.length > 0 ? (
-          <span className="flex-shrink-0 self-center text-core-line-2 text-[10px] px-1">|</span>
-        ) : null}
-        {losers.map((r) => (
-          <Link
-            key={r.ticker}
-            href={`/company/${encodeURIComponent(r.ticker)}`}
-            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full border border-core-negative/20 bg-core-negative/[0.04] hover:bg-core-negative/[0.09] transition-colors"
-          >
-            <span className="text-[12px] font-semibold text-core-ink whitespace-nowrap">{shortName(r.company_name)}</span>
-            <span className="text-[11px] font-bold text-core-negative tabular-nums whitespace-nowrap">
-              ▼{Math.abs(r.return_pct).toFixed(1)}%
-            </span>
-          </Link>
-        ))}
+      <div className="relative">
+        <div className="flex flex-nowrap gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pr-8">
+          {gainers.map((r) => (
+            <Link
+              key={r.ticker}
+              href={`/company/${encodeURIComponent(r.ticker)}`}
+              className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full border border-core-teal/20 bg-core-teal/[0.04] hover:bg-core-teal/[0.09] transition-colors"
+            >
+              <span className="text-[12px] font-semibold text-core-ink whitespace-nowrap">{shortName(r.company_name)}</span>
+              <span className="text-[11px] font-bold text-core-teal tabular-nums whitespace-nowrap">
+                ▲{(r.return_pct).toFixed(1)}%
+              </span>
+            </Link>
+          ))}
+          {gainers.length > 0 && losers.length > 0 ? (
+            <span className="flex-shrink-0 self-center text-core-line-2 text-[10px] px-1">|</span>
+          ) : null}
+          {losers.map((r) => (
+            <Link
+              key={r.ticker}
+              href={`/company/${encodeURIComponent(r.ticker)}`}
+              className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full border border-core-negative/20 bg-core-negative/[0.04] hover:bg-core-negative/[0.09] transition-colors"
+            >
+              <span className="text-[12px] font-semibold text-core-ink whitespace-nowrap">{shortName(r.company_name)}</span>
+              <span className="text-[11px] font-bold text-core-negative tabular-nums whitespace-nowrap">
+                ▼{Math.abs(r.return_pct).toFixed(1)}%
+              </span>
+            </Link>
+          ))}
+        </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent" />
       </div>
     </div>
   );
