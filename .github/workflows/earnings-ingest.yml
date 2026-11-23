@@ -162,6 +162,11 @@ jobs:
               python scripts/bse_documents.py
               python scripts/bse_pdf_results.py --days 1
               python scripts/fetch_results.py
+              # EOD price history — appends today's closing OHLCV for all
+              # active tickers; powers market-movers return calculations.
+              # Skips weekends automatically; || true so a Yahoo blip
+              # (holiday, no data) never fails the workflow.
+              python scripts/eod_price_history.py || true
               ;;
             hourly)
               # Lightweight XBRL + filing-link check — runs every 2 hours.
@@ -190,6 +195,8 @@ jobs:
               python scripts/nse_results.py --all --quarters 1
               python scripts/bse_documents.py
               python scripts/screener_results.py --missing
+              # Catch any price-history gaps from the week (skips Sun itself).
+              python scripts/eod_price_history.py || true
               # Full commentary refresh on Sunday — regenerates all rows
               # for the current quarter so any data corrections from the
               # week are reflected in the live commentary block.
