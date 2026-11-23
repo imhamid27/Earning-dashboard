@@ -143,6 +143,8 @@ jobs:
               python scripts/nse_calendar.py
               python scripts/bse_calendar.py
               python scripts/moneycontrol_calendar.py
+              # Index snapshot: keep Markets strip fresh on each daily run.
+              python scripts/market_snapshot.py || true
               # Expert quotes: seed starter set (idempotent) + age out >90d.
               python scripts/fetch_expert_quotes.py --seed --deactivate-old 90
               # Phase 2 — Related Coverage. Run BEFORE the result sweeps so
@@ -166,6 +168,11 @@ jobs:
               # Kept minimal (~5 min total) so the 7 daily slots stay cheap.
               # Heavy work (Screener, PDF parsing, commentary, coverage) all
               # runs in the 3× daily slots above which have 40-min budgets.
+
+              # Index snapshot: Nifty 50, Sensex, Bank Nifty → market_context
+              # strip. Runs in seconds; exit 0 on failure so it never blocks
+              # the filing sweep below.
+              python scripts/market_snapshot.py || true
 
               # Sweep 1: fresh NSE XBRL for announced companies only.
               # --quarters 1: current quarter — history is for Sunday backfill.
