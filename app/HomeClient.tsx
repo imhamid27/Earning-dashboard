@@ -81,6 +81,19 @@ function quarterAsCalendar(q: string): string {
   return `${label} ${year}`;
 }
 
+interface MoverRow {
+  ticker: string;
+  company_name: string;
+  sector: string | null;
+  return_pct: number;
+}
+interface MoversResp {
+  gainers: MoverRow[];
+  losers: MoverRow[];
+  period_days: number;
+  as_of: string | null;
+}
+
 interface MarketContextResp {
   as_of: string;
   // "open"  : values are live-ticking (snapshot <30 min old)
@@ -119,6 +132,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<SummaryResp | null>(null);
   const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
   const [market, setMarket] = useState<MarketContextResp | null>(null);
+  const [movers, setMovers] = useState<MoversResp | null>(null);
   const [prices, setPrices] = useState<Record<string, { last_price: number | null; change_pct: number | null }>>({});
   const [error, setError] = useState<string | null>(null);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
@@ -145,12 +159,13 @@ export default function DashboardPage() {
   const fetchAll = useCallback(async () => {
     setError(null);
     try {
-      const [b, s, up, mk, px] = await Promise.all([
+      const [b, s, up, mk, px, mv] = await Promise.all([
         fetch(`/api/dashboard?quarter=${encodeURIComponent(quarter)}`).then((r) => r.json()),
         fetch(`/api/summary?quarter=${encodeURIComponent(quarter)}`).then((r) => r.json()),
         fetch(`/api/upcoming`).then((r) => r.json()),
         fetch(`/api/market-context`).then((r) => r.json()).catch(() => ({ ok: false })),
         fetch(`/api/prices`).then((r) => r.json()).catch(() => ({ ok: false })),
+        fetch(`/api/market-movers?period=1w&limit=5`).then((r) => r.json()).catch(() => ({ ok: false })),
       ]);
       if (!b.ok) throw new Error(b.error || "dashboard failed");
       setBoard(b.data);
@@ -159,6 +174,7 @@ export default function DashboardPage() {
       // Market is supporting context only — silent failure, keep last good value.
       if (mk?.ok) setMarket(mk.data);
       if (px?.ok && px.data?.prices) setPrices(px.data.prices);
+      if (mv?.ok) setMovers(mv.data);
     } catch (err: any) { setError(err.message || "Failed to load"); }
   }, [quarter]);
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -737,6 +753,11 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
+      {/* ==== TOP MOVERS STRIP ==== */}
+      {movers && (movers.gainers.length > 0 || movers.losers.length > 0) ? (
+        <TopMoversStrip gainers={movers.gainers} losers={movers.losers} />
+      ) : null}
+
       {/* ==== INTELLIGENCE STRIP ====
           Dense 4-card grid above the LIVE band. Season progress,
           avg growth, top gainer, top decliner. Each card is a hard
@@ -1114,6 +1135,51 @@ export default function DashboardPage() {
   );
 }
 
+
+// Compact weekly top-movers strip — 5 gainers + 5 losers as scrollable pills.
+function TopMoversStrip({ gainers, losers }: { gainers: MoverRow[]; losers: MoverRow[] }) {
+  return (
+    <div className="border-b border-core-line mb-6 pb-3">
+      <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-[0.22em] text-core-muted font-semibold mb-2">
+        <span>Top movers</span>
+        <span className="text-core-line-2">·</span>
+        <span>This week</span>
+        <Link href="/market-movers" className="ml-auto text-[9px] normal-case tracking-[0.1em] hover:text-core-pink">
+          View all →
+        </Link>
+      </div>
+      <div className="flex flex-nowrap gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
+        {gainers.map((r) => (
+          <Link
+            key={r.ticker}
+            href={`/company/${encodeURIComponent(r.ticker)}`}
+            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full border border-core-teal/20 bg-core-teal/[0.04] hover:bg-core-teal/[0.09] transition-colors"
+          >
+            <span className="text-[12px] font-semibold text-core-ink whitespace-nowrap">{shortName(r.company_name)}</span>
+            <span className="text-[11px] font-bold text-core-teal tabular-nums whitespace-nowrap">
+              ▲{(r.return_pct).toFixed(1)}%
+            </span>
+          </Link>
+        ))}
+        {gainers.length > 0 && losers.length > 0 ? (
+          <span className="flex-shrink-0 self-center text-core-line-2 text-[10px] px-1">|</span>
+        ) : null}
+        {losers.map((r) => (
+          <Link
+            key={r.ticker}
+            href={`/company/${encodeURIComponent(r.ticker)}`}
+            className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full border border-core-negative/20 bg-core-negative/[0.04] hover:bg-core-negative/[0.09] transition-colors"
+          >
+            <span className="text-[12px] font-semibold text-core-ink whitespace-nowrap">{shortName(r.company_name)}</span>
+            <span className="text-[11px] font-bold text-core-negative tabular-nums whitespace-nowrap">
+              ▼{Math.abs(r.return_pct).toFixed(1)}%
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // Single row in the rolling-leaders list.
 // Every row has an IDENTICAL two-line right column:
